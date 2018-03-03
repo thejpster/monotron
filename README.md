@@ -79,16 +79,19 @@ works for me (although the picture is a bit dim, as it actually produces about
      |
 PB7 o+---------------+
      |               |
+     |              +-+
      |              | |
      |              | | 1K
      |              | |
+     |              +-+
 -----+               |
                      +----------- VGA pin 2----------+
                      |                               |
+                    +-+                             +-+
                     | |                             | |
                     | | 1K3                         | | 75
                     | |                             | | (in Monitor)
-                     |                               |
+                    +-+                             +-+
                      |                               |
                      o                               o
                     GND                             GND
@@ -100,7 +103,7 @@ PS/2 keyboard support is TBD.
 
 ### UART
 
-Monotron uses UART0 on the Stellaris Launchpad, which is convered to USB
+Monotron uses UART0 on the Stellaris Launchpad, which is converted to USB
 Serial by the on-board companion chip. Connect with your favourite Serial
 terminal at 115,200bps.
 
