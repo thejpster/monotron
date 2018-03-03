@@ -15,8 +15,6 @@ extern crate tm4c123x_hal;
 extern crate menu;
 extern crate vga_framebuffer as fb;
 
-use menu::*;
-
 use core::fmt::Write;
 use cortex_m::asm;
 use embedded_hal::prelude::*;
@@ -28,20 +26,23 @@ use tm4c123x_hal::time::U32Ext;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
+type Menu<'a> = menu::Menu<'a, Context>;
+type Item<'a> = menu::Item<'a, Context>;
+
 const FOO_ITEM: Item = Item {
-    item_type: ItemType::Callback(dummy_callback),
+    item_type: menu::ItemType::Callback(dummy_callback),
     command: "foo",
     help: Some("makes a foo appear"),
 };
 
 const BAR_ITEM: Item = Item {
-    item_type: ItemType::Callback(dummy_callback),
+    item_type: menu::ItemType::Callback(dummy_callback),
     command: "bar",
     help: Some("fandoggles a bar"),
 };
 
 const ENTER_ITEM: Item = Item {
-    item_type: ItemType::Menu(&SUB_MENU),
+    item_type: menu::ItemType::Menu(&SUB_MENU),
     command: "sub",
     help: Some("enter sub-menu"),
 };
@@ -54,13 +55,13 @@ const ROOT_MENU: Menu = Menu {
 };
 
 const BAZ_ITEM: Item = Item {
-    item_type: ItemType::Callback(dummy_callback),
+    item_type: menu::ItemType::Callback(dummy_callback),
     command: "baz",
     help: Some("thingamobob a baz"),
 };
 
 const QUUX_ITEM: Item = Item {
-    item_type: ItemType::Callback(dummy_callback),
+    item_type: menu::ItemType::Callback(dummy_callback),
     command: "quux",
     help: Some("maximum quux"),
 };
@@ -76,6 +77,17 @@ static mut FRAMEBUFFER: fb::FrameBuffer<&'static mut Hardware> = fb::FrameBuffer
 
 struct Hardware {
     h_timer: Option<tm4c123x_hal::tm4c123x::TIMER0>,
+}
+
+struct Context {
+    pub value: u32,
+    pub tfb: fb::TextFrameBuffer<'static, &'static mut Hardware>
+}
+
+impl core::fmt::Write for Context {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.tfb.write_str(s)
+    }
 }
 
 static mut HARDWARE: Hardware = Hardware {
@@ -155,9 +167,12 @@ fn main() {
     // underlying framebuffer. This is unsafe, but the artifact is a slightly
     // garbled framebuffer for one frame, which we can live with. Sadly we
     // don't have the RAM to double-buffer.
-    let mut c = fb::TextFrameBuffer::new(unsafe { &mut FRAMEBUFFER });
+    let mut c = Context {
+        value: 0,
+        tfb: fb::TextFrameBuffer::new(unsafe { &mut FRAMEBUFFER })
+    };
 
-    c.clear();
+    c.tfb.clear();
     writeln!(c, "Welcome to Monotron v{}", VERSION).unwrap();
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
@@ -177,7 +192,7 @@ fn main() {
     let (mut _tx, mut rx) = uart.split();
 
     let mut buffer = [0u8; 64];
-    let mut r = Runner::new(&ROOT_MENU, &mut buffer, &mut c);
+    let mut r = menu::Runner::new(&ROOT_MENU, &mut buffer, &mut c);
 
     loop {
         // Wait for char
@@ -280,8 +295,10 @@ impl fb::Hardware for &'static mut Hardware {
 }
 
 /// Called by menu items
-fn dummy_callback<'a>(_menu: &Menu, _item: &Item, _input: &str) {
-
+fn dummy_callback<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+    context.value += 1;
+    let v = context.value;
+    writeln!(context, "Inside TFB! Value = {}", v).unwrap();
 }
 
 extern "C" fn timer0a_isr() {
