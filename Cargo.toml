@@ -1,0 +1,44 @@
+[package]
+name = "monotron"
+version = "0.1.0"
+authors = ["Jorge Aparicio <jorge@japaric.io>", "Jonathan 'theJPster' Pallant <monotron@thejpster.org.uk>"]
+description = "A simple 1980's home computer style application for the Stellaris Launchpad."
+keywords = ["arm", "cortex-m", "template", "video", "menu"]
+categories = ["embedded", "no-std"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/thejpster/monotron"
+
+[profile.dev]
+codegen-units = 1
+incremental = false
+panic = "abort"
+
+[profile.release]
+lto = true
+debug = true
+panic = "abort"
+
+[dependencies]
+
+[dependencies.tm4c123x-hal]
+git = "https://github.com/thejpster/tm4c123x-hal"
+
+[dependencies.menu]
+git = "https://github.com/thejpster/menu"
+
+[dependencies.vga-framebuffer]
+git = "https://github.com/thejpster/vga-framebuffer-rs"
+
+[dependencies.embedded-hal]
+version = "0.1.1"
+features = ["unproven"]
+
+[dependencies.cortex-m]
+version = "0.3.0"
+
+[dependencies.cortex-m-rt]
+version = "0.3.12"
+features = ["abort-on-panic"]
+
+[dependencies.cortex-m-semihosting]
+version = "0.2.0"
