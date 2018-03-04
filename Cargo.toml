@@ -28,6 +28,7 @@ git = "https://github.com/thejpster/menu"
 
 [dependencies.vga-framebuffer]
 git = "https://github.com/thejpster/vga-framebuffer-rs"
+# path = "../vga-framebuffer-rs"
 
 [dependencies.embedded-hal]
 version = "0.1.1"

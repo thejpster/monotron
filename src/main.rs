@@ -11,8 +11,8 @@ extern crate cortex_m;
 extern crate cortex_m_rt;
 extern crate cortex_m_semihosting;
 extern crate embedded_hal;
-extern crate tm4c123x_hal;
 extern crate menu;
+extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
 
 use core::fmt::Write;
@@ -25,50 +25,27 @@ use tm4c123x_hal::sysctl::{self, SysctlExt};
 use tm4c123x_hal::time::U32Ext;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const SPI_FIFO_PRELOAD: usize = 7;
+const ISR_LATENCY: u32 = 40;
 
 type Menu<'a> = menu::Menu<'a, Context>;
 type Item<'a> = menu::Item<'a, Context>;
 
-const FOO_ITEM: Item = Item {
-    item_type: menu::ItemType::Callback(dummy_callback),
-    command: "foo",
-    help: Some("makes a foo appear"),
+const TEST_ITEM: Item = Item {
+    item_type: menu::ItemType::Callback(test_bitmap_callback),
+    command: "test",
+    help: Some("Shows a test image forever (reboot to exit)."),
 };
 
-const BAR_ITEM: Item = Item {
-    item_type: menu::ItemType::Callback(dummy_callback),
-    command: "bar",
-    help: Some("fandoggles a bar"),
-};
-
-const ENTER_ITEM: Item = Item {
-    item_type: menu::ItemType::Menu(&SUB_MENU),
-    command: "sub",
-    help: Some("enter sub-menu"),
+const ANIMATION_ITEM: Item = Item {
+    item_type: menu::ItemType::Callback(test_animation),
+    command: "animate",
+    help: Some("Bounces a bitmap around."),
 };
 
 const ROOT_MENU: Menu = Menu {
     label: "root",
-    items: &[&FOO_ITEM, &BAR_ITEM, &ENTER_ITEM],
-    entry: None,
-    exit: None,
-};
-
-const BAZ_ITEM: Item = Item {
-    item_type: menu::ItemType::Callback(dummy_callback),
-    command: "baz",
-    help: Some("thingamobob a baz"),
-};
-
-const QUUX_ITEM: Item = Item {
-    item_type: menu::ItemType::Callback(dummy_callback),
-    command: "quux",
-    help: Some("maximum quux"),
-};
-
-const SUB_MENU: Menu = Menu {
-    label: "sub",
-    items: &[&BAZ_ITEM, &QUUX_ITEM],
+    items: &[&TEST_ITEM, &ANIMATION_ITEM],
     entry: None,
     exit: None,
 };
@@ -81,7 +58,7 @@ struct Hardware {
 
 struct Context {
     pub value: u32,
-    pub tfb: fb::TextFrameBuffer<'static, &'static mut Hardware>
+    pub tfb: fb::TextFrameBuffer<'static, &'static mut Hardware>,
 }
 
 impl core::fmt::Write for Context {
@@ -90,9 +67,7 @@ impl core::fmt::Write for Context {
     }
 }
 
-static mut HARDWARE: Hardware = Hardware {
-    h_timer: None
-};
+static mut HARDWARE: Hardware = Hardware { h_timer: None };
 
 fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
     sysctl::control_power(sc, p, sysctl::RunMode::Run, sysctl::PowerState::On);
@@ -132,8 +107,8 @@ fn main() {
     p.SSI2.cr1.modify(|_, w| w.sse().clear_bit());
     // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
     // 20 MHz = 80 MHz / (4 * (1 + 0))
-    // SCR = 0
-    // CPSDVSR = 4
+    // CPSDVSR = 4 -------^
+    // SCR = 0 --------------------^
     p.SSI2.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
     // Send 16 bits at a time in Freescale format
     p.SSI2.cr0.write(|w| {
@@ -147,8 +122,6 @@ fn main() {
     // p.SSI2.dmactl.write(|w| w.txdmae().set_bit());
     // Set clock source to sysclk
     p.SSI2.cc.modify(|_, w| w.cs().syspll());
-    // Enable SSI2
-    p.SSI2.cr1.modify(|_, w| w.sse().set_bit());
 
     // Need to configure MicroDMA to feed SSI2 with data
     // That's Encoder 2, Channel 13
@@ -169,7 +142,7 @@ fn main() {
     // don't have the RAM to double-buffer.
     let mut c = Context {
         value: 0,
-        tfb: fb::TextFrameBuffer::new(unsafe { &mut FRAMEBUFFER })
+        tfb: fb::TextFrameBuffer::new(unsafe { &mut FRAMEBUFFER }),
     };
 
     c.tfb.clear();
@@ -203,7 +176,6 @@ fn main() {
         }
     }
 }
-
 
 impl fb::Hardware for &'static mut Hardware {
     fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, _clock_rate: u32) {
@@ -245,10 +217,10 @@ impl fb::Hardware for &'static mut Hardware {
                 .modify(|_, w| unsafe { w.bits(width * 2 - 1) });
             h_timer
                 .tamatchr
-                .modify(|_, w| unsafe { w.bits(2*(width - sync_end) - 1) });
+                .modify(|_, w| unsafe { w.bits(2 * (width - sync_end) - 1) });
             h_timer
                 .tbmatchr
-                    .modify(|_, w| unsafe { w.bits(2*(width - line_start) - 1) });
+                .modify(|_, w| unsafe { w.bits(2 * (width - line_start) + ISR_LATENCY - 1) });
             h_timer.imr.modify(|_, w| {
                 w.caeim().set_bit(); // Timer0A fires at start of line
                 w.cbeim().set_bit(); // Timer0B fires at start of data
@@ -282,34 +254,113 @@ impl fb::Hardware for &'static mut Hardware {
         unsafe { bb::change_bit(&gpio.data, 4, false) };
     }
 
+    /// Called at start of line. We pre-load the first 8 words of pixels.
+    fn buffer_pixels(&mut self, pixels: &fb::VideoLine) {
+        let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
+        // Disable SSI2 as we don't want pixels yet
+        ssi.cr1.modify(|_, w| w.sse().clear_bit());
+        // Pre-load FIFO
+        for word in &pixels.words[..SPI_FIFO_PRELOAD] {
+            ssi.dr.write(|w| unsafe { w.data().bits(*word) });
+        }
+    }
+
     /// Called when pixels need to be written to the output pin.
     fn write_pixels(&mut self, pixels: &fb::VideoLine) {
         let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        for word in &pixels.words {
-            ssi.dr.write(|w| unsafe { w.data().bits(*word) });
+        for word in &pixels.words[SPI_FIFO_PRELOAD..] {
+            // Wait while FIFO is full.
+            // TODO: Replace with interrupt routine!
             while ssi.sr.read().tnf().bit_is_clear() {
                 asm::nop();
+            }
+            ssi.dr.write(|w| unsafe { w.data().bits(*word) });
+        }
+    }
+}
+
+/// The test menu item - displays a static bitmap.
+fn test_bitmap_callback<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+    context.tfb.clear();
+    context
+        .tfb
+        .hollow_rectangle(fb::Point(0, 0), fb::Point(399, 299), true);
+    context
+        .tfb
+        .hollow_rectangle(fb::Point(50, 50), fb::Point(349, 249), true);
+    let bitmap: [u8; 8] = [
+        0b00111100, 0b01000010, 0b10100101, 0b10000001, 0b10100101, 0b10011001, 0b01000010,
+        0b00111100,
+    ];
+    for x in 0..20 {
+        for y in 0..10 {
+            let p = fb::Point(100 + x * 10, 100 + y * 10);
+            context.tfb.draw_bitmap(p, 8, &bitmap);
+        }
+    }
+    context
+        .tfb
+        .goto((fb::TEXT_NUM_COLS - 11) / 2, fb::TEXT_NUM_ROWS / 2)
+        .unwrap();
+    write!(context.tfb, "Reboot now!").unwrap();
+    loop {
+        // Spin forever
+        asm::wfi();
+    }
+}
+
+/// Another test menu item - displays an animation.
+fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+    let bitmap: [u8; 8] = [
+        0b00111100, 0b01000010, 0b10100101, 0b10000001, 0b10100101, 0b10011001, 0b01000010,
+        0b00111100,
+    ];
+    context.tfb.goto(0, fb::TEXT_NUM_ROWS - 1).unwrap();
+    write!(context.tfb, "Reboot now!").unwrap();
+    let mut p = fb::Point(fb::MAX_X / 2, fb::MAX_Y / 2);
+    let mut old_frame = context.tfb.frame();
+    let mut left = true;
+    let mut down = true;
+    loop {
+        // Spin forever, bouncing around
+        asm::wfi();
+        let new_frame = context.tfb.frame();
+        if new_frame != old_frame {
+            old_frame = new_frame;
+            context.tfb.clear();
+            context.tfb.draw_bitmap(p, 8, &bitmap);
+            if left {
+                p.0 += 1;
+            } else {
+                p.0 -= 1;
+            }
+            if down {
+                p.1 += 1;
+            } else {
+                p.1 -= 1;
+            }
+            if (p.0 == (fb::MAX_X - 8)) || (p.0 == 0) {
+                left = !left;
+            }
+            if (p.1 == (fb::MAX_Y - 8)) || (p.1 == 0) {
+                down = !down;
             }
         }
     }
 }
 
-/// Called by menu items
-fn dummy_callback<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    context.value += 1;
-    let v = context.value;
-    writeln!(context, "Inside TFB! Value = {}", v).unwrap();
-}
-
 extern "C" fn timer0a_isr() {
-    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     unsafe { FRAMEBUFFER.isr_sol() };
+    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
 extern "C" fn timer0b_isr() {
-    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
+    let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
+    // Enable SSI2 to let buffered pixels flow
+    ssi.cr1.modify(|_, w| w.sse().set_bit());
     unsafe { FRAMEBUFFER.isr_data() };
+    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
 }
 
