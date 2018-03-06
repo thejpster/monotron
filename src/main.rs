@@ -25,8 +25,7 @@ use tm4c123x_hal::sysctl::{self, SysctlExt};
 use tm4c123x_hal::time::U32Ext;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const SPI_FIFO_PRELOAD: usize = 7;
-const ISR_LATENCY: u32 = 40;
+const ISR_LATENCY: u32 = 35;
 
 type Menu<'a> = menu::Menu<'a, Context>;
 type Item<'a> = menu::Item<'a, Context>;
@@ -58,12 +57,13 @@ struct Hardware {
 
 struct Context {
     pub value: u32,
-    pub tfb: fb::TextFrameBuffer<'static, &'static mut Hardware>,
 }
 
 impl core::fmt::Write for Context {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.tfb.write_str(s)
+        unsafe {
+            FRAMEBUFFER.write_str(s)
+        }
     }
 }
 
@@ -89,6 +89,9 @@ fn main() {
     let mut nvic = cp.NVIC;
     nvic.enable(tm4c123x_hal::Interrupt::TIMER0A);
     nvic.enable(tm4c123x_hal::Interrupt::TIMER0B);
+    // Make Timer0A (start of line) lower priority than Timer0B (clocking out
+    // data) so that it can be interrupted.
+    unsafe { nvic.set_priority(tm4c123x_hal::Interrupt::TIMER0A, 32); }
 
     enable(sysctl::Domain::Timer0, &mut sc.power_control);
     // enable(sysctl::Domain::MicroDma, &mut sc.power_control);
@@ -110,7 +113,6 @@ fn main() {
     // CPSDVSR = 4 -------^
     // SCR = 0 --------------------^
     p.SSI2.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
-    // Send 16 bits at a time in Freescale format
     p.SSI2.cr0.write(|w| {
         w.dss()._16();
         w.frf().moto();
@@ -142,10 +144,9 @@ fn main() {
     // don't have the RAM to double-buffer.
     let mut c = Context {
         value: 0,
-        tfb: fb::TextFrameBuffer::new(unsafe { &mut FRAMEBUFFER }),
     };
 
-    c.tfb.clear();
+    unsafe { FRAMEBUFFER.clear(); }
     writeln!(c, "Welcome to Monotron v{}", VERSION).unwrap();
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
@@ -254,102 +255,84 @@ impl fb::Hardware for &'static mut Hardware {
         unsafe { bb::change_bit(&gpio.data, 4, false) };
     }
 
-    /// Called at start of line. We pre-load the first 8 words of pixels.
-    fn buffer_pixels(&mut self, pixels: &fb::VideoLine) {
+    /// Write pixels straight to FIFO
+    fn write_pixels(&mut self, word: u16) {
         let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        // Disable SSI2 as we don't want pixels yet
-        ssi.cr1.modify(|_, w| w.sse().clear_bit());
-        // Pre-load FIFO
-        for word in &pixels.words[..SPI_FIFO_PRELOAD] {
-            ssi.dr.write(|w| unsafe { w.data().bits(*word) });
+        while ssi.sr.read().tnf().bit_is_clear() {
+            asm::nop();
         }
-    }
-
-    /// Called when pixels need to be written to the output pin.
-    fn write_pixels(&mut self, pixels: &fb::VideoLine) {
-        let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        for word in &pixels.words[SPI_FIFO_PRELOAD..] {
-            // Wait while FIFO is full.
-            // TODO: Replace with interrupt routine!
-            while ssi.sr.read().tnf().bit_is_clear() {
-                asm::nop();
-            }
-            ssi.dr.write(|w| unsafe { w.data().bits(*word) });
-        }
+        ssi.dr.write(|w| unsafe { w.data().bits(word) });
     }
 }
 
 /// The test menu item - displays a static bitmap.
-fn test_bitmap_callback<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    context.tfb.clear();
-    context
-        .tfb
-        .hollow_rectangle(fb::Point(0, 0), fb::Point(399, 299), true);
-    context
-        .tfb
-        .hollow_rectangle(fb::Point(50, 50), fb::Point(349, 249), true);
-    let bitmap: [u8; 8] = [
-        0b00111100, 0b01000010, 0b10100101, 0b10000001, 0b10100101, 0b10011001, 0b01000010,
-        0b00111100,
-    ];
-    for x in 0..20 {
-        for y in 0..10 {
-            let p = fb::Point(100 + x * 10, 100 + y * 10);
-            context.tfb.draw_bitmap(p, 8, &bitmap);
-        }
+fn test_bitmap_callback<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+    unsafe {
+        FRAMEBUFFER.clear();
+        FRAMEBUFFER.goto(0, 0).unwrap();
     }
-    context
-        .tfb
-        .goto((fb::TEXT_NUM_COLS - 11) / 2, fb::TEXT_NUM_ROWS / 2)
-        .unwrap();
-    write!(context.tfb, "Reboot now!").unwrap();
+    let mut old_frame = 0;
     loop {
-        // Spin forever
         asm::wfi();
+        let new_frame = unsafe { FRAMEBUFFER.frame() };
+        if new_frame != old_frame {
+            old_frame = new_frame;
+            unsafe {
+                write!(FRAMEBUFFER, "0123456789!\"£€$%^&*()_+-=;:'@~#[]{{}}").unwrap();
+                write!(FRAMEBUFFER, "abcdefghijklmnopqrstuvwxyz").unwrap();
+                write!(FRAMEBUFFER, "ABCDEFGHIJKLMNOPQRSTUVWXYZ").unwrap();
+            }
+        }
     }
 }
 
 /// Another test menu item - displays an animation.
-fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    let bitmap: [u8; 8] = [
-        0b00111100, 0b01000010, 0b10100101, 0b10000001, 0b10100101, 0b10011001, 0b01000010,
-        0b00111100,
-    ];
-    context.tfb.goto(0, fb::TEXT_NUM_ROWS - 1).unwrap();
-    write!(context.tfb, "Reboot now!").unwrap();
-    let mut p = fb::Point(fb::MAX_X / 2, fb::MAX_Y / 2);
-    let mut old_frame = context.tfb.frame();
+fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+    let mut old_frame = 0;
+    let mut row = 0;
+    let mut col = 0;
     let mut left = true;
     let mut down = true;
     loop {
-        // Spin forever, bouncing around
         asm::wfi();
-        let new_frame = context.tfb.frame();
+        let new_frame = unsafe { FRAMEBUFFER.frame() };
         if new_frame != old_frame {
             old_frame = new_frame;
-            context.tfb.clear();
-            context.tfb.draw_bitmap(p, 8, &bitmap);
             if left {
-                p.0 += 1;
+                col = col + 1;
             } else {
-                p.0 -= 1;
+                col = col - 1;
             }
             if down {
-                p.1 += 1;
+                row = row + 1
             } else {
-                p.1 -= 1;
+                row = row - 1;
             }
-            if (p.0 == (fb::MAX_X - 8)) || (p.0 == 0) {
-                left = !left;
+            if col == 0 {
+                left = true;
             }
-            if (p.1 == (fb::MAX_Y - 8)) || (p.1 == 0) {
-                down = !down;
+            if (col + 15) == fb::TEXT_MAX_COL {
+                left = false;
+            }
+            if row == 0 {
+                down = true;
+            }
+            if row == fb::TEXT_MAX_ROW {
+                down = false;
+            }
+            unsafe {
+                FRAMEBUFFER.clear();
+                FRAMEBUFFER.goto(row, col).unwrap();
+                write!(FRAMEBUFFER, "Frame: {:08}", new_frame).unwrap();
             }
         }
     }
 }
 
 extern "C" fn timer0a_isr() {
+    let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
+    // Disable SSI2 as we don't want pixels yet
+    ssi.cr1.modify(|_, w| w.sse().clear_bit());
     unsafe { FRAMEBUFFER.isr_sol() };
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
@@ -357,9 +340,9 @@ extern "C" fn timer0a_isr() {
 
 extern "C" fn timer0b_isr() {
     let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    // Enable SSI2 to let buffered pixels flow
+    // Enable SSI2 to let buffered pixels flow. We're still calculating the
+    // end of the line but the SPI FIFO gets us out of trouble
     ssi.cr1.modify(|_, w| w.sse().set_bit());
-    unsafe { FRAMEBUFFER.isr_data() };
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
 }
