@@ -25,6 +25,7 @@ use tm4c123x_hal::sysctl::{self, SysctlExt};
 use tm4c123x_hal::time::U32Ext;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 const ISR_LATENCY: u32 = 35;
 
 type Menu<'a> = menu::Menu<'a, Context>;
@@ -137,17 +138,12 @@ fn main() {
         FRAMEBUFFER.init(&mut HARDWARE);
     }
 
-    // Make a text renderer. Technically the TFB now owns the frame buffer (it
-    // holds a mutable reference to it) but the ISR still writes to the
-    // underlying framebuffer. This is unsafe, but the artifact is a slightly
-    // garbled framebuffer for one frame, which we can live with. Sadly we
-    // don't have the RAM to double-buffer.
     let mut c = Context {
         value: 0,
     };
 
     unsafe { FRAMEBUFFER.clear(); }
-    writeln!(c, "Welcome to Monotron v{}", VERSION).unwrap();
+    writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
 
