@@ -31,21 +31,21 @@ const ISR_LATENCY: u32 = 35;
 type Menu<'a> = menu::Menu<'a, Context>;
 type Item<'a> = menu::Item<'a, Context>;
 
-const TEST_ITEM: Item = Item {
-    item_type: menu::ItemType::Callback(test_bitmap_callback),
-    command: "test",
-    help: Some("Shows a test image forever (reboot to exit)."),
+const TEST_ALPHABET: Item = Item {
+    item_type: menu::ItemType::Callback(test_alphabet),
+    command: "alphabet",
+    help: Some("Scrolls some test text output forever (reboot to exit)."),
 };
 
-const ANIMATION_ITEM: Item = Item {
+const TEST_ANIMATION: Item = Item {
     item_type: menu::ItemType::Callback(test_animation),
     command: "animate",
-    help: Some("Bounces a bitmap around."),
+    help: Some("Bounces some text around (reboot to exit)."),
 };
 
 const ROOT_MENU: Menu = Menu {
     label: "root",
-    items: &[&TEST_ITEM, &ANIMATION_ITEM],
+    items: &[&TEST_ALPHABET, &TEST_ANIMATION],
     entry: None,
     exit: None,
 };
@@ -262,7 +262,7 @@ impl fb::Hardware for &'static mut Hardware {
 }
 
 /// The test menu item - displays a static bitmap.
-fn test_bitmap_callback<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
     unsafe {
         FRAMEBUFFER.clear();
         FRAMEBUFFER.goto(0, 0).unwrap();
