@@ -90,22 +90,41 @@ fn main() {
     let mut nvic = cp.NVIC;
     nvic.enable(tm4c123x_hal::Interrupt::TIMER0A);
     nvic.enable(tm4c123x_hal::Interrupt::TIMER0B);
+    nvic.enable(tm4c123x_hal::Interrupt::GPIOB);
     // Make Timer0A (start of line) lower priority than Timer0B (clocking out
     // data) so that it can be interrupted.
     unsafe { nvic.set_priority(tm4c123x_hal::Interrupt::TIMER0A, 32); }
 
     enable(sysctl::Domain::Timer0, &mut sc.power_control);
-    // enable(sysctl::Domain::MicroDma, &mut sc.power_control);
+    enable(sysctl::Domain::Ssi0, &mut sc.power_control);
+    enable(sysctl::Domain::Ssi1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi2, &mut sc.power_control);
 
+    let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
     let portc = p.GPIO_PORTC.split(&sc.power_control);
+    let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     // T0CCP0
     let _h_sync = portb.pb6.into_af7(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portc.pc4.into_push_pull_output();
+    // Ssi0Tx - currently not used
+    let _red_data = porta.pa5.into_af2(&mut porta.control);
+    // Ssi1Tx - currently not used
+    let _blue_data = portd.pd3.into_af2(&mut portd.control);
     // Ssi2Tx
     let _green_data = portb.pb7.into_af2(&mut portb.control);
+
+    // Keyboard pins
+    let _keyboard_data = portb.pb4.into_pull_up_input();
+    let mut _keyboard_clock = portb.pb5.into_pull_up_input();
+
+    // Need to configure GPIO Port B to interrupt on PB5 falling edge at which
+    // time we sample PB4. To write to the keyboard (to change the Caps Lock
+    // LED) we need to interrupt on PB5 rising edge, at which time we write
+    // PB4.
+    _keyboard_clock.set_interrupt_mode(tm4c123x_hal::gpio::InterruptMode::EdgeFalling);
+
 
     // Need to configure SSI2 at 20 MHz
     p.SSI2.cr1.modify(|_, w| w.sse().clear_bit());
@@ -121,17 +140,8 @@ fn main() {
         w.sph().set_bit();
         w
     });
-    // Enable TX DMA
-    // p.SSI2.dmactl.write(|w| w.txdmae().set_bit());
     // Set clock source to sysclk
     p.SSI2.cc.modify(|_, w| w.cs().syspll());
-
-    // Need to configure MicroDMA to feed SSI2 with data
-    // That's Encoder 2, Channel 13
-    // let dma = p.UDMA;
-    // dma.cfg.write(|w| w.masten().set_bit());
-    // dma.ctlbase
-    //     .write(|w| unsafe { w.addr().bits(&mut DMA_CONTROL_TABLE as *mut DmaInfo as u32) });
 
     unsafe {
         HARDWARE.h_timer = Some(p.TIMER0);
@@ -144,8 +154,6 @@ fn main() {
 
     unsafe { FRAMEBUFFER.clear(); }
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
-
-    let mut porta = p.GPIO_PORTA.split(&sc.power_control);
 
     // Activate UART
     let uart = Serial::uart0(
