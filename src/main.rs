@@ -62,9 +62,7 @@ struct Context {
 
 impl core::fmt::Write for Context {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        unsafe {
-            FRAMEBUFFER.write_str(s)
-        }
+        unsafe { FRAMEBUFFER.write_str(s) }
     }
 }
 
@@ -93,7 +91,9 @@ fn main() {
     nvic.enable(tm4c123x_hal::Interrupt::GPIOB);
     // Make Timer0A (start of line) lower priority than Timer0B (clocking out
     // data) so that it can be interrupted.
-    unsafe { nvic.set_priority(tm4c123x_hal::Interrupt::TIMER0A, 32); }
+    unsafe {
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER0A, 32);
+    }
 
     enable(sysctl::Domain::Timer0, &mut sc.power_control);
     enable(sysctl::Domain::Ssi0, &mut sc.power_control);
@@ -105,15 +105,23 @@ fn main() {
     let portc = p.GPIO_PORTC.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     // T0CCP0
-    let _h_sync = portb.pb6.into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
+    let _h_sync = portb
+        .pb6
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portc.pc4.into_push_pull_output();
     // Ssi0Tx - currently not used
-    let _red_data = porta.pa5.into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut porta.control);
+    let _red_data = porta
+        .pa5
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut porta.control);
     // Ssi1Tx - currently not used
-    let _blue_data = portd.pd3.into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portd.control);
+    let _blue_data = portd
+        .pd3
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portd.control);
     // Ssi2Tx
-    let _green_data = portb.pb7.into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
+    let _green_data = portb
+        .pb7
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
 
     // Keyboard pins
     let _keyboard_data = portb.pb4.into_pull_up_input();
@@ -124,7 +132,6 @@ fn main() {
     // LED) we need to interrupt on PB5 rising edge, at which time we write
     // PB4.
     _keyboard_clock.set_interrupt_mode(tm4c123x_hal::gpio::InterruptMode::EdgeFalling);
-
 
     // Need to configure SSI2 at 20 MHz
     p.SSI2.cr1.modify(|_, w| w.sse().clear_bit());
@@ -148,18 +155,22 @@ fn main() {
         FRAMEBUFFER.init(&mut HARDWARE);
     }
 
-    let mut c = Context {
-        value: 0,
-    };
+    let mut c = Context { value: 0 };
 
-    unsafe { FRAMEBUFFER.clear(); }
+    unsafe {
+        FRAMEBUFFER.clear();
+    }
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
 
     // Activate UART
     let uart = Serial::uart0(
         p.UART0,
-        porta.pa1.into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
-        porta.pa0.into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
+        porta
+            .pa1
+            .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
+        porta
+            .pa0
+            .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
         (),
         (),
         115200_u32.bps(),
