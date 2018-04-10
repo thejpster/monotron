@@ -15,7 +15,12 @@ fn main() {
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=memory.x");
-    let git_desc = Command::new("git").args(&["describe", "--all"])
-                       .output().unwrap();
-    println!("cargo:rustc-env=GIT_DESCRIBE={}", String::from_utf8_lossy(&git_desc.stdout));
+    let git_desc = Command::new("git")
+        .args(&["describe", "--all"])
+        .output()
+        .unwrap();
+    println!(
+        "cargo:rustc-env=GIT_DESCRIBE={}",
+        String::from_utf8_lossy(&git_desc.stdout)
+    );
 }
