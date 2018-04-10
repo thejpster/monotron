@@ -8,15 +8,19 @@ categories = ["embedded", "no-std"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/thejpster/monotron"
 
-[profile.dev]
+[profile.release]
+panic = "abort"
+lto = true
 codegen-units = 1
 incremental = false
-panic = "abort"
+opt-level = "z"
 
-[profile.release]
-lto = true
-debug = true
+[profile.dev]
 panic = "abort"
+lto = true
+codegen-units = 1
+incremental = false
+# opt-level = "z"
 
 [dependencies]
 

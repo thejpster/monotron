@@ -105,15 +105,15 @@ fn main() {
     let portc = p.GPIO_PORTC.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     // T0CCP0
-    let _h_sync = portb.pb6.into_af7(&mut portb.control);
+    let _h_sync = portb.pb6.into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portc.pc4.into_push_pull_output();
     // Ssi0Tx - currently not used
-    let _red_data = porta.pa5.into_af2(&mut porta.control);
+    let _red_data = porta.pa5.into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut porta.control);
     // Ssi1Tx - currently not used
-    let _blue_data = portd.pd3.into_af2(&mut portd.control);
+    let _blue_data = portd.pd3.into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portd.control);
     // Ssi2Tx
-    let _green_data = portb.pb7.into_af2(&mut portb.control);
+    let _green_data = portb.pb7.into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
 
     // Keyboard pins
     let _keyboard_data = portb.pb4.into_pull_up_input();
@@ -158,8 +158,8 @@ fn main() {
     // Activate UART
     let uart = Serial::uart0(
         p.UART0,
-        porta.pa1.into_af1(&mut porta.control),
-        porta.pa0.into_af1(&mut porta.control),
+        porta.pa1.into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
+        porta.pa0.into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
         (),
         (),
         115200_u32.bps(),
