@@ -16,8 +16,8 @@ extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
 
 use core::fmt::Write;
-use cortex_m::asm;
 use embedded_hal::prelude::*;
+use cortex_m::asm;
 use tm4c123x_hal::bb;
 use tm4c123x_hal::gpio::GpioExt;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
@@ -34,13 +34,13 @@ type Item<'a> = menu::Item<'a, Context>;
 const TEST_ALPHABET: Item = Item {
     item_type: menu::ItemType::Callback(test_alphabet),
     command: "alphabet",
-    help: Some("Scrolls some test text output forever (reboot to exit)."),
+    help: Some("Scrolls some test text output."),
 };
 
 const TEST_ANIMATION: Item = Item {
     item_type: menu::ItemType::Callback(test_animation),
     command: "animate",
-    help: Some("Bounces some text around (reboot to exit)."),
+    help: Some("Bounces some text around."),
 };
 
 const ROOT_MENU: Menu = Menu {
@@ -58,6 +58,7 @@ struct Hardware {
 
 struct Context {
     pub value: u32,
+    pub rx: tm4c123x_hal::serial::Rx<tm4c123x_hal::serial::UART0, tm4c123x_hal::gpio::gpioa::PA0<tm4c123x_hal::gpio::AlternateFunction<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::PushPull>>, ()>
 }
 
 impl core::fmt::Write for Context {
@@ -155,13 +156,6 @@ fn main() {
         FRAMEBUFFER.init(&mut HARDWARE);
     }
 
-    let mut c = Context { value: 0 };
-
-    unsafe {
-        FRAMEBUFFER.clear();
-    }
-    writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
-
     // Activate UART
     let uart = Serial::uart0(
         p.UART0,
@@ -178,14 +172,22 @@ fn main() {
         &clocks,
         &sc.power_control,
     );
-    let (mut _tx, mut rx) = uart.split();
+    let (mut _tx, rx) = uart.split();
+
+    let mut c = Context { value: 0, rx };
+
+    unsafe {
+        FRAMEBUFFER.clear();
+    }
+    writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ROOT_MENU, &mut buffer, &mut c);
 
     loop {
         // Wait for char
-        if let Ok(ch) = rx.read() {
+        if let Ok(ch) = r.output.rx.read() {
+            // Local echo
             r.output.write_char(ch as char).unwrap();
             // Feed char to runner
             r.input_byte(ch);
@@ -281,7 +283,7 @@ impl fb::Hardware for &'static mut Hardware {
 }
 
 /// The test menu item - displays a static bitmap.
-fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     unsafe {
         FRAMEBUFFER.clear();
         FRAMEBUFFER.goto(0, 0).unwrap();
@@ -293,16 +295,19 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Co
         if new_frame != old_frame {
             old_frame = new_frame;
             unsafe {
-                write!(FRAMEBUFFER, "0123456789!\"£€$%^&*()_+-=;:'@~#[]{{}}").unwrap();
+                write!(FRAMEBUFFER, "0123456789!\"$%^&*()_+-=;:'@~#[]{{}}").unwrap();
                 write!(FRAMEBUFFER, "abcdefghijklmnopqrstuvwxyz").unwrap();
                 write!(FRAMEBUFFER, "ABCDEFGHIJKLMNOPQRSTUVWXYZ").unwrap();
             }
+        }
+        if let Ok(_ch) = context.rx.read() {
+            break;
         }
     }
 }
 
 /// Another test menu item - displays an animation.
-fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     let mut old_frame = 0;
     let mut row = 0;
     let mut col = 0;
@@ -326,7 +331,7 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut C
             if col == 0 {
                 left = true;
             }
-            if (col + 15) == fb::TEXT_MAX_COL {
+            if (col + 17) == fb::TEXT_MAX_COL {
                 left = false;
             }
             if row == 0 {
@@ -340,6 +345,9 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut C
                 FRAMEBUFFER.goto(row, col).unwrap();
                 write!(FRAMEBUFFER, "Frame: {:08}", new_frame).unwrap();
             }
+        }
+        if let Ok(_ch) = context.rx.read() {
+            break;
         }
     }
 }
