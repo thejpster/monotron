@@ -16,7 +16,6 @@ debug = true
 
 [dependencies.tm4c123x-hal]
 git = "https://github.com/thejpster/tm4c123x-hal"
-branch = "new_gpio_af"
 # path = "../tm4c123x-hal"
 
 [dependencies.menu]
