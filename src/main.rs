@@ -40,7 +40,7 @@ const TEST_ALPHABET: Item = Item {
 const TEST_ANIMATION: Item = Item {
     item_type: menu::ItemType::Callback(test_animation),
     command: "animate",
-    help: Some("Bounces some text around."),
+    help: Some("Bounces argument around."),
 };
 
 const ROOT_MENU: Menu = Menu {
@@ -185,12 +185,10 @@ fn main() {
     let mut r = menu::Runner::new(&ROOT_MENU, &mut buffer, &mut c);
 
     loop {
-        // Wait for char
-        if let Ok(ch) = r.output.rx.read() {
-            // Local echo
-            r.output.write_char(ch as char).unwrap();
-            // Feed char to runner
-            r.input_byte(ch);
+        // Wait for char - requires ASCII input because we have an ASCII framebuffer. UTF-8 will break things.
+        if let Ok(octet) = r.output.rx.read() {
+            // Feed it in
+            r.input_byte(octet);
         }
     }
 }
@@ -307,31 +305,33 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
 }
 
 /// Another test menu item - displays an animation.
-fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
     let mut old_frame = 0;
     let mut row = 0;
     let mut col = 0;
     let mut left = true;
     let mut down = true;
+    let input = input.trim_left_matches("animate ");
+    let num_chars = input.chars().count();
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
         if new_frame != old_frame {
             old_frame = new_frame;
             if left {
-                col = col + 1;
+                col += 1;
             } else {
-                col = col - 1;
+                col -= 1;
             }
             if down {
-                row = row + 1
+                row += 1
             } else {
-                row = row - 1;
+                row -= 1;
             }
             if col == 0 {
                 left = true;
             }
-            if (col + 17) == fb::TEXT_MAX_COL {
+            if col == (fb::TEXT_MAX_COL - num_chars) {
                 left = false;
             }
             if row == 0 {
@@ -342,8 +342,8 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
             }
             unsafe {
                 FRAMEBUFFER.clear();
-                FRAMEBUFFER.goto(row, col).unwrap();
-                write!(FRAMEBUFFER, "Frame: {:08}", new_frame).unwrap();
+                FRAMEBUFFER.goto(col, row).unwrap();
+                write!(FRAMEBUFFER, "{}", input).unwrap();
             }
         }
         if let Ok(_ch) = context.rx.read() {
