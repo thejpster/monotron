@@ -4,10 +4,24 @@
 
 ## Features
 
-Monotron has a 400x300 pixel mono framebuffer, scaled up to an 800x600 SVGA
-output at 60 Hz. The video is produced using a Timer peripheral for the sync
-signals and an SPI peripheral for the pixels. Just three wires and a little
-resisitive divider are required.
+Monotron has a 400x600 pixel black-and-white (well, black-and-green) rendering
+of a 48x36 character text buffer, scaled up to an 800x600 SVGA output at 60
+Hz, courtesy of an 80 MHz CPU clock (which can provide the 20 MHz pixel clock)
+and the [vga-framebuffer](https://github.com/thejpster/vga-framebuffer-rs)
+crate. The video is produced using a Timer peripheral for the sync signals and
+an SPI peripheral for the pixels. Just three wires and a little resisitive
+divider are required.
+
+UTF-8 encoded Unicode characters (as emmitted by `write!`) are converted to a
+custom 8-bit character set for storage in the framebuffer. Eventually I hope
+to standardise on something like [MS-DOS Code Page
+850](https://en.wikipedia.org/wiki/Code_page_850) to give a mix of latin,
+accented and graphic glyphs. The font is 8x16 pixels. There a plan to abuse
+the glyph attribute field and turn each glyph octet into a 2 pixel by 4 pixel
+bitmap for a Teletext-style 96x144 pixel display, and perhaps even to
+dynamically switch to a full 400x300 framebuffer (which will take 15 KiB of
+SRAM at 1 bit-per-pixel). We may even get full RGB 8-colour output, if I can
+get three separate SPI peripherals to synchronise properly.
 
 When running, a simple command driven interface is presented. Commands can be
 entered over serial, or using a PS/2 keyboard (not yet implemented). Commands
@@ -17,25 +31,21 @@ to a sub-menu - use 'exit' to return to the previous menu.
 
 ## Compiling
 
-To build, you will first need Xargo.
-
-```
-$ cargo install xargo
-```
-
 You will need to build using Rust Nightly, as we need various experimental features for Embedded development that are not yet available in Stable.
 
 ```
 $ rustup toolchain install nightly
+$ git clone https://github.com/thejpster/monotron.git
 $ cd monotron
 $ rustup override set nightly
-$ xargo build --release
+$ rustup target add thumbv7em-none-eabihf
+$ cargo build --release
 ```
 
 To program the board, you can use lm4flash:
 
 ```
-$ xargo build --release
+$ cargo build --release
 $ arm-none-eabi-objcopy -O binary ./target/thumbv7em-none-eabihf/release/monotron ./target/thumbv7em-none-eabihf/release/monotron.bin
 $ lm4flash ./target/thumbv7em-none-eabihf/release/monotron.bin
 ```
@@ -45,7 +55,7 @@ Or you can debug in GDB (which will automatically load the program first):
 ```
 $ sudo openocd -f /usr/share/openocd/scripts/board/ek-lm4f120xl.cfg
 <switch to a different terminal>
-$ xargo run --release
+$ cargo run --release
 ```
 
 To exit GDB, you may need to press Ctrl-C multiple times, as it seems it can get a bit stuck.
@@ -81,7 +91,7 @@ PB7 o+---------------+
      |               |
      |              +-+
      |              | |
-     |              | | 1K
+     |              | | 330 Ohm
      |              | |
      |              +-+
 -----+               |
@@ -89,7 +99,7 @@ PB7 o+---------------+
                      |                               |
                     +-+                             +-+
                     | |                             | |
-                    | | 1K3                         | | 75
+                    | | DNF                         | | 75
                     | |                             | | (in Monitor)
                     +-+                             +-+
                      |                               |
@@ -99,7 +109,7 @@ PB7 o+---------------+
 
 ### PS/2 Keyboard
 
-PS/2 keyboard support is TBD.
+PS/2 keyboard support is TBD. See the [pc-keyboard](https://github.com/thejpster/pc-keyboard) crate.
 
 ### UART
 
@@ -109,6 +119,8 @@ terminal at 115,200bps.
 
 ## Changelog
 
+* Version 0.3.0 - Backspace works.
+* Version 0.2.0 - Switch to a text buffer to save RAM. Basic animations work.
 * Version 0.1.0 - First release. VGA output works but menu is full of dummy commands and there's no keyboard input.
 
 ## License
