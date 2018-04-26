@@ -287,15 +287,31 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
         FRAMEBUFFER.goto(0, 0).unwrap();
     }
     let mut old_frame = 0;
+    let mut row = 0;
+    let mut col = 0;
+    let mut ch = 0u8;
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
         if new_frame != old_frame {
             old_frame = new_frame;
             unsafe {
-                write!(FRAMEBUFFER, "0123456789!\"$%^&*()_+-=;:'@~#[]{{}}").unwrap();
-                write!(FRAMEBUFFER, "abcdefghijklmnopqrstuvwxyz").unwrap();
-                write!(FRAMEBUFFER, "ABCDEFGHIJKLMNOPQRSTUVWXYZ").unwrap();
+                FRAMEBUFFER.write_glyph_at(fb::Glyph::from_byte(ch), col, row, false);
+            }
+            if ch == 255 {
+                ch = 0;
+            } else {
+                ch += 1;
+            }
+            if col == fb::TEXT_MAX_COL {
+                col = 0;
+                if row == fb::TEXT_MAX_ROW {
+                    row = 0;
+                } else {
+                    row += 1;
+                }
+            } else {
+                col += 1;
             }
         }
         if let Ok(_ch) = context.rx.read() {
