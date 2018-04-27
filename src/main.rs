@@ -3,7 +3,36 @@
 //! > A simple 1980's home computer style application for the Stellaris Launchpad
 //!
 //! See README.md for more details.
+//!
+//! ## SPI pins
+//!
+//! This chip has 4 SPI devices. They are on the following pins:
+//!
+//! 1.08         PA5     SSI0Tx
+//! 2.06/3.04    PD1/PB7 SSI2Tx
+//! 3.06         PD3     SSI3Tx / SSI1Tx
+//!
+//! 2.08         PA4     SSI0Rx
+//! 2.04         PF0     SSI1Rx / User Switch 2
+//! 2.07/3.03    PB6/PD0 SSI2Rx / SSI3Clk / SSI1Clk
+//! 3.05         PD2     SSI3Rx / SSI1Rx
+//!
+//! 2.10         PA2     SSI0Clk
+//! 2.07/3.03    PB6/PD0 SSI2Rx / SSI3Clk / SSI1Clk
+//! 1.07         PB4     SSI2Clk
+//!
+//! Note that there are 0-ohm links between 2.07 and 3.03 and between 2.06 and
+//! 3.04 for MSP430 compatibility reasons. This limits the pins we can use for
+//! SPI.
+//!
+//! We use:
+//! * SSI0Tx for Red on PA5 / 1.08
+//! * SSI1Tx for Blue on PD3 / 3.06
+//! * SSI2Tx for Green on PB7 / 3.04 / 2.06
+//! * SSI3Rx for Keyboard Data on PD2 / 3.05
+//! * SSI3Clk for Keyboard Clock on PD0 / 2.07 / 3.03
 
+#![feature(asm)]
 #![feature(used)]
 #![no_std]
 
@@ -16,8 +45,8 @@ extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
 
 use core::fmt::Write;
-use embedded_hal::prelude::*;
 use cortex_m::asm;
+use embedded_hal::prelude::*;
 use tm4c123x_hal::bb;
 use tm4c123x_hal::gpio::GpioExt;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
@@ -58,7 +87,16 @@ struct Hardware {
 
 struct Context {
     pub value: u32,
-    pub rx: tm4c123x_hal::serial::Rx<tm4c123x_hal::serial::UART0, tm4c123x_hal::gpio::gpioa::PA0<tm4c123x_hal::gpio::AlternateFunction<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::PushPull>>, ()>
+    pub rx: tm4c123x_hal::serial::Rx<
+        tm4c123x_hal::serial::UART0,
+        tm4c123x_hal::gpio::gpioa::PA0<
+            tm4c123x_hal::gpio::AlternateFunction<
+                tm4c123x_hal::gpio::AF1,
+                tm4c123x_hal::gpio::PushPull,
+            >,
+        >,
+        (),
+    >,
 }
 
 impl core::fmt::Write for Context {
@@ -89,7 +127,6 @@ fn main() {
     let mut nvic = cp.NVIC;
     nvic.enable(tm4c123x_hal::Interrupt::TIMER0A);
     nvic.enable(tm4c123x_hal::Interrupt::TIMER0B);
-    nvic.enable(tm4c123x_hal::Interrupt::GPIOB);
     // Make Timer0A (start of line) lower priority than Timer0B (clocking out
     // data) so that it can be interrupted.
     unsafe {
@@ -100,6 +137,7 @@ fn main() {
     enable(sysctl::Domain::Ssi0, &mut sc.power_control);
     enable(sysctl::Domain::Ssi1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi2, &mut sc.power_control);
+    enable(sysctl::Domain::Ssi3, &mut sc.power_control);
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
@@ -111,11 +149,11 @@ fn main() {
         .into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portc.pc4.into_push_pull_output();
-    // Ssi0Tx - currently not used
+    // Ssi0Tx
     let _red_data = porta
         .pa5
         .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut porta.control);
-    // Ssi1Tx - currently not used
+    // Ssi1Tx
     let _blue_data = portd
         .pd3
         .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portd.control);
@@ -123,33 +161,55 @@ fn main() {
     let _green_data = portb
         .pb7
         .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
+    // Keyboard Clock
+    let _keyboard_clock = portd
+        .pd0
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
+    // Keyboard Data
+    let _keyboard_data = portd
+        .pd2
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
 
-    // Keyboard pins
-    let _keyboard_data = portb.pb4.into_pull_up_input();
-    let mut _keyboard_clock = portb.pb5.into_pull_up_input();
-
-    // Need to configure GPIO Port B to interrupt on PB5 falling edge at which
-    // time we sample PB4. To write to the keyboard (to change the Caps Lock
-    // LED) we need to interrupt on PB5 rising edge, at which time we write
-    // PB4.
-    _keyboard_clock.set_interrupt_mode(tm4c123x_hal::gpio::InterruptMode::EdgeFalling);
-
-    // Need to configure SSI2 at 20 MHz
+    // Need to configure SSI0, SSI1 and SSI2 at 20 MHz
+    p.SSI0.cr1.modify(|_, w| w.sse().clear_bit());
+    p.SSI1.cr1.modify(|_, w| w.sse().clear_bit());
     p.SSI2.cr1.modify(|_, w| w.sse().clear_bit());
     // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
     // 20 MHz = 80 MHz / (4 * (1 + 0))
     // CPSDVSR = 4 -------^
     // SCR = 0 --------------------^
+    p.SSI0.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
+    p.SSI1.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
     p.SSI2.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
+    p.SSI0.cr0.write(|w| {
+        w.dss()._8();
+        w.frf().moto();
+        w.spo().clear_bit();
+        w.sph().set_bit();
+        w
+    });
+    p.SSI1.cr0.write(|w| {
+        w.dss()._8();
+        w.frf().moto();
+        w.spo().clear_bit();
+        w.sph().set_bit();
+        w
+    });
     p.SSI2.cr0.write(|w| {
-        w.dss()._16();
+        w.dss()._8();
         w.frf().moto();
         w.spo().clear_bit();
         w.sph().set_bit();
         w
     });
     // Set clock source to sysclk
+    p.SSI0.cc.modify(|_, w| w.cs().syspll());
+    p.SSI1.cc.modify(|_, w| w.cs().syspll());
     p.SSI2.cc.modify(|_, w| w.cs().syspll());
+
+    // Need to configure SSI3 as a slave
+    p.SSI3.cr1.modify(|_, w| w.sse().clear_bit());
+    // @TODO
 
     unsafe {
         HARDWARE.h_timer = Some(p.TIMER0);
@@ -179,6 +239,7 @@ fn main() {
     unsafe {
         FRAMEBUFFER.clear();
     }
+
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
 
     let mut buffer = [0u8; 64];
@@ -225,6 +286,8 @@ impl fb::Hardware for &'static mut Hardware {
                 w
             });
             // We're counting down in PWM mode, so start at the end
+            // We start 16 pixels early
+            let line_start = line_start - 30;
             h_timer
                 .tailr
                 .modify(|_, w| unsafe { w.bits(width * 2 - 1) });
@@ -270,13 +333,23 @@ impl fb::Hardware for &'static mut Hardware {
         unsafe { bb::change_bit(&gpio.data, 4, false) };
     }
 
-    /// Write pixels straight to FIFO
-    fn write_pixels(&mut self, word: u16) {
-        let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        while ssi.sr.read().tnf().bit_is_clear() {
+    /// Write pixels straight to FIFOs
+    fn write_pixels(&mut self, red: u8, green: u8, blue: u8) {
+        let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
+        let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
+        let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
+        while ssi_r.sr.read().tnf().bit_is_clear() {
             asm::nop();
         }
-        ssi.dr.write(|w| unsafe { w.data().bits(word) });
+        ssi_r.dr.write(|w| unsafe { w.data().bits(red as u16) });
+        // while ssi_g.sr.read().tnf().bit_is_clear() {
+        //     asm::nop();
+        // }
+        ssi_g.dr.write(|w| unsafe { w.data().bits(green as u16) });
+        // while ssi_b.sr.read().tnf().bit_is_clear() {
+        //     asm::nop();
+        // }
+        ssi_b.dr.write(|w| unsafe { w.data().bits(blue as u16) });
     }
 }
 
@@ -369,19 +442,113 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
 }
 
 extern "C" fn timer0a_isr() {
-    let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    // Disable SSI2 as we don't want pixels yet
-    ssi.cr1.modify(|_, w| w.sse().clear_bit());
+    let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
+    let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
+    let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
+    // Disable SSI0/1/2 as we don't want pixels yet
+    ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
+    ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
+    ssi_b.cr1.modify(|_, w| w.sse().clear_bit());
+    // Pre-load red with 2 bytes and green 1 with (they start early so we can line them up)
+    ssi_r.dr.write(|w| unsafe { w.data().bits(0) });
+    ssi_r.dr.write(|w| unsafe { w.data().bits(0) });
+    ssi_g.dr.write(|w| unsafe { w.data().bits(0) });
+    // Run the draw routine
     unsafe { FRAMEBUFFER.isr_sol() };
+    // Clear timer A interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
+/// Activate the three FIFOs exactly 32 clock cycles apart
+/// This gets the colour video lined up
 extern "C" fn timer0b_isr() {
-    let ssi = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    // Enable SSI2 to let buffered pixels flow. We're still calculating the
-    // end of the line but the SPI FIFO gets us out of trouble
-    ssi.cr1.modify(|_, w| w.sse().set_bit());
+    unsafe {
+        asm!(
+            "movs    r0, #132;
+            movs    r1, #1;
+            movt    r0, #16912;
+            mov.w   r2, #262144;
+            mov.w   r3, #131072;
+            str r1, [r0, #0];
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            str r1, [r0, r2];
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            str r1, [r0, r3];
+            "
+            :
+            :
+            : "r0" "r1" "r2"
+            : "volatile");
+    }
+
+    // let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
+    // let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
+    // let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
+    // // Enable SSI0/1/2 to let buffered pixels flow. We're still calculating the
+    // // end of the line but the SPI FIFO gets us out of trouble
+    // unsafe { bb::change_bit(&ssi_r.cr1, 1, true); }
+    // unsafe { bb::change_bit(&ssi_g.cr1, 1, true); }
+    // unsafe { bb::change_bit(&ssi_b.cr1, 1, true); }
+    // Clear timer B interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
 }
