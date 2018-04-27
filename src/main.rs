@@ -361,13 +361,7 @@ impl fb::Hardware for &'static mut Hardware {
 
 /// The test menu item - displays a static bitmap.
 fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    unsafe {
-        FRAMEBUFFER.clear();
-        FRAMEBUFFER.goto(0, 0).unwrap();
-    }
     let mut old_frame = 0;
-    let mut row = 0;
-    let mut col = 0;
     let mut ch = 0u8;
     const COLOURS: [fb::Attr; 6] = [ fb::RED_ON_BLACK, fb::YELLOW_ON_BLACK, fb::GREEN_ON_BLACK, fb::CYAN_ON_BLACK, fb::BLUE_ON_BLACK, fb::MAGENTA_ON_BLACK ];
     let mut colour_wheel = COLOURS.iter().cloned().cycle();
@@ -377,22 +371,12 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
         if new_frame != old_frame {
             old_frame = new_frame;
             unsafe {
-                FRAMEBUFFER.write_glyph_at(fb::Glyph::from_byte(ch), col, row, colour_wheel.next());
+                FRAMEBUFFER.write_glyph(fb::Glyph::from_byte(ch), colour_wheel.next());
             }
             if ch == 255 {
                 ch = 0;
             } else {
                 ch += 1;
-            }
-            if col == fb::TEXT_MAX_COL {
-                col = 0;
-                if row == fb::TEXT_MAX_ROW {
-                    row = 0;
-                } else {
-                    row += 1;
-                }
-            } else {
-                col += 1;
             }
         }
         if let Ok(_ch) = context.rx.read() {
