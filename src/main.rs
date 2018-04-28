@@ -31,6 +31,17 @@
 //! * SSI2Tx for Green on PB7 / 3.04 / 2.06
 //! * SSI3Rx for Keyboard Data on PD2 / 3.05
 //! * SSI3Clk for Keyboard Clock on PD0 / 2.07 / 3.03
+//!
+//! ## DMA Channels
+//!
+//! We can't quite get the pixel data out of the system fast enough, so we
+//! buffer the line in RAM and clock it out using DMA during the next line.
+//!
+//! SSI0 = Channel 11, Encoder 0
+//! SSI1 = Channel 25, Encoder 0
+//! SSI2 = Channel 13, Encoder 2
+//!
+//! We need fb::HORIZONTAL_WORDS transfer, of 8 bits each, per SPI.
 
 #![feature(asm)]
 #![feature(used)]
@@ -55,7 +66,7 @@ use tm4c123x_hal::time::U32Ext;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
-const ISR_LATENCY: u32 = 35;
+const ISR_LATENCY: u32 = 48;
 
 type Menu<'a> = menu::Menu<'a, Context>;
 type Item<'a> = menu::Item<'a, Context>;
@@ -72,6 +83,12 @@ const TEST_CLEAR: Item = Item {
     help: Some("Resets the display."),
 };
 
+const TEST_BLANK: Item = Item {
+    item_type: menu::ItemType::Callback(test_blank),
+    command: "blank",
+    help: Some("Makes the display solid white."),
+};
+
 const TEST_ANIMATION: Item = Item {
     item_type: menu::ItemType::Callback(test_animation),
     command: "animate",
@@ -80,12 +97,34 @@ const TEST_ANIMATION: Item = Item {
 
 const ROOT_MENU: Menu = Menu {
     label: "root",
-    items: &[&TEST_ALPHABET, &TEST_ANIMATION, &TEST_CLEAR],
+    items: &[&TEST_ALPHABET, &TEST_ANIMATION, &TEST_CLEAR, &TEST_BLANK],
     entry: None,
     exit: None,
 };
 
 static mut FRAMEBUFFER: fb::FrameBuffer<&'static mut Hardware> = fb::FrameBuffer::new();
+
+const LINEBUFFER_SIZE: usize = fb::HORIZONTAL_WORDS + 2;
+static mut LINEBUFFER_RED: [u8; LINEBUFFER_SIZE] = [0u8; LINEBUFFER_SIZE];
+static mut LINEBUFFER_GREEN: [u8; LINEBUFFER_SIZE] = [0u8; LINEBUFFER_SIZE];
+static mut LINEBUFFER_BLUE: [u8; LINEBUFFER_SIZE] = [0u8; LINEBUFFER_SIZE];
+static mut LINEBUFFER_OFFSET: usize = 0;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+struct DmaDescriptor {
+    src: u32,
+    dest: u32,
+    control_word: u32,
+    spare: u32
+}
+
+#[repr(align(1024))]
+struct DmaDescriptors {
+    channels: [DmaDescriptor; 32]
+}
+
+static mut DMA_INFO: DmaDescriptors = DmaDescriptors { channels: [DmaDescriptor { src: 0, dest: 0, control_word: 0, spare: 0 }; 32] };
 
 struct Hardware {
     h_timer: Option<tm4c123x_hal::tm4c123x::TIMER0>,
@@ -112,6 +151,15 @@ impl core::fmt::Write for Context {
 }
 
 static mut HARDWARE: Hardware = Hardware { h_timer: None };
+
+const DSTINC: usize = 30;
+const DSTSIZE: usize = 28;
+const SRCINC: usize = 26;
+const SRCSIZE: usize = 24;
+const ARBSIZE: usize = 14;
+const XFRSIZE: usize = 4;
+const NXTUSEBIRST: usize = 3;
+const XFERMODE: usize = 0;
 
 fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
     sysctl::control_power(sc, p, sysctl::RunMode::Run, sysctl::PowerState::On);
@@ -144,6 +192,7 @@ fn main() {
     enable(sysctl::Domain::Ssi1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi2, &mut sc.power_control);
     enable(sysctl::Domain::Ssi3, &mut sc.power_control);
+    enable(sysctl::Domain::MicroDma, &mut sc.power_control);
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
@@ -208,10 +257,69 @@ fn main() {
         w.sph().set_bit();
         w
     });
+    p.SSI0.dmactl.write(|w| w.txdmae().set_bit());
+    p.SSI1.dmactl.write(|w| w.txdmae().set_bit());
+    p.SSI2.dmactl.write(|w| w.txdmae().set_bit());
     // Set clock source to sysclk
     p.SSI0.cc.modify(|_, w| w.cs().syspll());
     p.SSI1.cc.modify(|_, w| w.cs().syspll());
     p.SSI2.cc.modify(|_, w| w.cs().syspll());
+    // Enable the peripherals
+    p.SSI0.cr1.modify(|_, w| w.sse().set_bit());
+    p.SSI1.cr1.modify(|_, w| w.sse().set_bit());
+    p.SSI2.cr1.modify(|_, w| w.sse().set_bit());
+
+    // Configure DMA to copy from line buffers to SPI peripherals
+    // Channel 11 is SSI0 which is red
+    unsafe {
+        let chan = &mut DMA_INFO.channels[11];
+        chan.src = &LINEBUFFER_RED as *const u8 as u32;
+        chan.src += LINEBUFFER_SIZE as u32 - 1;
+        chan.dest = 0x4000_8008;
+        chan.control_word = 0x03 << DSTINC; // do not increment
+        chan.control_word |= 0x00 << DSTSIZE; // 1 byte
+        chan.control_word |= 0x00 << SRCINC; // inc 1 byte
+        chan.control_word |= 0x00 << SRCSIZE; // 1 byte
+        chan.control_word |= 0x2 << ARBSIZE; // 4 transfers
+        chan.control_word |= (LINEBUFFER_SIZE as u32 - 1) << XFRSIZE;
+        chan.control_word |= 0x0 << NXTUSEBIRST; // single transfers at end
+        chan.control_word |= 0x1 << XFERMODE; // basic mode
+    }
+    // Channel 13 is SSI2 which is green
+    unsafe {
+        let chan = &mut DMA_INFO.channels[13];
+        chan.src = &LINEBUFFER_GREEN as *const u8 as u32;
+        chan.src += LINEBUFFER_SIZE as u32 - 1;
+        chan.dest = 0x4000_A008;
+        chan.control_word = 0x03 << DSTINC; // do not increment
+        chan.control_word |= 0x00 << DSTSIZE; // 1 byte
+        chan.control_word |= 0x00 << SRCINC; // inc 1 byte
+        chan.control_word |= 0x00 << SRCSIZE; // 1 byte
+        chan.control_word |= 0x2 << ARBSIZE; // 4 transfers
+        chan.control_word |= (LINEBUFFER_SIZE as u32 - 1) << XFRSIZE;
+        chan.control_word |= 0x0 << NXTUSEBIRST; // single transfers at end
+        chan.control_word |= 0x1 << XFERMODE; // basic mode
+    }
+    // Channel 25 is SSI1 which is blue
+    unsafe {
+        let chan = &mut DMA_INFO.channels[25];
+        chan.src = &LINEBUFFER_BLUE as *const u8 as u32;
+        chan.src += LINEBUFFER_SIZE as u32 - 1;
+        chan.dest = 0x4000_9008;
+        chan.control_word = 0x03 << DSTINC; // do not increment
+        chan.control_word |= 0x00 << DSTSIZE; // 1 byte
+        chan.control_word |= 0x00 << SRCINC; // inc 1 byte
+        chan.control_word |= 0x00 << SRCSIZE; // 1 byte
+        chan.control_word |= 0x2 << ARBSIZE; // 4 transfers
+        chan.control_word |= (LINEBUFFER_SIZE as u32 - 1) << XFRSIZE;
+        chan.control_word |= 0x0 << NXTUSEBIRST; // single transfers at end
+        chan.control_word |= 0x1 << XFERMODE; // basic mode
+    }
+    // Enable microDMA
+    p.UDMA.cfg.write(|w| w.masten().set_bit());
+    p.UDMA.ctlbase.write(|w| unsafe { w.addr().bits(&DMA_INFO as *const _ as u32) });
+    p.UDMA.chmap1.write(|w| unsafe { w.ch11sel().bits(0).ch13sel().bits(2) });
+    p.UDMA.chmap3.write(|w| unsafe { w.ch25sel().bits(0) });
 
     // Need to configure SSI3 as a slave
     p.SSI3.cr1.modify(|_, w| w.sse().clear_bit());
@@ -238,7 +346,11 @@ fn main() {
         &clocks,
         &sc.power_control,
     );
-    let (mut _tx, rx) = uart.split();
+    let (mut tx, rx) = uart.split();
+
+    unsafe {
+        writeln!(tx, "Channel 11: {:?}", &DMA_INFO.channels[11]).unwrap();
+    }
 
     let mut c = Context { value: 0, rx };
 
@@ -292,8 +404,6 @@ impl fb::Hardware for &'static mut Hardware {
                 w
             });
             // We're counting down in PWM mode, so start at the end
-            // We start 16 pixels early
-            let line_start = line_start - 30;
             h_timer
                 .tailr
                 .modify(|_, w| unsafe { w.bits(width * 2 - 1) });
@@ -339,23 +449,17 @@ impl fb::Hardware for &'static mut Hardware {
         unsafe { bb::change_bit(&gpio.data, 4, false) };
     }
 
-    /// Write pixels straight to FIFOs
-    fn write_pixels(&mut self, red: u8, green: u8, blue: u8) {
-        let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
-        let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
-        while ssi_r.sr.read().tnf().bit_is_clear() {
-            asm::nop();
+    /// Write pixels to a line buffer. We will DMA them at start of line.
+    fn write_pixels(&mut self, _red: u8, _green: u8, _blue: u8) {
+        unsafe {
+            LINEBUFFER_RED[LINEBUFFER_OFFSET+2] = 0xFF;
+            // LINEBUFFER_GREEN[LINEBUFFER_OFFSET+1] = green;
+            // LINEBUFFER_BLUE[LINEBUFFER_OFFSET] = blue;
+            LINEBUFFER_OFFSET += 1;
+            if LINEBUFFER_OFFSET == fb::HORIZONTAL_WORDS {
+                LINEBUFFER_OFFSET = 0;
+            }
         }
-        ssi_r.dr.write(|w| unsafe { w.data().bits(red as u16) });
-        // while ssi_g.sr.read().tnf().bit_is_clear() {
-        //     asm::nop();
-        // }
-        ssi_g.dr.write(|w| unsafe { w.data().bits(green as u16) });
-        // while ssi_b.sr.read().tnf().bit_is_clear() {
-        //     asm::nop();
-        // }
-        ssi_b.dr.write(|w| unsafe { w.data().bits(blue as u16) });
     }
 }
 
@@ -385,7 +489,24 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
     }
 }
 
-/// Another test menu item - displays an animation.
+/// Another test menu item - wipes the screen.
+fn test_blank<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+    unsafe { FRAMEBUFFER.clear() };
+    unsafe { FRAMEBUFFER.goto(0, 0).unwrap() };
+    unsafe {
+        for _ in 0..(48*36 - 1) {
+            FRAMEBUFFER.write_glyph(fb::Glyph::FullBlock, Some(fb::WHITE_ON_BLACK));
+        }
+    }
+    loop {
+        asm::wfi();
+        if let Ok(_ch) = context.rx.read() {
+            break;
+        }
+    }
+}
+
+/// Another test menu item - shows a solid block of colour.
 fn test_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
     unsafe { FRAMEBUFFER.clear() };
     unsafe { FRAMEBUFFER.goto(0, 0).unwrap() };
@@ -439,18 +560,8 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
     }
 }
 
+/// Start calculating the line data
 extern "C" fn timer0a_isr() {
-    let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
-    let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
-    let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    // Disable SSI0/1/2 as we don't want pixels yet
-    ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
-    ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
-    ssi_b.cr1.modify(|_, w| w.sse().clear_bit());
-    // Pre-load red with 2 bytes and green 1 with (they start early so we can line them up)
-    ssi_r.dr.write(|w| unsafe { w.data().bits(0) });
-    ssi_r.dr.write(|w| unsafe { w.data().bits(0) });
-    ssi_g.dr.write(|w| unsafe { w.data().bits(0) });
     // Run the draw routine
     unsafe { FRAMEBUFFER.isr_sol() };
     // Clear timer A interrupt
@@ -458,94 +569,94 @@ extern "C" fn timer0a_isr() {
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
-/// Activate the three FIFOs exactly 32 clock cycles apart
-/// This gets the colour video lined up
+/// Start the data flowing
 extern "C" fn timer0b_isr() {
+    // unsafe {
+    //     asm!(
+    //         "movs    r0, #132;
+    //         movs    r1, #1;
+    //         movt    r0, #16912;
+    //         mov.w   r2, #262144;
+    //         mov.w   r3, #131072;
+    //         str r1, [r0, #0];
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         str r1, [r0, r2];
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         nop;
+    //         str r1, [r0, r3];
+    //         "
+    //         :
+    //         :
+    //         : "r0" "r1" "r2"
+    //         : "volatile");
+    // }
+    let dma = unsafe { &*tm4c123x_hal::tm4c123x::UDMA::ptr() };
+    let spi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
     unsafe {
-        asm!(
-            "movs    r0, #132;
-            movs    r1, #1;
-            movt    r0, #16912;
-            mov.w   r2, #262144;
-            mov.w   r3, #131072;
-            str r1, [r0, #0];
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            str r1, [r0, r2];
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            str r1, [r0, r3];
-            "
-            :
-            :
-            : "r0" "r1" "r2"
-            : "volatile");
+        DMA_INFO.channels[11].control_word |= 0x1 << XFERMODE; // basic mode
     }
-
-    // let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
-    // let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    // let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
-    // // Enable SSI0/1/2 to let buffered pixels flow. We're still calculating the
-    // // end of the line but the SPI FIFO gets us out of trouble
-    // unsafe { bb::change_bit(&ssi_r.cr1, 1, true); }
-    // unsafe { bb::change_bit(&ssi_g.cr1, 1, true); }
-    // unsafe { bb::change_bit(&ssi_b.cr1, 1, true); }
+    dma.altclr.write(|w| unsafe { w.clr().bits(1 << 11) });
+    dma.useburstclr.write(|w| unsafe { w.clr().bits(1 << 11) });
+    dma.reqmaskclr.write(|w| unsafe { w.clr().bits(1 << 11) });
+    dma.enaset.write(|w|  unsafe { w.set().bits(1 << 11) });
+    spi_r.dr.write(|w| unsafe { w.bits(0xFF) });
     // Clear timer B interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
