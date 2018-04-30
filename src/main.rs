@@ -348,13 +348,7 @@ impl fb::Hardware for &'static mut Hardware {
             asm::nop();
         }
         ssi_r.dr.write(|w| unsafe { w.data().bits(red as u16) });
-        // while ssi_g.sr.read().tnf().bit_is_clear() {
-        //     asm::nop();
-        // }
         ssi_g.dr.write(|w| unsafe { w.data().bits(green as u16) });
-        // while ssi_b.sr.read().tnf().bit_is_clear() {
-        //     asm::nop();
-        // }
         ssi_b.dr.write(|w| unsafe { w.data().bits(blue as u16) });
     }
 }
