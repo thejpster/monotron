@@ -246,7 +246,14 @@ fn main() {
         FRAMEBUFFER.clear();
     }
 
+    write!(c, "╔══════════════════════════════════════════════╗").unwrap();
+    write!(c, "║█████ █████ ██  █ █████ █████ ████ █████ ██  █║").unwrap();
+    write!(c, "║▓ ▓ ▓ ▓   ▓ ▓ ▓ ▓ ▓   ▓   ▓   ▓  ▓ ▓   ▓ ▓ ▓ ▓║").unwrap();
+    write!(c, "║▒ ▒ ▒ ▒   ▒ ▒  ▒▒ ▒   ▒   ▒   ▒ ▒  ▒   ▒ ▒  ▒▒║").unwrap();
+    write!(c, "║░ ░ ░ ░░░░░ ░   ░ ░░░░░   ░   ░  ░ ░░░░░ ░   ░║").unwrap();
+    write!(c, "╚══════════════════════════════════════════════╝").unwrap();
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
+    writeln!(c, "Copyright © theJPster 2018").unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ROOT_MENU, &mut buffer, &mut c);
