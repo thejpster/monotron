@@ -233,7 +233,12 @@ fn main() {
 
     loop {
         // Wait for char - requires ASCII input because we have an ASCII framebuffer. UTF-8 will break things.
-        if let Ok(octet) = r.output.rx.read() {
+        if let Ok(mut octet) = r.output.rx.read() {
+            // Backspace key in screen seems to generate 0x7F (delete).
+            // Map it to backspace (0x08)
+            if octet == 0x7F {
+                octet = 0x08;
+            }
             // Feed it in
             r.input_byte(octet);
         }
