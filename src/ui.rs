@@ -1,6 +1,7 @@
 use fb;
 use menu;
 use asm;
+use fb::Console;
 use embedded_hal::prelude::*;
 use core::fmt::Write;
 use super::{Context, FRAMEBUFFER};
@@ -26,9 +27,15 @@ const TEST_ANIMATION: Item = Item {
     help: Some("Bounces argument around."),
 };
 
+const TEST_ART: Item = Item {
+    item_type: menu::ItemType::Callback(test_art),
+    command: "art",
+    help: Some("Show some art."),
+};
+
 pub(crate) const ROOT_MENU: Menu = Menu {
     label: "root",
-    items: &[&TEST_ALPHABET, &TEST_ANIMATION, &TEST_CLEAR],
+    items: &[&TEST_ALPHABET, &TEST_ANIMATION, &TEST_ART, &TEST_CLEAR],
     entry: None,
     exit: None,
 };
@@ -62,16 +69,89 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
 /// Another test menu item - displays an animation.
 fn test_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
     unsafe { FRAMEBUFFER.clear() };
-    unsafe { FRAMEBUFFER.goto(0, 0).unwrap() };
+    unsafe { FRAMEBUFFER.set_pos(fb::Position::origin()).unwrap() };
+}
+
+/// Display some art
+fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+    unsafe { FRAMEBUFFER.clear(); }
+    write!(context, "SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
+    write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
+    write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
+    write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
+    write!(context, "▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀         ").unwrap();
+    writeln!(context, "").unwrap();
+    write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
+    write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
+    write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
+    write!(context, "▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀         ").unwrap();
+    writeln!(context, "").unwrap();
+    write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
+    write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
+    write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
+    write!(context, "▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀         ").unwrap();
+    writeln!(context, "").unwrap();
+    writeln!(context, "        |").unwrap();
+    write!(context, "  ██░▒  |   ████      ████      ████      ████  ").unwrap();
+    write!(context, "██████▓▓  ████████  ████████  ████████  ████████").unwrap();
+    writeln!(context, "").unwrap();
+    writeln!(context, "       ═╩═").unwrap();
+    writeln!(context, "Press a key...").unwrap();
+    loop {
+        asm::wfi();
+        if let Ok(_ch) = context.rx.read() {
+            break;
+        }
+    }
+    writeln!(context, "    1UP   HIGH SCORE").unwrap();
+    writeln!(context, "      00        00").unwrap();
+    writeln!(context, "╔════════════╦╦════════════╗").unwrap();
+    writeln!(context, "║············║║············║").unwrap();
+    writeln!(context, "║·┌──┐·┌───┐·║║·┌───┐·┌──┐·║").unwrap();
+    writeln!(context, "║○│  │·│   │·║║·│   │·│  │○║").unwrap();
+    writeln!(context, "║·└──┘·└───┘·╚╝·└───┘·└──┘·║").unwrap();
+    writeln!(context, "║··························║").unwrap();
+    writeln!(context, "║·┌──┐·┌┐·┌──────┐·┌┐·┌──┐·║").unwrap();
+    writeln!(context, "║·└──┘·││·└──┐┌──┘·││·└──┘·║").unwrap();
+    writeln!(context, "║······││····││····││······║").unwrap();
+    writeln!(context, "╚════╗·│└──┐ ││ ┌──┘│·╔════╝").unwrap();
+    writeln!(context, "     ║·│┌──┘ └┘ └──┐│·║     ").unwrap();
+    writeln!(context, "     ║·││    ☺     ││·║     ").unwrap();
+    writeln!(context, "═════╝·└┘ ╔══════╗ └┘·╚═════").unwrap();
+    writeln!(context, "      ·   ║☺ ☺ ☺ ║   ·      ").unwrap();
+    writeln!(context, "═════╗·┌┐ ╚══════╝ ┌┐·╔═════").unwrap();
+    writeln!(context, "     ║·││  READY!  ││·║     ").unwrap();
+    writeln!(context, "     ║·││ ┌──────┐ ││·║     ").unwrap();
+    writeln!(context, "╔════╝·└┘ └──┐┌──┘ └┘·╚════╗").unwrap();
+    writeln!(context, "║············││············║").unwrap();
+    writeln!(context, "║·┌──┐·┌───┐·││·┌───┐·┌──┐·║").unwrap();
+    writeln!(context, "║·└─┐│·└───┘·└┘·└───┘·│┌─┘·║").unwrap();
+    writeln!(context, "║○··││·······☻ ·······││··○║").unwrap();
+    writeln!(context, "╠═╗·││·┌┐·┌──────┐·┌┐·││·╔═╣").unwrap();
+    writeln!(context, "╠═╝·└┘·││·└──┐┌──┘·││·└┘·╚═╣").unwrap();
+    writeln!(context, "║······││····││····││······║").unwrap();
+    writeln!(context, "║·┌────┘└──┐·││·┌──┘└────┐·║").unwrap();
+    writeln!(context, "║·└────────┘·└┘·└────────┘·║").unwrap();
+    writeln!(context, "║··························║").unwrap();
+    writeln!(context, "╚══════════════════════════╝").unwrap();
+    writeln!(context, "  () ()").unwrap();
+    writeln!(context, "Press a key...").unwrap();
+    loop {
+        asm::wfi();
+        if let Ok(_ch) = context.rx.read() {
+            break;
+        }
+    }
 }
 
 /// Another test menu item - displays an animation.
 fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
     let mut old_frame = 0;
-    let mut row = 0;
-    let mut col = 0;
+    let mut pos = fb::Position::origin();
     let mut left = true;
     let mut down = true;
+    let width = unsafe { FRAMEBUFFER.get_width() };
+    let height = unsafe { FRAMEBUFFER.get_height() };
     let input = input.trim_left_matches("animate ");
     let num_chars = input.chars().count();
     loop {
@@ -80,30 +160,30 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
         if new_frame != old_frame {
             old_frame = new_frame;
             if left {
-                col += 1;
+                pos.col.incr();
             } else {
-                col -= 1;
+                pos.col.decr();
             }
             if down {
-                row += 1
+                pos.row.incr();
             } else {
-                row -= 1;
+                pos.row.decr();
             }
-            if col == 0 {
+            if pos.col == fb::Col::origin() {
                 left = true;
             }
-            if col == (fb::TEXT_MAX_COL - num_chars) {
+            if pos.col == fb::Col(width.0 - num_chars as u8) {
                 left = false;
             }
-            if row == 0 {
+            if pos.row == fb::Row::origin() {
                 down = true;
             }
-            if row == fb::TEXT_MAX_ROW {
+            if pos.row == height {
                 down = false;
             }
             unsafe {
                 FRAMEBUFFER.clear();
-                FRAMEBUFFER.goto(col, row).unwrap();
+                FRAMEBUFFER.set_pos(pos).unwrap();
                 write!(FRAMEBUFFER, "{}", input).unwrap();
             }
         }
@@ -112,3 +192,5 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
         }
     }
 }
+
+// End of file
