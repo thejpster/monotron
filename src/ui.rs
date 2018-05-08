@@ -44,17 +44,19 @@ pub(crate) const ROOT_MENU: Menu = Menu {
 fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     let mut old_frame = 0;
     let mut ch = 0u8;
-    const COLOURS: [fb::Attr; 6] = [ fb::RED_ON_BLACK, fb::YELLOW_ON_BLACK, fb::GREEN_ON_BLACK, fb::CYAN_ON_BLACK, fb::BLUE_ON_BLACK, fb::MAGENTA_ON_BLACK ];
+    const COLOURS: [fb::Attr; 4] = [ fb::Attr::Normal, fb::Attr::Reverse, fb::Attr::WhiteOnBlack, fb::Attr::GreenOnBlack ];
     let mut colour_wheel = COLOURS.iter().cloned().cycle();
+    let mut attr = colour_wheel.next();
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
         if new_frame != old_frame {
             old_frame = new_frame;
             unsafe {
-                FRAMEBUFFER.write_glyph(fb::Glyph::from_byte(ch), colour_wheel.next());
+                FRAMEBUFFER.write_glyph(fb::Glyph::from_byte(ch), attr);
             }
             if ch == 255 {
+                attr = colour_wheel.next();
                 ch = 0;
             } else {
                 ch += 1;

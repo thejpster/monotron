@@ -58,9 +58,9 @@ const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 const ISR_LATENCY: u32 = 94;
 
-static mut FRAMEBUFFER: fb::FrameBuffer<Hardware> = fb::FrameBuffer::new();
+static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
-struct Hardware {
+struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER0,
     red_ch: tm4c123x_hal::tm4c123x::SSI0,
     blue_ch: tm4c123x_hal::tm4c123x::SSI1,
@@ -155,7 +155,7 @@ fn main() {
     // @TODO
 
     unsafe {
-        let hw = Hardware {
+        let hw = VideoHardware {
             h_timer: p.TIMER0,
             red_ch: p.SSI0,
             blue_ch: p.SSI1,
@@ -186,6 +186,7 @@ fn main() {
 
     unsafe {
         FRAMEBUFFER.clear();
+        FRAMEBUFFER.set_attr(fb::Attr::WhiteOnBlack);
     }
 
     write!(c, "╔══════════════════════════════════════════════╗").unwrap();
@@ -194,8 +195,12 @@ fn main() {
     write!(c, "║▒ ▒ ▒ ▒   ▒ ▒  ▒▒ ▒   ▒   ▒   ▒ ▒  ▒   ▒ ▒  ▒▒║").unwrap();
     write!(c, "║░ ░ ░ ░░░░░ ░   ░ ░░░░░   ░   ░  ░ ░░░░░ ░   ░║").unwrap();
     write!(c, "╚══════════════════════════════════════════════╝").unwrap();
+    unsafe {
+        FRAMEBUFFER.set_attr(fb::Attr::Normal);
+    }
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     writeln!(c, "Copyright © theJPster 2018").unwrap();
+
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
@@ -214,7 +219,7 @@ fn main() {
     }
 }
 
-impl fb::Hardware for Hardware {
+impl fb::Hardware for VideoHardware {
     fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, clock_rate: u32) {
         // Configure SPI
         // Need to configure SSI0, SSI1 and SSI2 at 20 MHz
@@ -222,10 +227,11 @@ impl fb::Hardware for Hardware {
         self.blue_ch.cr1.modify(|_, w| w.sse().clear_bit());
         self.green_ch.cr1.modify(|_, w| w.sse().clear_bit());
         // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
-        // 20 MHz = 80 MHz / (4 * (1 + 0))
+        // e.g. 20 MHz = 80 MHz / (4 * (1 + 0))
         // CPSDVSR = 4 -------^
         // SCR = 0 --------------------^
         let ratio = 80_000_000 / clock_rate;
+        // For all sensible divisors of 80 MHz, we want SCR = 0.
         self.red_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
         self.blue_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
         self.green_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
@@ -346,7 +352,7 @@ impl fb::Hardware for Hardware {
 
 interrupt!(TIMER0A, timer0a);
 
-/// Called on start of sync pulse (end of back porch)
+/// Called on start of sync pulse (end of front porch)
 fn timer0a() {
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
     let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
@@ -368,7 +374,7 @@ fn timer0a() {
 
 interrupt!(TIMER0B, timer0b);
 
-/// Called on start of pixel data (end of front porch)
+/// Called on start of pixel data (end of back porch)
 fn timer0b() {
     unsafe {
     /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
