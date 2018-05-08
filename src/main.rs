@@ -56,12 +56,15 @@ use tm4c123x_hal::sysctl;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
-const ISR_LATENCY: u32 = 35;
+const ISR_LATENCY: u32 = 94;
 
-static mut FRAMEBUFFER: fb::FrameBuffer<&'static mut Hardware> = fb::FrameBuffer::new();
+static mut FRAMEBUFFER: fb::FrameBuffer<Hardware> = fb::FrameBuffer::new();
 
 struct Hardware {
-    h_timer: Option<tm4c123x_hal::tm4c123x::TIMER0>,
+    h_timer: tm4c123x_hal::tm4c123x::TIMER0,
+    red_ch: tm4c123x_hal::tm4c123x::SSI0,
+    blue_ch: tm4c123x_hal::tm4c123x::SSI1,
+    green_ch: tm4c123x_hal::tm4c123x::SSI2,
 }
 
 struct Context {
@@ -83,8 +86,6 @@ impl core::fmt::Write for Context {
         unsafe { FRAMEBUFFER.write_str(s) }
     }
 }
-
-static mut HARDWARE: Hardware = Hardware { h_timer: None };
 
 fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
     sysctl::control_power(sc, p, sysctl::RunMode::Run, sysctl::PowerState::On);
@@ -149,50 +150,18 @@ fn main() {
         .pd2
         .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
 
-    // Need to configure SSI0, SSI1 and SSI2 at 20 MHz
-    p.SSI0.cr1.modify(|_, w| w.sse().clear_bit());
-    p.SSI1.cr1.modify(|_, w| w.sse().clear_bit());
-    p.SSI2.cr1.modify(|_, w| w.sse().clear_bit());
-    // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
-    // 20 MHz = 80 MHz / (4 * (1 + 0))
-    // CPSDVSR = 4 -------^
-    // SCR = 0 --------------------^
-    p.SSI0.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
-    p.SSI1.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
-    p.SSI2.cpsr.write(|w| unsafe { w.cpsdvsr().bits(4) });
-    p.SSI0.cr0.write(|w| {
-        w.dss()._8();
-        w.frf().moto();
-        w.spo().clear_bit();
-        w.sph().set_bit();
-        w
-    });
-    p.SSI1.cr0.write(|w| {
-        w.dss()._8();
-        w.frf().moto();
-        w.spo().clear_bit();
-        w.sph().set_bit();
-        w
-    });
-    p.SSI2.cr0.write(|w| {
-        w.dss()._8();
-        w.frf().moto();
-        w.spo().clear_bit();
-        w.sph().set_bit();
-        w
-    });
-    // Set clock source to sysclk
-    p.SSI0.cc.modify(|_, w| w.cs().syspll());
-    p.SSI1.cc.modify(|_, w| w.cs().syspll());
-    p.SSI2.cc.modify(|_, w| w.cs().syspll());
-
     // Need to configure SSI3 as a slave
     p.SSI3.cr1.modify(|_, w| w.sse().clear_bit());
     // @TODO
 
     unsafe {
-        HARDWARE.h_timer = Some(p.TIMER0);
-        FRAMEBUFFER.init(&mut HARDWARE);
+        let hw = Hardware {
+            h_timer: p.TIMER0,
+            red_ch: p.SSI0,
+            blue_ch: p.SSI1,
+            green_ch: p.SSI2
+        };
+        FRAMEBUFFER.init(hw);
     }
 
     // Activate UART
@@ -245,71 +214,108 @@ fn main() {
     }
 }
 
-impl fb::Hardware for &'static mut Hardware {
-    fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, _clock_rate: u32) {
-        if let Some(ref h_timer) = self.h_timer {
-            // Configure Timer0A for h-sync and Timer0B for line trigger
-            h_timer.ctl.modify(|_, w| {
-                w.taen().clear_bit();
-                w.tben().clear_bit();
-                w
-            });
-            h_timer.cfg.modify(|_, w| w.cfg()._16_bit());
-            h_timer.tamr.modify(|_, w| {
-                w.taams().set_bit();
-                w.tacmr().clear_bit();
-                w.tapwmie().set_bit();
-                w.tamr().period();
-                w
-            });
-            h_timer.tbmr.modify(|_, w| {
-                w.tbams().set_bit();
-                w.tbcmr().clear_bit();
-                w.tbmr().period();
-                w.tbpwmie().set_bit();
-                w
-            });
-            h_timer.ctl.modify(|_, w| {
-                // Trigger Timer A capture on rising edge (i.e. line start)
-                w.tapwml().clear_bit();
-                // Trigger Timer B capture on falling edge (i.e. data start)
-                w.tbpwml().set_bit();
-                w
-            });
-            // We're counting down in PWM mode, so start at the end
-            // We start 16 pixels early
-            let line_start = line_start - 30;
-            h_timer
-                .tailr
-                .modify(|_, w| unsafe { w.bits(width * 2 - 1) });
-            h_timer
-                .tbilr
-                .modify(|_, w| unsafe { w.bits(width * 2 - 1) });
-            h_timer
-                .tamatchr
-                .modify(|_, w| unsafe { w.bits(2 * (width - sync_end) - 1) });
-            h_timer
-                .tbmatchr
-                .modify(|_, w| unsafe { w.bits(2 * (width - line_start) + ISR_LATENCY - 1) });
-            h_timer.imr.modify(|_, w| {
-                w.caeim().set_bit(); // Timer0A fires at start of line
-                w.cbeim().set_bit(); // Timer0B fires at start of data
-                w
-            });
+impl fb::Hardware for Hardware {
+    fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, clock_rate: u32) {
+        // Configure SPI
+        // Need to configure SSI0, SSI1 and SSI2 at 20 MHz
+        self.red_ch.cr1.modify(|_, w| w.sse().clear_bit());
+        self.blue_ch.cr1.modify(|_, w| w.sse().clear_bit());
+        self.green_ch.cr1.modify(|_, w| w.sse().clear_bit());
+        // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
+        // 20 MHz = 80 MHz / (4 * (1 + 0))
+        // CPSDVSR = 4 -------^
+        // SCR = 0 --------------------^
+        let ratio = 80_000_000 / clock_rate;
+        self.red_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        self.blue_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        self.green_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        self.red_ch.cr0.write(|w| {
+            w.dss()._8();
+            w.frf().moto();
+            w.spo().clear_bit();
+            w.sph().set_bit();
+            w
+        });
+        self.blue_ch.cr0.write(|w| {
+            w.dss()._8();
+            w.frf().moto();
+            w.spo().clear_bit();
+            w.sph().set_bit();
+            w
+        });
+        self.green_ch.cr0.write(|w| {
+            w.dss()._8();
+            w.frf().moto();
+            w.spo().clear_bit();
+            w.sph().set_bit();
+            w
+        });
+        // Set clock source to sysclk
+        self.red_ch.cc.modify(|_, w| w.cs().syspll());
+        self.blue_ch.cc.modify(|_, w| w.cs().syspll());
+        self.green_ch.cc.modify(|_, w| w.cs().syspll());
 
-            // Clear interrupts
-            h_timer.icr.write(|w| {
-                w.tbmcint().set_bit();
-                w.tbtocint().set_bit();
-                w
-            });
+        // Configure Timer0A for h-sync and Timer0B for line trigger
+        self.h_timer.ctl.modify(|_, w| {
+            w.taen().clear_bit();
+            w.tben().clear_bit();
+            w
+        });
+        self.h_timer.cfg.modify(|_, w| w.cfg()._16_bit());
+        self.h_timer.tamr.modify(|_, w| {
+            w.taams().set_bit();
+            w.tacmr().clear_bit();
+            w.tapwmie().set_bit();
+            w.tamr().period();
+            w
+        });
+        self.h_timer.tbmr.modify(|_, w| {
+            w.tbams().set_bit();
+            w.tbcmr().clear_bit();
+            w.tbmr().period();
+            w.tbpwmie().set_bit();
+            w
+        });
+        self.h_timer.ctl.modify(|_, w| {
+            // Trigger Timer A capture on rising edge (i.e. line start)
+            w.tapwml().clear_bit();
+            // Trigger Timer B capture on falling edge (i.e. data start)
+            w.tbpwml().set_bit();
+            w
+        });
+        // We're counting down in PWM mode, so start at the end
+        // We start 16 pixels early
+        let multiplier = 80_000_000 / clock_rate;
+        self.h_timer
+            .tailr
+            .modify(|_, w| unsafe { w.bits(width * multiplier - 1) });
+        self.h_timer
+            .tbilr
+            .modify(|_, w| unsafe { w.bits(width * multiplier - 1) });
+        self.h_timer
+            .tamatchr
+            .modify(|_, w| unsafe { w.bits(multiplier * (width - sync_end) - 1) });
+        self.h_timer
+            .tbmatchr
+            .modify(|_, w| unsafe { w.bits((multiplier * (width - line_start)) + ISR_LATENCY - 1) });
+        self.h_timer.imr.modify(|_, w| {
+            w.caeim().set_bit(); // Timer0A fires at start of line
+            w.cbeim().set_bit(); // Timer0B fires at start of data
+            w
+        });
 
-            h_timer.ctl.modify(|_, w| {
-                w.taen().set_bit();
-                w.tben().set_bit();
-                w
-            });
-        }
+        // Clear interrupts
+        self.h_timer.icr.write(|w| {
+            w.tbmcint().set_bit();
+            w.tbtocint().set_bit();
+            w
+        });
+
+        self.h_timer.ctl.modify(|_, w| {
+            w.taen().set_bit();
+            w.tben().set_bit();
+            w
+        });
     }
 
     /// Called when V-Sync needs to be high.
