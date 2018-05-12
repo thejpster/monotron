@@ -41,6 +41,7 @@ extern crate cortex_m_rt;
 extern crate cortex_m_semihosting;
 extern crate embedded_hal;
 extern crate menu;
+extern crate pc_keyboard;
 #[macro_use]
 extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
@@ -69,7 +70,7 @@ struct VideoHardware {
 
 struct Context {
     pub value: u32,
-    pub rx: tm4c123x_hal::serial::Rx<
+    rx: tm4c123x_hal::serial::Rx<
         tm4c123x_hal::serial::UART0,
         tm4c123x_hal::gpio::gpioa::PA0<
             tm4c123x_hal::gpio::AlternateFunction<
@@ -79,6 +80,51 @@ struct Context {
         >,
         (),
     >,
+    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
+    spi: tm4c123x_hal::tm4c123x::SSI3
+}
+
+enum Input {
+    Unicode(char),
+    Special(pc_keyboard::KeyCode),
+    Utf8(u8)
+}
+
+fn spi_read() -> Result<u16, ()> {
+    Err(())
+}
+
+impl Context {
+    fn read(&mut self) -> Option<Input> {
+        if let Ok(ch) = self.rx.read() {
+            Some(Input::Utf8(ch))
+        } else {
+            let key = if let Ok(word) = spi_read() {
+                match self.keyboard.add_word(word) {
+                    Ok(Some(event)) => self.keyboard.process_keyevent(event),
+                    Ok(None) => None,
+                    Err(e) => {
+                        writeln!(self, "Bad key input! {:?}", e).unwrap();
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+
+            match key {
+                None => None,
+                Some(pc_keyboard::DecodedKey::Unicode(c)) => {
+                    Some(Input::Unicode(c))
+                }
+                Some(pc_keyboard::DecodedKey::RawKey(code)) => {
+                    // Handle raw keypress that can't be represented in Unicode
+                    // here (e.g. Insert, Page Down, etc)
+                    Some(Input::Special(code))
+                }
+            }
+        }
+    }
 }
 
 impl core::fmt::Write for Context {
@@ -141,18 +187,21 @@ fn main() {
     let _green_data = portb
         .pb7
         .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
+    // Keyboard produces 5V so set pins to open-drain to make them 5V tolerant
+    // We set them floating as we have external pull-ups to 5V
     // Keyboard Clock
     let _keyboard_clock = portd
         .pd0
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
+        .into_af_open_drain::<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::Floating>(&mut portd.control);
+    // Keyboard chip-select is pulled down to it's always active
+    let _keyboard_clock = portd.pd1.into_pull_down_input();
     // Keyboard Data
     let _keyboard_data = portd
         .pd2
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
+        .into_af_open_drain::<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::Floating>(&mut portd.control);
 
     // Need to configure SSI3 as a slave
     p.SSI3.cr1.modify(|_, w| w.sse().clear_bit());
-    // @TODO
 
     unsafe {
         let hw = VideoHardware {
@@ -182,7 +231,8 @@ fn main() {
     );
     let (mut _tx, rx) = uart.split();
 
-    let mut c = Context { value: 0, rx };
+    let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
+    let mut c = Context { value: 0, rx, keyboard, spi: p.SSI3 };
 
     unsafe {
         FRAMEBUFFER.clear();
@@ -205,16 +255,31 @@ fn main() {
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
 
+
     loop {
-        // Wait for char - requires ASCII input because we have an ASCII framebuffer. UTF-8 will break things.
-        if let Ok(mut octet) = r.output.rx.read() {
-            // Backspace key in screen seems to generate 0x7F (delete).
-            // Map it to backspace (0x08)
-            if octet == 0x7F {
-                octet = 0x08;
+        // Wait for new UTF-8 input
+        match r.context.read() {
+            Some(Input::Unicode(ch)) => {
+              let mut buffer: [u8; 4] = [0u8; 4];
+                // Our menu takes UTF-8 chars for serial compatibility,
+                // so convert our Unicode to UTF8 bytes
+                for octet in ch.encode_utf8(&mut buffer).bytes() {
+                    r.input_byte(octet);
+                }
             }
-            // Feed it in
-            r.input_byte(octet);
+            Some(Input::Utf8(octet)) => {
+                // Backspace key in screen seems to generate 0x7F (delete).
+                // Map it to backspace (0x08)
+                if octet == 0x7F {
+                    r.input_byte(0x08);
+                } else {
+                    r.input_byte(octet);
+                }
+            }
+            Some(_) => {
+                // Can't handle special chars yet
+            }
+            None => {},
         }
     }
 }

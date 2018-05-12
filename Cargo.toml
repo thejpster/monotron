@@ -20,8 +20,7 @@ features = ["rt"]
 # path = "../tm4c123x-hal"
 
 [dependencies.menu]
-version = "0.1"
-# git = "https://github.com/thejpster/menu"
+git = "https://github.com/thejpster/menu"
 # path = "../menu"
 
 [dependencies.vga-framebuffer]
@@ -41,3 +40,6 @@ features = ["abort-on-panic"]
 
 [dependencies.cortex-m-semihosting]
 version = "0.2.0"
+
+[dependencies.pc-keyboard]
+path = "../pc-keyboard"

@@ -2,7 +2,6 @@ use fb;
 use menu;
 use asm;
 use fb::Console;
-use embedded_hal::prelude::*;
 use core::fmt::Write;
 use super::{Context, FRAMEBUFFER};
 
@@ -62,7 +61,7 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
                 ch += 1;
             }
         }
-        if let Ok(_ch) = context.rx.read() {
+        if let Some(_input) = context.read() {
             break;
         }
     }
@@ -101,7 +100,7 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
     writeln!(context, "Press a key...").unwrap();
     loop {
         asm::wfi();
-        if let Ok(_ch) = context.rx.read() {
+        if let Some(_input) = context.read() {
             break;
         }
     }
@@ -140,7 +139,7 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
     writeln!(context, "\n\nPress a key...").unwrap();
     loop {
         asm::wfi();
-        if let Ok(_ch) = context.rx.read() {
+        if let Some(_input) = context.read() {
             break;
         }
     }
@@ -189,7 +188,7 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
                 write!(FRAMEBUFFER, "{}", input).unwrap();
             }
         }
-        if let Ok(_ch) = context.rx.read() {
+        if let Some(_input) = context.read() {
             break;
         }
     }
