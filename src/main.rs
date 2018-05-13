@@ -255,15 +255,14 @@ fn main() {
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
 
-
     loop {
         // Wait for new UTF-8 input
         match r.context.read() {
             Some(Input::Unicode(ch)) => {
-              let mut buffer: [u8; 4] = [0u8; 4];
+              let mut char_as_bytes: [u8; 4] = [0u8; 4];
                 // Our menu takes UTF-8 chars for serial compatibility,
                 // so convert our Unicode to UTF8 bytes
-                for octet in ch.encode_utf8(&mut buffer).bytes() {
+                for octet in ch.encode_utf8(&mut char_as_bytes).bytes() {
                     r.input_byte(octet);
                 }
             }
