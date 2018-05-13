@@ -32,9 +32,27 @@ const TEST_ART: Item = Item {
     help: Some("Show some art."),
 };
 
+const ITEM_PEEK: Item = Item {
+    item_type: menu::ItemType::Callback(item_peek),
+    command: "peek",
+    help: Some("<addr> - Read a register."),
+};
+
+const ITEM_POKE: Item = Item {
+    item_type: menu::ItemType::Callback(item_poke),
+    command: "poke",
+    help: Some("<addr> <value> - Write a register."),
+};
+
+const ITEM_DUMP: Item = Item {
+    item_type: menu::ItemType::Callback(item_dump),
+    command: "dump",
+    help: Some("<addr> <bytes> - Dump RAM/ROM."),
+};
+
 pub(crate) const ROOT_MENU: Menu = Menu {
     label: "root",
-    items: &[&TEST_ALPHABET, &TEST_ANIMATION, &TEST_ART, &TEST_CLEAR],
+    items: &[&TEST_ALPHABET, &TEST_ANIMATION, &TEST_ART, &TEST_CLEAR, &ITEM_PEEK, &ITEM_POKE, &ITEM_DUMP],
     entry: None,
     exit: None,
 };
@@ -193,5 +211,63 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
         }
     }
 }
+
+fn item_peek<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next();
+    if let Some(addr) = parts.next().map_or(None, |p| usize::from_str_radix(p, 16).ok()) {
+        unsafe {
+            let data = ::core::ptr::read_volatile(addr as *const u32);
+            writeln!(context, "Addr 0x{:08x} is 0x{:08x}", addr, data).unwrap();
+        }
+    } else {
+        writeln!(context, "Bad address {:?}. Enter hex, without the 0x prefix..", input).unwrap();
+    }
+}
+
+fn item_poke<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next();
+    if let Some(addr) = parts.next().map_or(None, |p| usize::from_str_radix(p, 16).ok()) {
+        if let Some(value) = parts.next().map_or(None, |p| u32::from_str_radix(p, 16).ok()) {
+            writeln!(context, "Poking 0x{:08x} to addr 0x{:08x}...", value, addr).unwrap();
+            unsafe {
+                ::core::ptr::write_volatile(addr as *mut u32, value);
+            }
+        } else {
+            writeln!(context, "Missing or bad value.").unwrap();
+        }
+    } else {
+        writeln!(context, "Missing or bad address.").unwrap();
+    }
+}
+
+fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next();
+    if let Some(mut addr) = parts.next().map_or(None, |p| usize::from_str_radix(p, 16).ok()) {
+        if let Some(count) = parts.next().map_or(None, |p| u32::from_str_radix(p, 16).ok()) {
+            writeln!(context, "Dumping 0x{:08x} bytes from 0x{:08x}...", count, addr).unwrap();
+            for i in 0..count {
+                let data = unsafe { ::core::ptr::read_volatile(addr as *const u8) };
+                write!(context, "{:02x}", data).unwrap();
+                if ((i + 1) % 4) == 0 {
+                    write!(context, " ").unwrap();
+                }
+                if ((i + 1) % 16) == 0 {
+                    write!(context, "\n").unwrap();
+                }
+                addr += 1;
+            }
+            writeln!(context, "\nDone.").unwrap();
+        } else {
+            writeln!(context, "Missing or bad value.").unwrap();
+        }
+    } else {
+        writeln!(context, "Missing or bad address.").unwrap();
+    }
+}
+
+
 
 // End of file
