@@ -31,6 +31,8 @@
 //! * SSI2Tx for Green on PB7 / 3.04 / 2.06
 //! * SSI3Rx for Keyboard Data on PD2 / 3.05
 //! * SSI3Clk for Keyboard Clock on PD0 / 2.07 / 3.03
+//! * Timer1 Channel A PB4 is H-Sync
+//! * GPIO PC4 is V-Sync
 
 #![feature(asm)]
 #![feature(used)]
@@ -62,7 +64,7 @@ const ISR_LATENCY: u32 = 94;
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 struct VideoHardware {
-    h_timer: tm4c123x_hal::tm4c123x::TIMER0,
+    h_timer: tm4c123x_hal::tm4c123x::TIMER1,
     red_ch: tm4c123x_hal::tm4c123x::SSI0,
     blue_ch: tm4c123x_hal::tm4c123x::SSI1,
     green_ch: tm4c123x_hal::tm4c123x::SSI2,
@@ -90,16 +92,32 @@ enum Input {
     Utf8(u8)
 }
 
-fn spi_read() -> Result<u16, ()> {
-    Err(())
-}
 
 impl Context {
+    fn spi_read(&mut self) -> Option<u16> {
+        // RNE = Receive-FIFO Not Empty
+        if self.spi.sr.read().rne().bit_is_set() {
+            let word = self.spi.dr.read().bits();
+            // Seems to trigger zero words constantly.
+            // Filter them out
+            if word != 0 {
+                Some(word as u16)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     fn read(&mut self) -> Option<Input> {
         if let Ok(ch) = self.rx.read() {
+            // Got some serial input
             Some(Input::Utf8(ch))
         } else {
-            let key = if let Ok(word) = spi_read() {
+            let key = if let Some(word) = self.spi_read() {
+                writeln!(self, "Got 0x{:04} from kb\n", word).unwrap();
+                // Got something in the keyboard buffer
                 match self.keyboard.add_word(word) {
                     Ok(Some(event)) => self.keyboard.process_keyevent(event),
                     Ok(None) => None,
@@ -151,15 +169,15 @@ fn main() {
     let clocks = sc.clock_setup.freeze();
 
     let mut nvic = cp.NVIC;
-    nvic.enable(tm4c123x_hal::Interrupt::TIMER0A);
-    nvic.enable(tm4c123x_hal::Interrupt::TIMER0B);
-    // Make Timer0A (start of line) lower priority than Timer0B (clocking out
+    nvic.enable(tm4c123x_hal::Interrupt::TIMER1A);
+    nvic.enable(tm4c123x_hal::Interrupt::TIMER1B);
+    // Make Timer1A (start of line) lower priority than Timer1B (clocking out
     // data) so that it can be interrupted.
     unsafe {
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER0A, 32);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 32);
     }
 
-    enable(sysctl::Domain::Timer0, &mut sc.power_control);
+    enable(sysctl::Domain::Timer1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi0, &mut sc.power_control);
     enable(sysctl::Domain::Ssi1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi2, &mut sc.power_control);
@@ -171,7 +189,7 @@ fn main() {
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     // T0CCP0
     let _h_sync = portb
-        .pb6
+        .pb4
         .into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portc.pc4.into_push_pull_output();
@@ -187,25 +205,53 @@ fn main() {
     let _green_data = portb
         .pb7
         .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
+
     // Keyboard produces 5V so set pins to open-drain to make them 5V tolerant
     // We set them floating as we have external pull-ups to 5V
+
     // Keyboard Clock
     let _keyboard_clock = portd
         .pd0
         .into_af_open_drain::<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::Floating>(&mut portd.control);
-    // Keyboard chip-select is pulled down to it's always active
-    let _keyboard_clock = portd.pd1.into_pull_down_input();
+    // EEE PD0 is the red wire, which goes to Channel B on the scope (red trace)
+
     // Keyboard Data
     let _keyboard_data = portd
         .pd2
         .into_af_open_drain::<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::Floating>(&mut portd.control);
+    // EEE PD2 is the yellow wire, which goes to Channel A on the scope (blue trace)
+
+    // Keyboard chip-select. We externally pull it down.
+    let _keyboard_clock = portd.pd1
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
 
     // Need to configure SSI3 as a slave
-    p.SSI3.cr1.modify(|_, w| w.sse().clear_bit());
+    p.SSI3.cr1.write(|w| w.sse().clear_bit());
+    // Slave mode
+    p.SSI3.cr1.modify(|_, w| w.ms().set_bit());
+    // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
+    // So CPSDVSR = 160, SCR = 0 gives us 500 kHz which is fine
+    // >> "For slave mode, the system clock or the PIOSC must be at least 12
+    // >> times faster than the SSInClk, with the restriction that SSInClk
+    // >> cannot be faster than 6.67 MHz."
+    // Typical keyboard clock is 10 to 20 kHz
+    p.SSI3.cpsr.write(|w| unsafe { w.cpsdvsr().bits(160) });
+    // Configure to receive 11 bits
+    p.SSI3.cr0.write(|w| {
+        w.dss()._11();
+        w.frf().moto();
+        w.spo().set_bit();
+        w.sph().set_bit();
+        w
+    });
+    // Set clock source to sysclk
+    p.SSI3.cc.modify(|_, w| w.cs().syspll());
+    // Enable
+    p.SSI3.cr1.modify(|_, w| w.sse().set_bit());
 
     unsafe {
         let hw = VideoHardware {
-            h_timer: p.TIMER0,
+            h_timer: p.TIMER1,
             red_ch: p.SSI0,
             blue_ch: p.SSI1,
             green_ch: p.SSI2
@@ -325,7 +371,7 @@ impl fb::Hardware for VideoHardware {
         self.blue_ch.cc.modify(|_, w| w.cs().syspll());
         self.green_ch.cc.modify(|_, w| w.cs().syspll());
 
-        // Configure Timer0A for h-sync and Timer0B for line trigger
+        // Configure Timer1A for h-sync and Timer1B for line trigger
         self.h_timer.ctl.modify(|_, w| {
             w.taen().clear_bit();
             w.tben().clear_bit();
@@ -369,8 +415,8 @@ impl fb::Hardware for VideoHardware {
             .tbmatchr
             .modify(|_, w| unsafe { w.bits((multiplier * (width - line_start)) + ISR_LATENCY - 1) });
         self.h_timer.imr.modify(|_, w| {
-            w.caeim().set_bit(); // Timer0A fires at start of line
-            w.cbeim().set_bit(); // Timer0B fires at start of data
+            w.caeim().set_bit(); // Timer1A fires at start of line
+            w.cbeim().set_bit(); // Timer1B fires at start of data
             w
         });
 
@@ -414,10 +460,10 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-interrupt!(TIMER0A, timer0a);
+interrupt!(TIMER1A, timer1a);
 
 /// Called on start of sync pulse (end of front porch)
-fn timer0a() {
+fn timer1a() {
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
     let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
     let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
@@ -432,14 +478,14 @@ fn timer0a() {
     // Run the draw routine
     unsafe { FRAMEBUFFER.isr_sol() };
     // Clear timer A interrupt
-    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
+    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
-interrupt!(TIMER0B, timer0b);
+interrupt!(TIMER1B, timer1b);
 
 /// Called on start of pixel data (end of back porch)
-fn timer0b() {
+fn timer1b() {
     unsafe {
     /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
     /// gets the colour video lined up, as we preload the red channel with 0x00
@@ -520,7 +566,7 @@ fn timer0b() {
             : "volatile");
     }
     // Clear timer B interrupt
-    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER0::ptr() };
+    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
 }
 
