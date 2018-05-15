@@ -1,3 +1,4 @@
+python gdb.COMPLETE_EXPRESSION = gdb.COMPLETE_SYMBOL
 target remote :3333
 
 # print demangled symbols by default
@@ -20,3 +21,5 @@ monitor arm semihosting enable
 load
 step
 continue
+
+

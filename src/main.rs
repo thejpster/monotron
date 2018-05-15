@@ -34,14 +34,16 @@
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PC4 is V-Sync
 
+#![no_main]
 #![feature(asm)]
-#![feature(used)]
 #![no_std]
 
 extern crate cortex_m;
+#[macro_use]
 extern crate cortex_m_rt;
-extern crate cortex_m_semihosting;
 extern crate embedded_hal;
+extern crate panic_semihosting;
+extern crate cortex_m_semihosting;
 extern crate menu;
 extern crate pc_keyboard;
 #[macro_use]
@@ -166,7 +168,9 @@ fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
     sysctl::reset(sc, p);
 }
 
-fn main() {
+entry!(main);
+
+fn main() -> ! {
     let p = tm4c123x_hal::Peripherals::take().unwrap();
     let cp = tm4c123x_hal::CorePeripherals::take().unwrap();
 
@@ -623,3 +627,19 @@ fn timer1b() {
     timer.icr.write(|w| w.cbecint().set_bit());
 }
 
+
+// define the hard fault handler
+exception!(HardFault, hard_fault);
+
+fn hard_fault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
+    panic!("HardFault at {:#?}", ef);
+}
+
+// define the default exception handler
+exception!(*, default_handler);
+
+fn default_handler(irqn: i16) {
+    panic!("Unhandled exception (IRQn = {})", irqn);
+}
+
+// End of file
