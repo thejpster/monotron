@@ -11,6 +11,7 @@ repository = "https://github.com/thejpster/monotron"
 [profile.release]
 lto = true
 debug = true
+opt-level = "s"
 
 [dependencies]
 
@@ -20,12 +21,12 @@ features = ["rt"]
 path = "../tm4c123x-hal"
 
 [dependencies.menu]
-git = "https://github.com/thejpster/menu"
-# path = "../menu"
+# git = "https://github.com/thejpster/menu"
+path = "../menu"
 
 [dependencies.vga-framebuffer]
-git = "https://github.com/thejpster/vga-framebuffer-rs"
-# path = "../vga-framebuffer-rs"
+# git = "https://github.com/thejpster/vga-framebuffer-rs"
+path = "../vga-framebuffer-rs"
 
 [dependencies.embedded-hal]
 version = "0.1.1"
