@@ -481,16 +481,15 @@ impl fb::Hardware for VideoHardware {
     }
 
     /// Write pixels straight to FIFOs
-    fn write_pixels(&mut self, red: u8, green: u8, blue: u8) {
+    fn write_pixels(&mut self, red: u32, green: u32, blue: u32) {
         let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
         let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
         let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
-        while ssi_r.sr.read().tnf().bit_is_clear() {
-            asm::nop();
+        while (ssi_r.sr.read().bits() & 0x02) == 0 {
         }
-        ssi_r.dr.write(|w| unsafe { w.data().bits(red as u16) });
-        ssi_g.dr.write(|w| unsafe { w.data().bits(green as u16) });
-        ssi_b.dr.write(|w| unsafe { w.data().bits(blue as u16) });
+        ssi_r.dr.write(|w| unsafe { w.bits(red) });
+        ssi_g.dr.write(|w| unsafe { w.bits(green) });
+        ssi_b.dr.write(|w| unsafe { w.bits(blue) });
     }
 }
 
