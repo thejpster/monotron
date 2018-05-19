@@ -61,19 +61,31 @@ pub(crate) const ROOT_MENU: Menu = Menu {
 fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     let mut old_frame = 0;
     let mut ch = 0u8;
-    const COLOURS: [fb::Attr; 4] = [ fb::Attr::Normal, fb::Attr::Reverse, fb::Attr::WhiteOnBlack, fb::Attr::GreenOnBlack ];
-    let mut colour_wheel = COLOURS.iter().cloned().cycle();
-    let mut attr = colour_wheel.next();
+    const COLOURS: [fb::Colour; 8] = [
+        fb::Colour::White,
+        fb::Colour::Yellow,
+        fb::Colour::Magenta,
+        fb::Colour::Red,
+        fb::Colour::Cyan,
+        fb::Colour::Green,
+        fb::Colour::Blue,
+        fb::Colour::Black
+    ];
+    let mut fg_wheel = COLOURS.iter().cycle();
+    let mut bg_wheel = COLOURS.iter().cycle();
+    let mut fg = fg_wheel.next();
+    let mut bg = bg_wheel.next();
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
         if new_frame != old_frame {
             old_frame = new_frame;
             unsafe {
-                FRAMEBUFFER.write_glyph(fb::Glyph::from_byte(ch), attr);
+                FRAMEBUFFER.write_glyph(fb::Glyph::from_byte(ch), Some(fb::Attr::new(*fg.unwrap(), *bg.unwrap())));
             }
+            fg = fg_wheel.next();
             if ch == 255 {
-                attr = colour_wheel.next();
+                bg = bg_wheel.next();
                 ch = 0;
             } else {
                 ch += 1;
@@ -122,42 +134,44 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
             break;
         }
     }
+    writeln!(context, "\u{001b}B\u{001b}h\u{001b}Z").unwrap();
     writeln!(context, "              1UP   HIGH SCORE").unwrap();
     writeln!(context, "                00        00").unwrap();
-    writeln!(context, "          ╔════════════╦╦════════════╗").unwrap();
-    writeln!(context, "          ║············║║············║").unwrap();
-    writeln!(context, "          ║·┌──┐·┌───┐·║║·┌───┐·┌──┐·║").unwrap();
-    writeln!(context, "          ║○│  │·│   │·║║·│   │·│  │○║").unwrap();
-    writeln!(context, "          ║·└──┘·└───┘·╚╝·└───┘·└──┘·║").unwrap();
-    writeln!(context, "          ║··························║").unwrap();
-    writeln!(context, "          ║·┌──┐·┌┐·┌──────┐·┌┐·┌──┐·║").unwrap();
-    writeln!(context, "          ║·└──┘·││·└──┐┌──┘·││·└──┘·║").unwrap();
-    writeln!(context, "          ║······││····││····││······║").unwrap();
-    writeln!(context, "          ╚════╗·│└──┐ ││ ┌──┘│·╔════╝").unwrap();
-    writeln!(context, "               ║·│┌──┘ └┘ └──┐│·║     ").unwrap();
-    writeln!(context, "               ║·││    ☺     ││·║     ").unwrap();
-    writeln!(context, "          ═════╝·└┘ ╔══════╗ └┘·╚═════").unwrap();
-    writeln!(context, "                ·   ║☺ ☺ ☺ ║   ·      ").unwrap();
-    writeln!(context, "          ═════╗·┌┐ ╚══════╝ ┌┐·╔═════").unwrap();
-    writeln!(context, "               ║·││  READY!  ││·║     ").unwrap();
-    writeln!(context, "               ║·││ ┌──────┐ ││·║     ").unwrap();
-    writeln!(context, "          ╔════╝·└┘ └──┐┌──┘ └┘·╚════╗").unwrap();
-    writeln!(context, "          ║············││············║").unwrap();
-    writeln!(context, "          ║·┌──┐·┌───┐·││·┌───┐·┌──┐·║").unwrap();
-    writeln!(context, "          ║·└─┐│·└───┘·└┘·└───┘·│┌─┘·║").unwrap();
-    writeln!(context, "          ║○··││·······◄►·······││··○║").unwrap();
-    writeln!(context, "          ╠═╗·││·┌┐·┌──────┐·┌┐·││·╔═╣").unwrap();
-    writeln!(context, "          ╠═╝·└┘·││·└──┐┌──┘·││·└┘·╚═╣").unwrap();
-    writeln!(context, "          ║······││····││····││······║").unwrap();
-    writeln!(context, "          ║·┌────┘└──┐·││·┌──┘└────┐·║").unwrap();
-    writeln!(context, "          ║·└────────┘·└┘·└────────┘·║").unwrap();
-    writeln!(context, "          ║··························║").unwrap();
+    writeln!(context, "\u{001b}A          ╔════════════╦╦════════════╗").unwrap();
+    writeln!(context, "          ║\u{001b}E············\u{001b}A║║\u{001b}E············\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A║║\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║○│  │\u{001b}E·\u{001b}A│   │\u{001b}E·\u{001b}A║║\u{001b}E·\u{001b}A│   │\u{001b}E·\u{001b}A│  │○║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A╚╝\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E··························\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A┌──────┐\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└──┐┌──┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E······\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E······\u{001b}A║").unwrap();
+    writeln!(context, "          ╚════╗\u{001b}E·\u{001b}A│└──┐ ││ ┌──┘│\u{001b}E·\u{001b}A╔════╝").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}A│┌──┘ └┘ └──┐│\u{001b}E·\u{001b}A║     ").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}A││    \u{001b}B☺\u{001b}A     ││\u{001b}E·\u{001b}A║     ").unwrap();
+    writeln!(context, "          ═════╝\u{001b}E·\u{001b}A└┘ ╔══════╗ └┘\u{001b}E·\u{001b}A╚═════").unwrap();
+    writeln!(context, "                \u{001b}E·\u{001b}A   ║\u{001b}D☺ \u{001b}F☺ \u{001b}G☺\u{001b}A ║   \u{001b}E·\u{001b}A      ").unwrap();
+    writeln!(context, "          ═════╗\u{001b}E·\u{001b}A┌┐ ╚══════╝ ┌┐\u{001b}E·\u{001b}A╔═════").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}A││  READY!  ││\u{001b}E·\u{001b}A║     ").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}A││ ┌──────┐ ││\u{001b}E·\u{001b}A║     ").unwrap();
+    writeln!(context, "          ╔════╝\u{001b}E·\u{001b}A└┘ └──┐┌──┘ └┘\u{001b}E·\u{001b}A╚════╗").unwrap();
+    writeln!(context, "          ║\u{001b}E············\u{001b}A││\u{001b}E············\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A└─┐│\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A│┌─┘\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║○\u{001b}E··\u{001b}A││\u{001b}E·······\u{001b}B◄►\u{001b}E·······\u{001b}A││\u{001b}E··\u{001b}A○║").unwrap();
+    writeln!(context, "          ╠═╗\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A┌──────┐\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A╔═╣").unwrap();
+    writeln!(context, "          ╠═╝\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└──┐┌──┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A╚═╣").unwrap();
+    writeln!(context, "          ║\u{001b}E······\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E······\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A┌────┘└──┐\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A┌──┘└────┐\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}A└────────┘\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A└────────┘\u{001b}E·\u{001b}A║").unwrap();
+    writeln!(context, "          ║\u{001b}E··························\u{001b}A║").unwrap();
     writeln!(context, "          ╚══════════════════════════╝").unwrap();
     writeln!(context, "             ◄► ◄► ◄►").unwrap();
-    writeln!(context, "\n\nPress a key...").unwrap();
+    write!(context, "\n\n\nPress a key...").unwrap();
     loop {
         asm::wfi();
         if let Some(_input) = context.read() {
+            writeln!(context, "\u{001b}A\u{001b}g\u{001b}ZOk...").unwrap();
             break;
         }
     }
@@ -173,6 +187,7 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
     let height = unsafe { FRAMEBUFFER.get_height() };
     let input = input.trim_left_matches("animate ");
     let num_chars = input.chars().count();
+    let attr = unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Black, fb::Colour::Yellow)) };
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
@@ -207,6 +222,7 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
             }
         }
         if let Some(_input) = context.read() {
+            unsafe { FRAMEBUFFER.set_attr(attr) };
             break;
         }
     }
