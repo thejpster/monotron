@@ -220,35 +220,26 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
         }
     }
 
+
+
     write!(context, "\u{001b}Z\u{001b}B\u{001b}h╔════════════════════════\u{001b}A[MonotronPaint]\u{001b}B═══════╗").unwrap();
     write!(context, "║\u{001b}A┌[Font]──────────┐┌──────────────────────────┐\u{001b}B║").unwrap();
-
-    write!(context, "║\u{001b}A│").unwrap();
-    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Display); }
-    write!(context, " \u{0001}\u{0002}\u{0003}\u{0004}\u{0005}\u{0006}\u{0007}\u{0008}\u{0009}\u{000a}\u{000b}\u{000c}\u{000d}\u{000e}\u{000f}").unwrap();
-    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Interpret); }
-    write!(context, "││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-
-    write!(context, "║\u{001b}A│").unwrap();
-    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Display); }
-    write!(context, "\u{0010}\u{0011}\u{0012}\u{0013}\u{0014}\u{0015}\u{0016}\u{0017}\u{0018}\u{0019}\u{001a}\u{001b}\u{001c}\u{001d}\u{001e}\u{001f}").unwrap();
-    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Interpret); }
-    write!(context, "││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g          ▓▓▓▓▓▓▓         \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g        ▓▓▓▓▓▓▓▓▓▓▓       \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g       ▓▓▓▓▓▓▓▓▓▓▓▓▓      \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g    ▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓   \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g   ▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g   ▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
-    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│ ☺☻♥♦♣♠•◘○◙♂♀♪♫☼││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│►◄↕‼¶§▬↨↑↓→←∟↔▲▼││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│ !\"#$%&'()*+,-./││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│0123456789:;<=>?││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│@ABCDEFGHIJKLMNO││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│PQRSTUVWXYZ[\\]^_││\u{001b}B\u{001b}g          ▓▓▓▓▓▓▓         \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│`abcdefghijklmno││\u{001b}B\u{001b}g        ▓▓▓▓▓▓▓▓▓▓▓       \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│pqrstuvwxyz{{|}}~ ││\u{001b}B\u{001b}g       ▓▓▓▓▓▓▓▓▓▓▓▓▓      \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│ÇüéâäàåçêëèïîìÄÅ││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│ÉæÆôöòûùÿÖÜø£Ø×ƒ││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│áíóúñÑªº¿®¬½¼¡«»││\u{001b}B\u{001b}g    ▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓   \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐││\u{001b}B\u{001b}g   ▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│└┴┬├─┼ãÃ╚╔╩╦╠═╬¤││\u{001b}B\u{001b}g   ▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀││\u{001b}B\u{001b}g  ▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│ÓßÔÒõÕµþÞÚÛÙýÝ¯´││\u{001b}B\u{001b}g  ▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│-±‗¾¶§÷¸°¨·¹³²■\u{00a0}││\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
     write!(context, "║\u{001b}A└────────────────┘│\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
     write!(context, "║\u{001b}A┌[Colour]┐┌[Menu]┐│\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
     write!(context, "║\u{001b}A│\u{001b}D█\u{001b}F█\u{001b}G█\u{001b}B█\u{001b}C█\u{001b}E█\u{001b}H█\u{001b}A█││L\u{001b}Co\u{001b}Aad\u{001b}H  \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓\u{001b}H\u{001b}h▓\u{001b}B\u{001b}g▓▓▓▓▓▓▓▓▓▓▓▓\u{001b}H\u{001b}h▓\u{001b}B\u{001b}g▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
@@ -266,8 +257,7 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
     write!(context, "║\u{001b}A│N:Test\u{001b}H  \u{001b}A││4  \u{001b}FHL\u{001b}AX││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
     write!(context, "║\u{001b}A│S:48x36 ││\u{001b}H      \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
     write!(context, "║\u{001b}A└────────┘└──────┘└──────────────────────────┘\u{001b}B║").unwrap();
-    write!(context, "╚══════════════════════════════════════════════╝").unwrap();
-    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Interpret); }
+    write!(context, "╚══════════════════════════════════════════════").unwrap();
 
     loop {
         asm::wfi();
