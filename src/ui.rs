@@ -137,36 +137,151 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
     writeln!(context, "\u{001b}B\u{001b}h\u{001b}Z").unwrap();
     writeln!(context, "              1UP   HIGH SCORE").unwrap();
     writeln!(context, "                00        00").unwrap();
-    writeln!(context, "\u{001b}A          ╔════════════╦╦════════════╗").unwrap();
-    writeln!(context, "          ║\u{001b}E············\u{001b}A║║\u{001b}E············\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A║║\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║○│  │\u{001b}E·\u{001b}A│   │\u{001b}E·\u{001b}A║║\u{001b}E·\u{001b}A│   │\u{001b}E·\u{001b}A│  │○║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A╚╝\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E··························\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A┌──────┐\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└──┐┌──┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└──┘\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E······\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E······\u{001b}A║").unwrap();
-    writeln!(context, "          ╚════╗\u{001b}E·\u{001b}A│└──┐ ││ ┌──┘│\u{001b}E·\u{001b}A╔════╝").unwrap();
-    writeln!(context, "               ║\u{001b}E·\u{001b}A│┌──┘ └┘ └──┐│\u{001b}E·\u{001b}A║     ").unwrap();
-    writeln!(context, "               ║\u{001b}E·\u{001b}A││    \u{001b}B☺\u{001b}A     ││\u{001b}E·\u{001b}A║     ").unwrap();
-    writeln!(context, "          ═════╝\u{001b}E·\u{001b}A└┘ ╔══════╗ └┘\u{001b}E·\u{001b}A╚═════").unwrap();
-    writeln!(context, "                \u{001b}E·\u{001b}A   ║\u{001b}D☺ \u{001b}F☺ \u{001b}G☺\u{001b}A ║   \u{001b}E·\u{001b}A      ").unwrap();
-    writeln!(context, "          ═════╗\u{001b}E·\u{001b}A┌┐ ╚══════╝ ┌┐\u{001b}E·\u{001b}A╔═════").unwrap();
-    writeln!(context, "               ║\u{001b}E·\u{001b}A││  READY!  ││\u{001b}E·\u{001b}A║     ").unwrap();
-    writeln!(context, "               ║\u{001b}E·\u{001b}A││ ┌──────┐ ││\u{001b}E·\u{001b}A║     ").unwrap();
-    writeln!(context, "          ╔════╝\u{001b}E·\u{001b}A└┘ └──┐┌──┘ └┘\u{001b}E·\u{001b}A╚════╗").unwrap();
-    writeln!(context, "          ║\u{001b}E············\u{001b}A││\u{001b}E············\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A┌───┐\u{001b}E·\u{001b}A┌──┐\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A└─┐│\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A└───┘\u{001b}E·\u{001b}A│┌─┘\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║○\u{001b}E··\u{001b}A││\u{001b}E·······\u{001b}B◄►\u{001b}E·······\u{001b}A││\u{001b}E··\u{001b}A○║").unwrap();
-    writeln!(context, "          ╠═╗\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A┌──────┐\u{001b}E·\u{001b}A┌┐\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A╔═╣").unwrap();
-    writeln!(context, "          ╠═╝\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└──┐┌──┘\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A╚═╣").unwrap();
-    writeln!(context, "          ║\u{001b}E······\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E····\u{001b}A││\u{001b}E······\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A┌────┘└──┐\u{001b}E·\u{001b}A││\u{001b}E·\u{001b}A┌──┘└────┐\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E·\u{001b}A└────────┘\u{001b}E·\u{001b}A└┘\u{001b}E·\u{001b}A└────────┘\u{001b}E·\u{001b}A║").unwrap();
-    writeln!(context, "          ║\u{001b}E··························\u{001b}A║").unwrap();
+    writeln!(context, "\u{001b}F          ╔════════════╦╦════════════╗").unwrap();
+    writeln!(context, "          ║\u{001b}E············\u{001b}F║║\u{001b}E············\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F┌──┐\u{001b}E·\u{001b}F┌───┐\u{001b}E·\u{001b}F║║\u{001b}E·\u{001b}F┌───┐\u{001b}E·\u{001b}F┌──┐\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║○│  │\u{001b}E·\u{001b}F│   │\u{001b}E·\u{001b}F║║\u{001b}E·\u{001b}F│   │\u{001b}E·\u{001b}F│  │○║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F└──┘\u{001b}E·\u{001b}F└───┘\u{001b}E·\u{001b}F╚╝\u{001b}E·\u{001b}F└───┘\u{001b}E·\u{001b}F└──┘\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E··························\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F┌──┐\u{001b}E·\u{001b}F┌┐\u{001b}E·\u{001b}F┌──────┐\u{001b}E·\u{001b}F┌┐\u{001b}E·\u{001b}F┌──┐\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F└──┘\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F└──┐┌──┘\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F└──┘\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E······\u{001b}F││\u{001b}E····\u{001b}F││\u{001b}E····\u{001b}F││\u{001b}E······\u{001b}F║").unwrap();
+    writeln!(context, "          ╚════╗\u{001b}E·\u{001b}F│└──┐ ││ ┌──┘│\u{001b}E·\u{001b}F╔════╝").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}F│┌──┘ └┘ └──┐│\u{001b}E·\u{001b}F║     ").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}F││    \u{001b}B☺\u{001b}F     ││\u{001b}E·\u{001b}F║     ").unwrap();
+    writeln!(context, "          ═════╝\u{001b}E·\u{001b}F└┘ ╔══════╗ └┘\u{001b}E·\u{001b}F╚═════").unwrap();
+    writeln!(context, "                \u{001b}E·\u{001b}F   ║\u{001b}D☺ \u{001b}F☺ \u{001b}G☺\u{001b}F ║   \u{001b}E·\u{001b}F      ").unwrap();
+    writeln!(context, "          ═════╗\u{001b}E·\u{001b}F┌┐ ╚══════╝ ┌┐\u{001b}E·\u{001b}F╔═════").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}F││  READY!  ││\u{001b}E·\u{001b}F║     ").unwrap();
+    writeln!(context, "               ║\u{001b}E·\u{001b}F││ ┌──────┐ ││\u{001b}E·\u{001b}F║     ").unwrap();
+    writeln!(context, "          ╔════╝\u{001b}E·\u{001b}F└┘ └──┐┌──┘ └┘\u{001b}E·\u{001b}F╚════╗").unwrap();
+    writeln!(context, "          ║\u{001b}E············\u{001b}F││\u{001b}E············\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F┌──┐\u{001b}E·\u{001b}F┌───┐\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F┌───┐\u{001b}E·\u{001b}F┌──┐\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F└─┐│\u{001b}E·\u{001b}F└───┘\u{001b}E·\u{001b}F└┘\u{001b}E·\u{001b}F└───┘\u{001b}E·\u{001b}F│┌─┘\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║○\u{001b}E··\u{001b}F││\u{001b}E·······\u{001b}B◄►\u{001b}E·······\u{001b}F││\u{001b}E··\u{001b}F○║").unwrap();
+    writeln!(context, "          ╠═╗\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F┌┐\u{001b}E·\u{001b}F┌──────┐\u{001b}E·\u{001b}F┌┐\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F╔═╣").unwrap();
+    writeln!(context, "          ╠═╝\u{001b}E·\u{001b}F└┘\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F└──┐┌──┘\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F└┘\u{001b}E·\u{001b}F╚═╣").unwrap();
+    writeln!(context, "          ║\u{001b}E······\u{001b}F││\u{001b}E····\u{001b}F││\u{001b}E····\u{001b}F││\u{001b}E······\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F┌────┘└──┐\u{001b}E·\u{001b}F││\u{001b}E·\u{001b}F┌──┘└────┐\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E·\u{001b}F└────────┘\u{001b}E·\u{001b}F└┘\u{001b}E·\u{001b}F└────────┘\u{001b}E·\u{001b}F║").unwrap();
+    writeln!(context, "          ║\u{001b}E··························\u{001b}F║").unwrap();
     writeln!(context, "          ╚══════════════════════════╝").unwrap();
     writeln!(context, "             ◄► ◄► ◄►").unwrap();
+    write!(context, "\n\n\nPress a key...").unwrap();
+    loop {
+        asm::wfi();
+        if let Some(_input) = context.read() {
+            break;
+        }
+    }
+
+    write!(context, "\u{001b}Z\u{001b}H\u{001b}a  \u{001b}DF\u{001b}Hile   \u{001b}DE\u{001b}Hdit  \u{001b}DV\u{001b}Hiew   \u{001b}DT\u{001b}Hools  \u{001b}DH\u{001b}Help               ").unwrap();
+    write!(context, "\u{001b}G\u{001b}e████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████\u{001b}A\u{001b}g┌[Calc]──X┐    \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "████████████████████████████\u{001b}A\u{001b}g│\u{001b}G\u{001b}h         \u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c┌[Calendar]───────────X┐\u{001b}G\u{001b}e█\u{001b}A\u{001b}g│\u{001b}G\u{001b}h         \u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}G                  \u{001b}A\u{0000}\u{001b}G  \u{001b}A │\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│\u{001b}h12345678\u{001b}G \u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}G                  \u{001b}A\u{0000}\u{001b}G  \u{001b}A │\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│\u{001b}G\u{001b}h         \u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│MonTueWedThuFriSatSun │\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│\u{001b}G\u{001b}e█████████\u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E┌────────────────────┐\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│7 8 9 /\u{001b}G\u{001b}e█\u{001b}A\u{001b}gC│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E│\u{001b}A  \u{001b}E│\u{001b}A01\u{001b}E│\u{001b}A02\u{001b}E│\u{001b}A03\u{001b}E│\u{001b}A04\u{001b}E│\u{001b}A05\u{001b}E│\u{001b}A06\u{001b}E│\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│\u{001b}G\u{001b}e█████████\u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E├────────────────────┤\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│4 5 6 ( )│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E│\u{001b}A07\u{001b}E│\u{001b}A08\u{001b}E│\u{001b}A09\u{001b}E│\u{001b}A10\u{001b}E│\u{001b}A11\u{001b}E│\u{001b}A12\u{001b}E│\u{001b}A13\u{001b}E│\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│\u{001b}G\u{001b}e█████████\u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E├────────────────────┤\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│1 2 3 - ²│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E│\u{001b}A14\u{001b}E│\u{001b}A15\u{001b}E│\u{001b}A16\u{001b}E│\u{001b}A17\u{001b}E│\u{001b}A18\u{001b}E│\u{001b}A19\u{001b}E│\u{001b}A20\u{001b}E│\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│\u{001b}G\u{001b}e█████████\u{001b}A\u{001b}g│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E├────────────────────┤\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g│0 . % + =│\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E│\u{001b}A21\u{001b}E│\u{001b}A22\u{001b}E│\u{001b}A23\u{001b}E│\u{001b}A24\u{001b}E│\u{001b}A25\u{001b}E│\u{001b}A26\u{001b}E│\u{001b}A27\u{001b}E│\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g└─────────┘\u{001b}G\u{001b}h▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E├────────────────────┤\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g \u{001b}G\u{001b}h▒▒▒▒▒▒▒▒▒▒▒\u{001b}e██\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E│\u{001b}A28\u{001b}E│\u{001b}A29\u{001b}E│\u{001b}A30\u{001b}E│\u{001b}A31\u{001b}E│\u{001b}G     \u{001b}A\u{0000}\u{001b}G  \u{001b}E│\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████████████\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E└────────────────────┘\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████████████\u{001b}A\u{001b}g \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}E\u{0011}\u{001b}G \u{001b}E\u{0011}\u{0011}\u{001b}G  \u{001b}BMay 2018\u{001b}G   \u{001b}E\u{0010}\u{0010}\u{001b}G  \u{001b}E\u{0010}\u{001b}A│\u{001b}G\u{001b}h▒\u{001b}A\u{001b}g               \u{001b}G\u{001b}e█████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c│\u{001b}G                  \u{001b}A\u{0000}\u{001b}G  \u{001b}A │\u{001b}G\u{001b}h▒\u{001b}e████████████████████").unwrap();
+    write!(context, "███\u{001b}A\u{001b}c└──────────────────────┘\u{001b}G\u{001b}h▒\u{001b}e████████████████████").unwrap();
+    write!(context, "████\u{001b}h▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\u{001b}e████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "████████████████████████████████████████████████").unwrap();
+    write!(context, "\u{001b}H\u{001b}a▒\u{001b}A\u{001b}hCAPS\u{001b}H\u{001b}a▒\u{001b}A\u{001b}hINS\u{001b}H\u{001b}a▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\u{001b}A\u{001b}h[Version v1.2]\u{001b}H\u{001b}a").unwrap();
+
+    loop {
+        asm::wfi();
+        if let Some(_input) = context.read() {
+            writeln!(context, "\u{001b}A\u{001b}g\u{001b}ZOk...").unwrap();
+            break;
+        }
+    }
+
+    write!(context, "\u{001b}Z\u{001b}B\u{001b}h╔════════════════════════\u{001b}A[MonotronPaint]\u{001b}B═══════╗").unwrap();
+    write!(context, "║\u{001b}A┌[Font]──────────┐┌──────────────────────────┐\u{001b}B║").unwrap();
+
+    write!(context, "║\u{001b}A│").unwrap();
+    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Display); }
+    write!(context, " \u{0001}\u{0002}\u{0003}\u{0004}\u{0005}\u{0006}\u{0007}\u{0008}\u{0009}\u{000a}\u{000b}\u{000c}\u{000d}\u{000e}\u{000f}").unwrap();
+    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Interpret); }
+    write!(context, "││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+
+    write!(context, "║\u{001b}A│").unwrap();
+    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Display); }
+    write!(context, "\u{0010}\u{0011}\u{0012}\u{0013}\u{0014}\u{0015}\u{0016}\u{0017}\u{0018}\u{0019}\u{001a}\u{001b}\u{001c}\u{001d}\u{001e}\u{001f}").unwrap();
+    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Interpret); }
+    write!(context, "││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g          ▓▓▓▓▓▓▓         \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g        ▓▓▓▓▓▓▓▓▓▓▓       \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g       ▓▓▓▓▓▓▓▓▓▓▓▓▓      \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g    ▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓   \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g   ▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g   ▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}H                \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A└────────────────┘│\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A┌[Colour]┐┌[Menu]┐│\u{001b}B\u{001b}g  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}D█\u{001b}F█\u{001b}G█\u{001b}B█\u{001b}C█\u{001b}E█\u{001b}H█\u{001b}A█││L\u{001b}Co\u{001b}Aad\u{001b}H  \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓\u{001b}H\u{001b}h▓\u{001b}B\u{001b}g▓▓▓▓▓▓▓▓▓▓▓▓\u{001b}H\u{001b}h▓\u{001b}B\u{001b}g▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A└────────┘│\u{001b}CS\u{001b}Aave\u{001b}H  \u{001b}A││\u{001b}B\u{001b}g  ▓▓▓▓▓\u{001b}H\u{001b}h▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓\u{001b}B\u{001b}g▓▓▓▓ \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A┌[Tools]─┐│\u{001b}CP\u{001b}Arint\u{001b}H \u{001b}A││\u{001b}B\u{001b}g   ▓▓▓▓▓\u{001b}H\u{001b}h▓▓\u{001b}B\u{001b}g▓▓▓▓▓▓▓▓▓\u{001b}H\u{001b}h▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}CR\u{001b}Aect\u{001b}H    \u{001b}A││\u{001b}CE\u{001b}Axport││\u{001b}B\u{001b}g   ▓▓▓▓▓▓\u{001b}H\u{001b}h▓\u{001b}B\u{001b}g▓▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓\u{001b}B\u{001b}g▓▓▓▓  \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}CC\u{001b}Aell\u{001b}H    \u{001b}A││C\u{001b}Cl\u{001b}Aear\u{001b}H \u{001b}A││\u{001b}B\u{001b}g    ▓▓▓▓▓▓\u{001b}H\u{001b}h▓▓▓▓▓▓▓▓\u{001b}B\u{001b}g▓▓▓▓▓   \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}CL\u{001b}Aine\u{001b}H    \u{001b}A││\u{001b}H      \u{001b}A││\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}CF\u{001b}Aill\u{001b}H    \u{001b}A│└──────┘│\u{001b}B\u{001b}g     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓    \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}C\u{001b}eT\u{001b}Hext    \u{001b}A\u{001b}h│┌[Layr]┐│\u{001b}B\u{001b}g       ▓▓▓▓▓▓▓▓▓▓▓▓▓      \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}CC\u{001b}Aopy\u{001b}H    \u{001b}A││\u{001b}H      \u{001b}A││\u{001b}B\u{001b}g        ▓▓▓▓▓▓▓▓▓▓▓       \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│\u{001b}CP\u{001b}Aaste\u{001b}H   \u{001b}A││1  \u{001b}FH\u{001b}DL\u{001b}AX││\u{001b}B\u{001b}g          ▓▓▓▓▓▓▓         \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A└────────┘│2  \u{001b}FH\u{001b}DL\u{001b}AX││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A┌[Info]──┐│3  \u{001b}DH\u{001b}FL\u{001b}AX││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│N:Test\u{001b}H  \u{001b}A││4  \u{001b}FHL\u{001b}AX││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A│S:48x36 ││\u{001b}H      \u{001b}A││\u{001b}B\u{001b}g                          \u{001b}A\u{001b}h│\u{001b}B║").unwrap();
+    write!(context, "║\u{001b}A└────────┘└──────┘└──────────────────────────┘\u{001b}B║").unwrap();
+    write!(context, "╚══════════════════════════════════════════════╝").unwrap();
+    unsafe { FRAMEBUFFER.set_control_char_mode(fb::ControlCharMode::Interpret); }
+
+    loop {
+        asm::wfi();
+        if let Some(_input) = context.read() {
+            break;
+        }
+    }
+
+    write!(context, "\u{001b}Z\u{001b}A\u{001b}h╔══════════════════════════════════════════════╗").unwrap();
+    write!(context, "║\u{001b}D█████\u{001b}H \u{001b}D\u{001b}b█████\u{001b}H\u{001b}h \u{001b}B██  █\u{001b}H \u{001b}F█████\u{001b}H \u{001b}F\u{001b}b█\u{001b}h█\u{001b}b█\u{001b}h██\u{001b}H \u{001b}G████\u{001b}H \u{001b}G█████\u{001b}H \u{001b}C██  █\u{001b}A║").unwrap();
+    write!(context, "║\u{001b}D▓\u{001b}H \u{001b}D▓\u{001b}H \u{001b}D▓\u{001b}H \u{001b}D\u{001b}b▓\u{001b}H\u{001b}h   \u{001b}D\u{001b}b▓\u{001b}H\u{001b}h \u{001b}B▓\u{001b}H \u{001b}B▓ ▓\u{001b}H \u{001b}F▓\u{001b}H   \u{001b}F▓\u{001b}H \u{001b}F \u{001b}H \u{001b}F\u{001b}b▓\u{001b}H\u{001b}h \u{001b}F \u{001b}H \u{001b}G\u{001b}f▓\u{001b}H\u{001b}h  \u{001b}G\u{001b}f▓\u{001b}H\u{001b}h \u{001b}G▓\u{001b}H   \u{001b}G▓\u{001b}H \u{001b}C▓\u{001b}H \u{001b}C▓ ▓\u{001b}A║").unwrap();
+    write!(context, "║\u{001b}D▒\u{001b}H \u{001b}D▒\u{001b}H \u{001b}D▒\u{001b}H \u{001b}D\u{001b}b▒\u{001b}H\u{001b}h   \u{001b}D\u{001b}b▒\u{001b}H\u{001b}h \u{001b}B▒\u{001b}H  \u{001b}B▒▒\u{001b}H \u{001b}F▒\u{001b}H   \u{001b}F▒\u{001b}H \u{001b}F \u{001b}H \u{001b}F\u{001b}b▒\u{001b}H\u{001b}h \u{001b}F \u{001b}H \u{001b}G\u{001b}f▒\u{001b}H\u{001b}h \u{001b}G\u{001b}f▒\u{001b}h \u{001b}H \u{001b}G▒\u{001b}H   \u{001b}G▒\u{001b}H \u{001b}C▒\u{001b}H \u{001b}C ▒▒\u{001b}A║").unwrap();
+    write!(context, "║\u{001b}D░ ░\u{001b}H \u{001b}D░\u{001b}H \u{001b}D\u{001b}b░░░░░\u{001b}H\u{001b}h \u{001b}B░   ░\u{001b}H \u{001b}F░░░░░\u{001b}H \u{001b}F  \u{001b}b░\u{001b}h  \u{001b}H \u{001b}G\u{001b}f░\u{001b}h  \u{001b}f░\u{001b}H\u{001b}h \u{001b}G░░░░░\u{001b}H \u{001b}C░   ░\u{001b}A║").unwrap();
+    write!(context, "╚══════════════════════════════════════════════╝").unwrap();
     write!(context, "\n\n\nPress a key...").unwrap();
     loop {
         asm::wfi();
