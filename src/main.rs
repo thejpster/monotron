@@ -316,7 +316,6 @@ fn main() -> ! {
 
     unsafe {
         FRAMEBUFFER.clear();
-        FRAMEBUFFER.set_attr(fb::Attr::WhiteOnBlack);
     }
 
     write!(c, "╔══════════════════════════════════════════════╗").unwrap();
@@ -325,9 +324,6 @@ fn main() -> ! {
     write!(c, "║▒ ▒ ▒ ▒   ▒ ▒  ▒▒ ▒   ▒   ▒   ▒ ▒  ▒   ▒ ▒  ▒▒║").unwrap();
     write!(c, "║░ ░ ░ ░░░░░ ░   ░ ░░░░░   ░   ░  ░ ░░░░░ ░   ░║").unwrap();
     write!(c, "╚══════════════════════════════════════════════╝").unwrap();
-    unsafe {
-        FRAMEBUFFER.set_attr(fb::Attr::Normal);
-    }
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     writeln!(c, "Copyright © theJPster 2018").unwrap();
 
