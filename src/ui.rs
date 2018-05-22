@@ -57,6 +57,11 @@ pub(crate) const ROOT_MENU: Menu = Menu {
     exit: None,
 };
 
+struct Fire {
+    seed: u32,
+    buffer: [u32; Fire::FLAME_BUFFER_LEN]
+}
+
 /// The test menu item - displays a static bitmap.
 fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     let mut old_frame = 0;
@@ -272,13 +277,117 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
     write!(context, "║\u{001b}D▒\u{001b}H \u{001b}D▒\u{001b}H \u{001b}D▒\u{001b}H \u{001b}D\u{001b}b▒\u{001b}H\u{001b}h   \u{001b}D\u{001b}b▒\u{001b}H\u{001b}h \u{001b}B▒\u{001b}H  \u{001b}B▒▒\u{001b}H \u{001b}F▒\u{001b}H   \u{001b}F▒\u{001b}H \u{001b}F \u{001b}H \u{001b}F\u{001b}b▒\u{001b}H\u{001b}h \u{001b}F \u{001b}H \u{001b}G\u{001b}f▒\u{001b}H\u{001b}h \u{001b}G\u{001b}f▒\u{001b}h \u{001b}H \u{001b}G▒\u{001b}H   \u{001b}G▒\u{001b}H \u{001b}C▒\u{001b}H \u{001b}C ▒▒\u{001b}A║").unwrap();
     write!(context, "║\u{001b}D░ ░\u{001b}H \u{001b}D░\u{001b}H \u{001b}D\u{001b}b░░░░░\u{001b}H\u{001b}h \u{001b}B░   ░\u{001b}H \u{001b}F░░░░░\u{001b}H \u{001b}F  \u{001b}b░\u{001b}h  \u{001b}H \u{001b}G\u{001b}f░\u{001b}h  \u{001b}f░\u{001b}H\u{001b}h \u{001b}G░░░░░\u{001b}H \u{001b}C░   ░\u{001b}A║").unwrap();
     write!(context, "╚══════════════════════════════════════════════╝").unwrap();
-    write!(context, "\n\n\nPress a key...").unwrap();
+    write!(context, "          by theJPster / @therealjpster").unwrap();
+    let mut pos = fb::Position::new(fb::Row(6), fb::Col(0));
+    let mut next_frame = unsafe { FRAMEBUFFER.frame() } + 1;
+    let mut f = Fire::new();
     loop {
         asm::wfi();
+        let this_frame = unsafe { FRAMEBUFFER.frame() };
+        if this_frame == next_frame {
+            next_frame = this_frame + 1;
+            f.draw_fire(unsafe { &mut FRAMEBUFFER });
+        }
+        match unsafe { FRAMEBUFFER.line() } {
+            Some(95) => {
+                for col in 13..=21 {
+                    pos.col = fb::Col(col);
+                    unsafe { FRAMEBUFFER.set_attr_at(pos, fb::Attr::new(fb::Colour::Blue, fb::Colour::Black)); }
+                }
+            }
+            Some(101) => {
+                for col in 13..=21 {
+                    pos.col = fb::Col(col);
+                    unsafe { FRAMEBUFFER.set_attr_at(pos, fb::Attr::new(fb::Colour::White, fb::Colour::Black)); }
+                }
+            }
+            Some(104) => {
+                for col in 13..=21 {
+                    pos.col = fb::Col(col);
+                    unsafe { FRAMEBUFFER.set_attr_at(pos, fb::Attr::new(fb::Colour::Red, fb::Colour::Black)); }
+                }
+            }
+            _ => {},
+        }
         if let Some(_input) = context.read() {
             writeln!(context, "\u{001b}A\u{001b}g\u{001b}ZOk...").unwrap();
             break;
         }
+    }
+}
+
+impl Fire {
+    const WIDTH: usize = 48;
+    const HEIGHT: usize = 20;
+    const SIZE: usize = Self::WIDTH * Self::HEIGHT;
+    const FLAME_BUFFER_LEN: usize = Self::SIZE + Self::WIDTH + 1;
+
+    fn new() -> Fire {
+        Fire {
+            seed: 123456789,
+            buffer: [0u32; Self::FLAME_BUFFER_LEN]
+        }
+    }
+
+    /// Draws a flame effect.
+    /// Based on https://gist.github.com/msimpson/1096950.
+    fn draw_fire(&mut self, fb: &mut fb::FrameBuffer<super::VideoHardware>) {
+        use fb::Glyph;
+        const CHARS: [Glyph; 10] = [
+            Glyph::Space,
+            Glyph::FullStop,
+            Glyph::Colon,
+            Glyph::CircumflexAccent,
+            Glyph::Asterisk,
+            Glyph::LatinSmallLetterX,
+            Glyph::LatinSmallLetterS,
+            Glyph::LatinCapitalLetterS,
+            Glyph::NumberSign,
+            Glyph::DollarSign
+        ];
+        // Seed the fire on the last line
+        for _i in 0..5 {
+            let idx = (Self::WIDTH*(Self::HEIGHT-1)) + self.random_up_to(Self::WIDTH as u32) as usize;
+            self.buffer[idx] = 65;
+        }
+        // Cascade the flames
+        for i in 0..Self::SIZE {
+            self.buffer[i] = (self.buffer[i] + self.buffer[i+1] + self.buffer[i+Self::WIDTH] + self.buffer[i+Self::WIDTH+1]) / 4;
+            let colour = if self.buffer[i] > 15 {
+                fb::Colour::Blue
+            } else if self.buffer[i] > 9 {
+                fb::Colour::Red
+            } else if self.buffer[i] > 4 {
+                fb::Colour::Yellow
+            } else {
+                fb::Colour::White
+            };
+            let glyph = if self.buffer[i] > 9 {
+                CHARS[9]
+            } else {
+                CHARS[self.buffer[i] as usize]
+            };
+            let pos = fb::Position::new(fb::Row(((i / Self::WIDTH) as u8) + 16), fb::Col((i % Self::WIDTH) as u8));
+            fb.write_glyph_at(glyph, pos, Some(fb::Attr::new(colour, fb::Colour::Black)));
+        }
+    }
+
+    /// Generates a number in the range [0, limit)
+    fn random_up_to(&mut self, limit: u32) -> u32 {
+        let buckets = ::core::u32::MAX / limit;
+        let upper_edge = buckets * limit;
+        loop {
+            let try = self.random();
+            if try < upper_edge {
+                return try / buckets;
+            }
+        }
+    }
+
+    /// Generate a random 32-bit number
+    fn random(&mut self) -> u32 {
+        self.seed = (self.seed.wrapping_mul(1103515245)).wrapping_add(12345);
+        self.seed
     }
 }
 
