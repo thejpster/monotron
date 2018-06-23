@@ -1,6 +1,6 @@
 [package]
 name = "monotron"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Jorge Aparicio <jorge@japaric.io>", "Jonathan 'theJPster' Pallant <monotron@thejpster.org.uk>"]
 description = "A simple 1980's home computer style application for the Stellaris Launchpad."
 keywords = ["arm", "cortex-m", "template", "video", "menu"]
@@ -40,7 +40,7 @@ version = "0.5"
 version = "0.5"
 
 [dependencies.panic-semihosting]
-version = "0.2"
+version = "0.3"
 
 [dependencies.cortex-m-semihosting]
 version = "0.3"
