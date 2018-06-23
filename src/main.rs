@@ -53,6 +53,7 @@ extern crate vga_framebuffer as fb;
 mod ui;
 
 use core::fmt::Write;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use cortex_m::asm;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::bb;
@@ -67,8 +68,15 @@ static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 static mut KEYBOARD_REGISTER: u16 = 0;
 static mut KEYBOARD_BITS: usize = 0;
+static mut KEYBOARD_LAST_BIT_AT: u64 = 0;
 static mut KEYBOARD_WORDS: [u16; 8] = [0u16; 8];
-static mut KEYBOARD_WORD_INDEX: usize = 0;
+static mut KEYBOARD_WRITE_INDEX: usize = 0;
+static mut KEYBOARD_READ_INDEX: usize = 0;
+static SYSTICK_OVERFLOWS: AtomicUsize = AtomicUsize::new(0);
+
+/// Max ticks (@ 80MHz) in-between keyboard bits. Keyboard must be no slower
+/// than 10kHz. Set to 9kHz to be safe => 8,888 clocks.
+const MAX_KEYBOARD_BIT_CLOCKS: u64 = 8_888;
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
@@ -104,21 +112,14 @@ impl Context {
     fn keyboard_read(&mut self) -> Option<u16> {
         // Check unsafe global state mutated by ISR
         unsafe {
-            if KEYBOARD_WORD_INDEX >= 1 {
-                let copy_data = KEYBOARD_WORDS;
-                KEYBOARD_WORD_INDEX = 0;
-                Some(copy_data[0])
+            if KEYBOARD_WRITE_INDEX != KEYBOARD_READ_INDEX {
+                let data = KEYBOARD_WORDS[KEYBOARD_READ_INDEX % KEYBOARD_WORDS.len()];
+                KEYBOARD_READ_INDEX = KEYBOARD_READ_INDEX.wrapping_add(1);
+                Some(data)
             } else {
                 None
             }
         }
-        // let (bits, reg) = unsafe { (KEYBOARD_BITS, KEYBOARD_REGISTER) };
-        // if bits >= 11 {
-        //     unsafe { KEYBOARD_BITS = 0; KEYBOARD_REGISTER = 0; }
-        //     Some(reg)
-        // } else {
-        //     None
-        // }
     }
 
     fn read(&mut self) -> Option<Input> {
@@ -127,7 +128,7 @@ impl Context {
             Some(Input::Utf8(ch))
         } else {
             let key = if let Some(word) = self.keyboard_read() {
-                writeln!(self, "Got 0x{:04} from kb\n", word).unwrap();
+                // writeln!(self, "Got 0x{:04} from kb {}/{}\n", word, unsafe { KEYBOARD_READ_INDEX }, unsafe { KEYBOARD_WRITE_INDEX }).unwrap();
                 // Got something in the keyboard buffer
                 match self.keyboard.add_word(word) {
                     Ok(Some(event)) => self.keyboard.process_keyevent(event),
@@ -144,7 +145,12 @@ impl Context {
             match key {
                 None => None,
                 Some(pc_keyboard::DecodedKey::Unicode(c)) => {
-                    Some(Input::Unicode(c))
+                    if c == '\r' {
+                        // Return generates \r but menu wants \n
+                        Some(Input::Unicode('\n'))
+                    } else {
+                        Some(Input::Unicode(c))
+                    }
                 }
                 Some(pc_keyboard::DecodedKey::RawKey(code)) => {
                     // Handle raw keypress that can't be represented in Unicode
@@ -181,16 +187,28 @@ fn main() -> ! {
     );
     let clocks = sc.clock_setup.freeze();
 
+    // Start SysTick - 2**24 @ 80 MHz means it loops a couple of times a second
+    let mut syst = cp.SYST;
+    syst.set_reload(0x00ffffff);
+    syst.set_clock_source(cortex_m::peripheral::syst::SystClkSource::Core);
+    syst.clear_current();
+    syst.enable_counter();
+    syst.enable_interrupt();
+
     let mut nvic = cp.NVIC;
     nvic.enable(tm4c123x_hal::Interrupt::TIMER1A);
     nvic.enable(tm4c123x_hal::Interrupt::TIMER1B);
     nvic.enable(tm4c123x_hal::Interrupt::GPIOD);
     // Make Timer1A (start of line) lower priority than Timer1B (clocking out
     // data) so that it can be interrupted.
-    // Make GPIOD between the two.
+    // Make GPIOD (the keyboard) between the two. We might corrupt
+    // a bit while scheduling the line start, but that's probably better
+    // than getting a wonky video signal?
+    // Priorities go from 0*16 (most urgent) to 15*16 (least urgent)
     unsafe {
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 32);
-        nvic.set_priority(tm4c123x_hal::Interrupt::GPIOD, 16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 15*16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1B, 0*16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::GPIOD, 8*16);
     }
 
     enable(sysctl::Domain::Timer1, &mut sc.power_control);
@@ -351,8 +369,9 @@ fn main() -> ! {
                     r.input_byte(octet);
                 }
             }
-            Some(_) => {
+            Some(Input::Special(code)) => {
                 // Can't handle special chars yet
+                writeln!(r.context, "Special char {:?}", code).unwrap();
             }
             None => {},
         }
@@ -489,26 +508,47 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
+exception!(SysTick, systick_interrupt);
+fn systick_interrupt() {
+    SYSTICK_OVERFLOWS.fetch_add(1, Ordering::Relaxed);
+}
+
+pub fn get_time() -> u64 {
+    let tick_a = 0xFFFFFFFF - cortex_m::peripheral::SYST::get_current();
+    let mut overflows = SYSTICK_OVERFLOWS.load(Ordering::Relaxed);
+    let tick_b = 0xFFFFFFFF - cortex_m::peripheral::SYST::get_current();
+    if tick_b < tick_a {
+        // We wrapped while reading. Best check the overflow value again
+        overflows = SYSTICK_OVERFLOWS.load(Ordering::Relaxed);
+    }
+    ((overflows as u64) << 24) | (tick_b as u64)
+}
+
 interrupt!(GPIOD, keyboard_interrupt);
 fn keyboard_interrupt() {
     let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTD::ptr() };
-    let gpio_led = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTF::ptr() };
-    unsafe { bb::change_bit(&gpio_led.data, 1, true); }
     // Read PD2
     let bit = bb::read_bit(&gpio.data, 2);
     unsafe {
-        KEYBOARD_REGISTER <<= 1;
+        let now = get_time();
+        let gap = now - KEYBOARD_LAST_BIT_AT;
+        KEYBOARD_LAST_BIT_AT = now;
+        if gap > MAX_KEYBOARD_BIT_CLOCKS {
+            // Flush buffer
+            KEYBOARD_REGISTER = 0;
+            KEYBOARD_BITS = 0;
+        }
         if bit {
-            KEYBOARD_REGISTER |= 1;
+            KEYBOARD_REGISTER |= 1 << KEYBOARD_BITS;
         }
         KEYBOARD_BITS += 1;
         if KEYBOARD_BITS == 11 {
-            KEYBOARD_WORDS[KEYBOARD_WORD_INDEX] = KEYBOARD_REGISTER;
+            KEYBOARD_WORDS[KEYBOARD_WRITE_INDEX % KEYBOARD_WORDS.len()] = KEYBOARD_REGISTER;
             KEYBOARD_REGISTER = 0;
-            KEYBOARD_WORD_INDEX += 1;
+            KEYBOARD_WRITE_INDEX = KEYBOARD_WRITE_INDEX.wrapping_add(1);
+            KEYBOARD_BITS = 0;
         }
     }
-    unsafe { bb::change_bit(&gpio_led.data, 1, false); }
     gpio.icr.write(|w| unsafe { w.gpio().bits(0xFF) });
 }
 
