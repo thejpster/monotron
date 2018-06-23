@@ -53,7 +53,6 @@ extern crate vga_framebuffer as fb;
 mod ui;
 
 use core::fmt::Write;
-use core::sync::atomic::{AtomicUsize, Ordering};
 use cortex_m::asm;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::bb;
@@ -72,11 +71,10 @@ static mut KEYBOARD_LAST_BIT_AT: u64 = 0;
 static mut KEYBOARD_WORDS: [u16; 8] = [0u16; 8];
 static mut KEYBOARD_WRITE_INDEX: usize = 0;
 static mut KEYBOARD_READ_INDEX: usize = 0;
-static SYSTICK_OVERFLOWS: AtomicUsize = AtomicUsize::new(0);
 
-/// Max ticks (@ 80MHz) in-between keyboard bits. Keyboard must be no slower
+/// Max video lines (@ 26.5us per line) in-between keyboard bits. Keyboard must be no slower
 /// than 10kHz. Set to 9kHz to be safe => 8,888 clocks.
-const MAX_KEYBOARD_BIT_CLOCKS: u64 = 8_888;
+const MAX_KEYBOARD_BIT_LINES: u32 = 4;
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
@@ -145,9 +143,9 @@ impl Context {
             match key {
                 None => None,
                 Some(pc_keyboard::DecodedKey::Unicode(c)) => {
-                    if c == '\r' {
-                        // Return generates \r but menu wants \n
-                        Some(Input::Unicode('\n'))
+                    if c == '\n' {
+                        // Return generates \n but menu wants \r
+                        Some(Input::Unicode('\r'))
                     } else {
                         Some(Input::Unicode(c))
                     }
@@ -186,14 +184,6 @@ fn main() -> ! {
         sysctl::SystemClock::UsePll(sysctl::PllOutputFrequency::_80_00mhz),
     );
     let clocks = sc.clock_setup.freeze();
-
-    // Start SysTick - 2**24 @ 80 MHz means it loops a couple of times a second
-    let mut syst = cp.SYST;
-    syst.set_reload(0x00ffffff);
-    syst.set_clock_source(cortex_m::peripheral::syst::SystClkSource::Core);
-    syst.clear_current();
-    syst.enable_counter();
-    syst.enable_interrupt();
 
     let mut nvic = cp.NVIC;
     nvic.enable(tm4c123x_hal::Interrupt::TIMER1A);
@@ -508,32 +498,16 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-exception!(SysTick, systick_interrupt);
-fn systick_interrupt() {
-    SYSTICK_OVERFLOWS.fetch_add(1, Ordering::Relaxed);
-}
-
-pub fn get_time() -> u64 {
-    let tick_a = 0xFFFFFFFF - cortex_m::peripheral::SYST::get_current();
-    let mut overflows = SYSTICK_OVERFLOWS.load(Ordering::Relaxed);
-    let tick_b = 0xFFFFFFFF - cortex_m::peripheral::SYST::get_current();
-    if tick_b < tick_a {
-        // We wrapped while reading. Best check the overflow value again
-        overflows = SYSTICK_OVERFLOWS.load(Ordering::Relaxed);
-    }
-    ((overflows as u64) << 24) | (tick_b as u64)
-}
-
 interrupt!(GPIOD, keyboard_interrupt);
 fn keyboard_interrupt() {
     let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTD::ptr() };
     // Read PD2
     let bit = bb::read_bit(&gpio.data, 2);
     unsafe {
-        let now = get_time();
-        let gap = now - KEYBOARD_LAST_BIT_AT;
+        let now = FRAMEBUFFER.total_line();
+        let gap = (now - KEYBOARD_LAST_BIT_AT) as u32;
         KEYBOARD_LAST_BIT_AT = now;
-        if gap > MAX_KEYBOARD_BIT_CLOCKS {
+        if gap > MAX_KEYBOARD_BIT_LINES {
             // Flush buffer
             KEYBOARD_REGISTER = 0;
             KEYBOARD_BITS = 0;

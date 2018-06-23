@@ -8,12 +8,6 @@ use super::{Context, FRAMEBUFFER};
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
 
-const GET_TIME: Item = Item {
-    item_type: menu::ItemType::Callback(get_time),
-    command: "time",
-    help: Some("Shows 64-bit uptime in clock ticks."),
-};
-
 const TEST_ALPHABET: Item = Item {
     item_type: menu::ItemType::Callback(test_alphabet),
     command: "alphabet",
@@ -66,7 +60,6 @@ pub(crate) const ROOT_MENU: Menu = Menu {
         &ITEM_PEEK,
         &ITEM_POKE,
         &ITEM_DUMP,
-        &GET_TIME,
     ],
     entry: None,
     exit: None,
@@ -485,10 +478,6 @@ fn item_poke<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
     } else {
         writeln!(context, "Missing or bad address.").unwrap();
     }
-}
-
-fn get_time<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    writeln!(context, "Time: {} ticks", super::get_time()).unwrap();
 }
 
 fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
