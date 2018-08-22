@@ -25,7 +25,7 @@ version = "0.1"
 # path = "../menu"
 
 [dependencies.vga-framebuffer]
-version = "0.3.0"
+version = "0.5.0"
 # git = "https://github.com/thejpster/vga-framebuffer-rs"
 # path = "../vga-framebuffer-rs"
 
@@ -46,5 +46,4 @@ version = "0.3"
 version = "0.3"
 
 [dependencies.pc-keyboard]
-git = "https://github.com/thejpster/pc-keyboard"
-# path = "../pc-keyboard"
+version = "0.1.1"
