@@ -1,5 +1,5 @@
 [target.thumbv6m-none-eabi]
-runner = 'arm-none-eabi-gdb'
+runner = 'gdb-multiarch'
 rustflags = [
   "-C", "link-arg=-Tlink.x",
   "-C", "linker=arm-none-eabi-ld",
@@ -8,7 +8,7 @@ rustflags = [
 ]
 
 [target.thumbv7m-none-eabi]
-runner = 'arm-none-eabi-gdb'
+runner = 'gdb-multiarch'
 rustflags = [
   "-C", "link-arg=-Tlink.x",
   "-C", "linker=arm-none-eabi-ld",
@@ -17,7 +17,7 @@ rustflags = [
 ]
 
 [target.thumbv7em-none-eabi]
-runner = 'arm-none-eabi-gdb'
+runner = 'gdb-multiarch'
 rustflags = [
   "-C", "link-arg=-Tlink.x",
   "-C", "linker=arm-none-eabi-ld",
@@ -26,7 +26,7 @@ rustflags = [
 ]
 
 [target.thumbv7em-none-eabihf]
-runner = 'arm-none-eabi-gdb'
+runner = 'gdb-multiarch'
 rustflags = [
   "-C", "link-arg=-Tlink.x",
   "-C", "linker=arm-none-eabi-ld",
