@@ -10,7 +10,7 @@ because it is available on an inexpensive dev-kit - the Stellaris Launchpad -
 and I happened to have some lying around. The challenge I set myself was, how
 much can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 
-![YouTube screenshot of a video of Monotron](screenshot.png "Monotron on Youtube")
+![YouTube screenshot of a video of Monotron](screenshot.jpg "Monotron on Youtube")
 [See Monotron in Action!](https://www.youtube.com/watch?v=7x_92PXKSN4)
 
 ## Features
