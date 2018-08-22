@@ -72,6 +72,8 @@ static mut KEYBOARD_WORDS: [u16; 8] = [0u16; 8];
 static mut KEYBOARD_WRITE_INDEX: usize = 0;
 static mut KEYBOARD_READ_INDEX: usize = 0;
 
+static mut APPLICATION_RAM: [u8; 24*1024] = [0u8; 24*1024];
+
 /// Max video lines (@ 26.5us per line) in-between keyboard bits. Keyboard must be no slower
 /// than 10kHz. Set to 9kHz to be safe => 8,888 clocks.
 const MAX_KEYBOARD_BIT_LINES: u32 = 4;
@@ -323,18 +325,32 @@ fn main() -> ! {
     let mut c = Context { value: 0, rx, keyboard };
 
     unsafe {
+        FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
         FRAMEBUFFER.clear();
+        // Prevent block being removed by the linker
+        core::ptr::write_volatile(&mut APPLICATION_RAM[0], 0xAA);
     }
 
-    write!(c, "╔══════════════════════════════════════════════╗").unwrap();
-    write!(c, "║█████ █████ ██  █ █████ █████ ████ █████ ██  █║").unwrap();
-    write!(c, "║▓ ▓ ▓ ▓   ▓ ▓ ▓ ▓ ▓   ▓   ▓   ▓  ▓ ▓   ▓ ▓ ▓ ▓║").unwrap();
-    write!(c, "║▒ ▒ ▒ ▒   ▒ ▒  ▒▒ ▒   ▒   ▒   ▒ ▒  ▒   ▒ ▒  ▒▒║").unwrap();
-    write!(c, "║░ ░ ░ ░░░░░ ░   ░ ░░░░░   ░   ░  ░ ░░░░░ ░   ░║").unwrap();
+    write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
+    write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
+    write!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
+    write!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
+    write!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
     write!(c, "╚══════════════════════════════════════════════╝").unwrap();
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     writeln!(c, "Copyright © theJPster 2018").unwrap();
 
+    let (stack_space, data_space) = unsafe {
+        extern "C" {
+            static __ebss: u32;
+            static __sdata: u32;
+        }
+        let ebss = &__ebss as *const u32 as usize;
+        let start = &__sdata as *const u32 as usize;
+        let total = ebss - start;
+        (32768 - total, APPLICATION_RAM.len())
+    };
+    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, data_space).unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
