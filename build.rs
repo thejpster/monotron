@@ -5,7 +5,7 @@ fn main() {
     // Put the git version into the binary using
     // and environment variable.
     let git_desc = Command::new("git")
-        .args(&["describe", "--all"])
+        .args(&["describe", "--all", "--tags", "--dirty"])
         .output()
         .unwrap();
     println!(
