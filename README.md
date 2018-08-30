@@ -117,7 +117,7 @@ Your VGA connector requires five wires:
 * Pin 6: Red Return - connect to GND
 * Pin 7: Green Return - connect to GND
 * Pin 8: Blue Return - connect to GND
-* Pin 13: H-Sync - connect to PB6
+* Pin 13: H-Sync - connect to PB4
 * Pin 14: V-Sync - connect to PC4
 
 The resistive divider needs to drop the 3.3V output down to 0.7V. Some
