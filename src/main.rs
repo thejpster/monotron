@@ -8,29 +8,32 @@
 //!
 //! This chip has 4 SPI devices. They are on the following pins:
 //!
-//! 1.08         PA5     SSI0Tx
-//! 2.06/3.04    PD1/PB7 SSI2Tx
-//! 3.06         PD3     SSI3Tx / SSI1Tx
-//!
-//! 2.08         PA4     SSI0Rx
-//! 2.04         PF0     SSI1Rx / User Switch 2
-//! 2.07/3.03    PB6/PD0 SSI2Rx / SSI3Clk / SSI1Clk
-//! 3.05         PD2     SSI3Rx / SSI1Rx
-//!
-//! 2.10         PA2     SSI0Clk
-//! 2.07/3.03    PB6/PD0 SSI2Rx / SSI3Clk / SSI1Clk
+//! 1.02         PB5     SSI2Fss
 //! 1.07         PB4     SSI2Clk
+//! 1.08         PA5     SSI0Tx
+//! 2.04         PF0     SSI1Rx
+//! 2.04         PF0     SSI1Rx / User Switch 2
+//! 2.06/3.04    PD1/PB7 SSI2Tx / SSI3Fss / SSI1Fss
+//! 2.07/3.03    PB6/PD0 SSI2Rx / SSI3Clk / SSI1Clk
+//! 2.08         PA4     SSI0Rx
+//! 2.09         PA3     SSI0Fss
+//! 2.10         PA2     SSI0Clk
+//! 3.05         PD2     SSI3Rx / SSI1Rx
+//! 3.06         PD3     SSI3Tx / SSI1Tx
+//! 3.10         PF1     SSI1Tx
+//! 4.02         PF3     SSI1Fss
 //!
 //! Note that there are 0-ohm links between 2.07 and 3.03 and between 2.06 and
 //! 3.04 for MSP430 compatibility reasons. This limits the pins we can use for
 //! SPI.
 //!
 //! We use:
-//! * SSI0Tx for Red on PA5 / 1.08
-//! * SSI1Tx for Blue on PD3 / 3.06
-//! * SSI2Tx for Green on PB7 / 3.04 / 2.06
-//! * SSI3Rx for Keyboard Data on PD2 / 3.05
-//! * SSI3Clk for Keyboard Clock on PD0 / 2.07 / 3.03
+//! * SSI1Tx for Red on PF1 / 3.10
+//! * SSI2Tx for Green on PB7 / 3.04=2.06
+//! * SSI3Tx for Blue on PD3 / 3.06
+//! * SSI0Clk for Keyboard Clock on PA2 / 2.10
+//! * SSI0Fss for Keyboard Chip Select on PA3 / 2.09.
+//! * SSI0Rx for Keyboard Data on PA4 / 2.08
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PC4 is V-Sync
 
@@ -65,24 +68,13 @@ const ISR_LATENCY: u32 = 94;
 
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
-static mut KEYBOARD_REGISTER: u16 = 0;
-static mut KEYBOARD_BITS: usize = 0;
-static mut KEYBOARD_LAST_BIT_AT: u64 = 0;
-static mut KEYBOARD_WORDS: [u16; 8] = [0u16; 8];
-static mut KEYBOARD_WRITE_INDEX: usize = 0;
-static mut KEYBOARD_READ_INDEX: usize = 0;
-
 static mut APPLICATION_RAM: [u8; 24*1024] = [0u8; 24*1024];
-
-/// Max video lines (@ 26.5us per line) in-between keyboard bits. Keyboard must be no slower
-/// than 10kHz. Set to 9kHz to be safe => 8,888 clocks.
-const MAX_KEYBOARD_BIT_LINES: u32 = 4;
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
-    red_ch: tm4c123x_hal::tm4c123x::SSI0,
-    blue_ch: tm4c123x_hal::tm4c123x::SSI1,
+    red_ch: tm4c123x_hal::tm4c123x::SSI1,
     green_ch: tm4c123x_hal::tm4c123x::SSI2,
+    blue_ch: tm4c123x_hal::tm4c123x::SSI3,
 }
 
 struct Context {
@@ -98,7 +90,7 @@ struct Context {
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
-    // spi: tm4c123x_hal::tm4c123x::SSI3
+    spi: tm4c123x_hal::tm4c123x::SSI0
 }
 
 enum Input {
@@ -110,15 +102,11 @@ enum Input {
 
 impl Context {
     fn keyboard_read(&mut self) -> Option<u16> {
-        // Check unsafe global state mutated by ISR
-        unsafe {
-            if KEYBOARD_WRITE_INDEX != KEYBOARD_READ_INDEX {
-                let data = KEYBOARD_WORDS[KEYBOARD_READ_INDEX % KEYBOARD_WORDS.len()];
-                KEYBOARD_READ_INDEX = KEYBOARD_READ_INDEX.wrapping_add(1);
-                Some(data)
-            } else {
-                None
-            }
+        let word = self.spi.dr.read().bits() as u16;
+        if word != 0 {
+            Some(word)
+        } else {
+            None
         }
     }
 
@@ -128,7 +116,6 @@ impl Context {
             Some(Input::Utf8(ch))
         } else {
             let key = if let Some(word) = self.keyboard_read() {
-                // writeln!(self, "Got 0x{:04} from kb {}/{}\n", word, unsafe { KEYBOARD_READ_INDEX }, unsafe { KEYBOARD_WRITE_INDEX }).unwrap();
                 // Got something in the keyboard buffer
                 match self.keyboard.add_word(word) {
                     Ok(Some(event)) => self.keyboard.process_keyevent(event),
@@ -190,17 +177,18 @@ fn main() -> ! {
     let mut nvic = cp.NVIC;
     nvic.enable(tm4c123x_hal::Interrupt::TIMER1A);
     nvic.enable(tm4c123x_hal::Interrupt::TIMER1B);
-    nvic.enable(tm4c123x_hal::Interrupt::GPIOD);
+    // nvic.enable(tm4c123x_hal::Interrupt::GPIOD);
     // Make Timer1A (start of line) lower priority than Timer1B (clocking out
     // data) so that it can be interrupted.
     // Make GPIOD (the keyboard) between the two. We might corrupt
     // a bit while scheduling the line start, but that's probably better
     // than getting a wonky video signal?
     // Priorities go from 0*16 (most urgent) to 15*16 (least urgent)
+    // EEE trying with keyboard higher than video
     unsafe {
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 15*16);
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1B, 0*16);
-        nvic.set_priority(tm4c123x_hal::Interrupt::GPIOD, 8*16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 8*16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1B, 4*16);
+        // nvic.set_priority(tm4c123x_hal::Interrupt::GPIOD, 3*16);
     }
 
     enable(sysctl::Domain::Timer1, &mut sc.power_control);
@@ -213,10 +201,7 @@ fn main() -> ! {
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
     let portc = p.GPIO_PORTC.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
-    let portf = p.GPIO_PORTF.split(&sc.power_control);
-
-    let mut red_led = portf.pf1.into_push_pull_output();
-    red_led.set_low();
+    let mut portf = p.GPIO_PORTF.split(&sc.power_control);
 
     // T0CCP0
     let _h_sync = portb
@@ -224,81 +209,57 @@ fn main() -> ! {
         .into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portc.pc4.into_push_pull_output();
-    // Ssi0Tx
-    let _red_data = porta
-        .pa5
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut porta.control);
     // Ssi1Tx
-    let _blue_data = portd
-        .pd3
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portd.control);
+    let _red_data = portf
+        .pf1
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portf.control);
     // Ssi2Tx
     let _green_data = portb
         .pb7
         .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
+    // Ssi3Tx
+    let _blue_data = portd
+        .pd3
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
 
-    // Keyboard produces 5V so set pins to open-drain to make them 5V tolerant
-    // We set them floating as we have external pull-ups to 5V
+    // Keyboard produces 5V but the chip is 5V tolerant on inputs. We set them
+    // floating as we have external pull-ups to 5V.
+    let _keyboard_clock = porta.pa2.into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(&mut porta.control);
+    let _keyboard_select = porta.pa3.into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(&mut porta.control);
+    let _keyboard_data = porta.pa4.into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(&mut porta.control);
+    let keyboard_spi = p.SSI0;
 
-    // Keyboard Clock
-    let mut keyboard_clock = portd
-        .pd0
-        .into_pull_down_input();
-    //        .into_af_open_drain::<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::Floating>(&mut portd.control);
-    // EEE PD0 is the red wire, which goes to Channel B on the scope (red trace)
-    // It comes out of the green wire on the PS/2 socket
-
-    // Keyboard Data
-    let _keyboard_data = portd
-        .pd2
-        .into_pull_down_input();
-    //        .into_af_open_drain::<tm4c123x_hal::gpio::AF1, tm4c123x_hal::gpio::Floating>(&mut portd.control);
-    // EEE PD2 is the yellow wire, which goes to Channel A on the scope (blue trace)
-    // It comes out of the white wire on the PS/2 socket
-
-    // Interrupt on clock input. We sample data pin on falling edge.
-    keyboard_clock.set_interrupt_mode(tm4c123x_hal::gpio::InterruptMode::EdgeFalling);
-
-    // After this, we expect GPIOD (0x4000_7000) to be:
-    // DIR (+0x400) = 0x00
-    // IS  (+0x404) = 0x00
-    // IBE (+0x408) = 0x00
-    // IEV (+0x40C) = 0x00
-    // IME (+0x410) = 0x01
-    // RIS (+0x414)
-    // MIS (+0x418)
-
-    // // Need to configure SSI3 as a slave
-    // p.SSI3.cr1.write(|w| w.sse().clear_bit());
-    // // Slave mode
-    // p.SSI3.cr1.modify(|_, w| w.ms().set_bit());
-    // // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
-    // // So CPSDVSR = 160, SCR = 0 gives us 500 kHz which is fine
-    // // >> "For slave mode, the system clock or the PIOSC must be at least 12
-    // // >> times faster than the SSInClk, with the restriction that SSInClk
-    // // >> cannot be faster than 6.67 MHz."
-    // // Typical keyboard clock is 10 to 20 kHz
-    // // Host must sample data after falling clock edge
-    // p.SSI3.cpsr.write(|w| unsafe { w.cpsdvsr().bits(160) });
-    // // Configure to receive 11 bits, Freescale (moto) mode SPO=0, SPH=1
-    // p.SSI3.cr0.write(|w| {
-    //     w.dss()._11();
-    //     w.frf().moto();
-    //     w.spo().set_bit();
-    //     w.sph().set_bit();
-    //     w
-    // });
-    // // Set clock source to sysclk
-    // p.SSI3.cc.modify(|_, w| w.cs().syspll());
-    // // Enable
-    // p.SSI3.cr1.modify(|_, w| w.sse().set_bit());
+    // Configure the keyboard interface
+    keyboard_spi.cr1.write(|w| w.sse().clear_bit());
+    // Slave mode
+    keyboard_spi.cr1.modify(|_, w| w.ms().set_bit());
+    // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
+    // So CPSDVSR = 160, SCR = 0 gives us 500 kHz which is fine
+    // >> "For slave mode, the system clock or the PIOSC must be at least 12
+    // >> times faster than the SSInClk, with the restriction that SSInClk
+    // >> cannot be faster than 6.67 MHz."
+    // Typical keyboard clock is 10 to 20 kHz
+    // Host must sample data after falling clock edge
+    keyboard_spi.cpsr.write(|w| unsafe { w.cpsdvsr().bits(160) });
+    // Configure to receive 11 bits, Freescale (moto) mode SPO=0, SPH=1
+    keyboard_spi.cr0.write(|w| {
+        w.dss()._11();
+        w.frf().moto();
+        w.spo().clear_bit();
+        w.sph().set_bit();
+        w
+    });
+    // Set clock source to sysclk
+    keyboard_spi.cc.modify(|_, w| w.cs().syspll());
+    // Enable
+    keyboard_spi.cr1.modify(|_, w| w.sse().set_bit());
 
     unsafe {
         let hw = VideoHardware {
             h_timer: p.TIMER1,
-            red_ch: p.SSI0,
-            blue_ch: p.SSI1,
-            green_ch: p.SSI2
+            red_ch: p.SSI1,
+            green_ch: p.SSI2,
+            blue_ch: p.SSI3,
         };
         FRAMEBUFFER.init(hw);
     }
@@ -322,7 +283,7 @@ fn main() -> ! {
     let (mut _tx, rx) = uart.split();
 
     let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
-    let mut c = Context { value: 0, rx, keyboard };
+    let mut c = Context { value: 0, rx, keyboard, spi: keyboard_spi };
 
     unsafe {
         FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
@@ -387,7 +348,7 @@ fn main() -> ! {
 impl fb::Hardware for VideoHardware {
     fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, clock_rate: u32) {
         // Configure SPI
-        // Need to configure SSI0, SSI1 and SSI2 at 20 MHz
+        // Need to configure SSI1, SSI2 and SSI3 at 20 MHz
         self.red_ch.cr1.modify(|_, w| w.sse().clear_bit());
         self.blue_ch.cr1.modify(|_, w| w.sse().clear_bit());
         self.green_ch.cr1.modify(|_, w| w.sse().clear_bit());
@@ -503,9 +464,9 @@ impl fb::Hardware for VideoHardware {
 
     /// Write pixels straight to FIFOs
     fn write_pixels(&mut self, red: u32, green: u32, blue: u32) {
-        let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
+        let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
         let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
+        let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
         while (ssi_r.sr.read().bits() & 0x02) == 0 {
         }
         ssi_r.dr.write(|w| unsafe { w.bits(red) });
@@ -514,42 +475,14 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-interrupt!(GPIOD, keyboard_interrupt);
-fn keyboard_interrupt() {
-    let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTD::ptr() };
-    // Read PD2
-    let bit = bb::read_bit(&gpio.data, 2);
-    unsafe {
-        let now = FRAMEBUFFER.total_line();
-        let gap = (now - KEYBOARD_LAST_BIT_AT) as u32;
-        KEYBOARD_LAST_BIT_AT = now;
-        if gap > MAX_KEYBOARD_BIT_LINES {
-            // Flush buffer
-            KEYBOARD_REGISTER = 0;
-            KEYBOARD_BITS = 0;
-        }
-        if bit {
-            KEYBOARD_REGISTER |= 1 << KEYBOARD_BITS;
-        }
-        KEYBOARD_BITS += 1;
-        if KEYBOARD_BITS == 11 {
-            KEYBOARD_WORDS[KEYBOARD_WRITE_INDEX % KEYBOARD_WORDS.len()] = KEYBOARD_REGISTER;
-            KEYBOARD_REGISTER = 0;
-            KEYBOARD_WRITE_INDEX = KEYBOARD_WRITE_INDEX.wrapping_add(1);
-            KEYBOARD_BITS = 0;
-        }
-    }
-    gpio.icr.write(|w| unsafe { w.gpio().bits(0xFF) });
-}
-
 interrupt!(TIMER1A, timer1a);
 
 /// Called on start of sync pulse (end of front porch)
 fn timer1a() {
-    let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI0::ptr() };
-    let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
+    let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
     let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    // Disable SSI0/1/2 as we don't want pixels yet
+    let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
+    // Disable the SPIs as we don't want pixels yet
     ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
     ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
     ssi_b.cr1.modify(|_, w| w.sse().clear_bit());
@@ -575,9 +508,9 @@ fn timer1b() {
         asm!(
             "movs    r0, #132;
             movs    r1, #1;
-            movt    r0, #16912;
-            mov.w   r2, #262144;
-            mov.w   r3, #131072;
+            movt    r0, #16914;
+            mov.w   r2, #131072;
+            mov.w   r3, #262144;
             str r1, [r0, #0];
             nop;
             nop;
@@ -644,7 +577,7 @@ fn timer1b() {
             "
             :
             :
-            : "r0" "r1" "r2"
+            : "r0" "r1" "r2" "r3"
             : "volatile");
     }
     // Clear timer B interrupt
