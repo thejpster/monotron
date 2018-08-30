@@ -1,4 +1,5 @@
 EESchema Schematic File Version 4
+LIBS:Monotron-cache
 EELAYER 26 0
 EELAYER END
 $Descr A4 11693 8268
@@ -19,7 +20,7 @@ U 1 1 5B883CD0
 P 6250 3750
 F 0 "U1" H 6250 4925 50  0000 C CNN
 F 1 "StellarisLaunchpad" H 6250 4834 50  0000 C CNN
-F 2 "" H 6250 3750 50  0001 C CNN
+F 2 "Monotron:Stellaris Launchpad Connector" H 6250 3750 50  0001 C CNN
 F 3 "" H 6250 3750 50  0001 C CNN
 	1    6250 3750
 	1    0    0    -1  
