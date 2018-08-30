@@ -14,10 +14,10 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L Monotron:StellarisLaunchpad U?
+L Monotron:StellarisLaunchpad U1
 U 1 1 5B883CD0
 P 6250 3750
-F 0 "U?" H 6250 4925 50  0000 C CNN
+F 0 "U1" H 6250 4925 50  0000 C CNN
 F 1 "StellarisLaunchpad" H 6250 4834 50  0000 C CNN
 F 2 "" H 6250 3750 50  0001 C CNN
 F 3 "" H 6250 3750 50  0001 C CNN
@@ -25,10 +25,10 @@ F 3 "" H 6250 3750 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:R R?
+L Device:R R2
 U 1 1 5B883E00
 P 4700 4300
-F 0 "R?" V 4907 4300 50  0000 C CNN
+F 0 "R2" V 4907 4300 50  0000 C CNN
 F 1 "330" V 4816 4300 50  0000 C CNN
 F 2 "" V 4630 4300 50  0001 C CNN
 F 3 "~" H 4700 4300 50  0001 C CNN
@@ -36,10 +36,10 @@ F 3 "~" H 4700 4300 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L Device:R R?
+L Device:R R1
 U 1 1 5B883EA4
 P 4700 3500
-F 0 "R?" V 4907 3500 50  0000 C CNN
+F 0 "R1" V 4907 3500 50  0000 C CNN
 F 1 "330" V 4816 3500 50  0000 C CNN
 F 2 "" V 4630 3500 50  0001 C CNN
 F 3 "~" H 4700 3500 50  0001 C CNN
@@ -47,10 +47,10 @@ F 3 "~" H 4700 3500 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L Device:R R?
+L Device:R R3
 U 1 1 5B883F05
 P 4700 5150
-F 0 "R?" V 4907 5150 50  0000 C CNN
+F 0 "R3" V 4907 5150 50  0000 C CNN
 F 1 "330" V 4816 5150 50  0000 C CNN
 F 2 "" V 4630 5150 50  0001 C CNN
 F 3 "~" H 4700 5150 50  0001 C CNN
@@ -58,10 +58,10 @@ F 3 "~" H 4700 5150 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 $Comp
-L Connector:DB15_Female_HighDensity J?
+L Connector:DB15_Female_HighDensity J1
 U 1 1 5B8842EE
 P 3200 3850
-F 0 "J?" H 3200 4717 50  0000 C CNN
+F 0 "J1" H 3200 4717 50  0000 C CNN
 F 1 "DB15_Female_HighDensity" H 3200 4626 50  0000 C CNN
 F 2 "" H 2250 4250 50  0001 C CNN
 F 3 " ~" H 2250 4250 50  0001 C CNN
