@@ -53,7 +53,7 @@ and can have any foreground and background colour from the supported set:
 
 The text buffer takes up `48 x 36 x 2 = 3,456` bytes of SRAM.
 
-The built-in front is taken from [FreeBSD](http://web.mit.edu/freebsd/head/share/syscons/fonts/cp850-8x16.fnt).
+The built-in font is taken from [FreeBSD](http://web.mit.edu/freebsd/head/share/syscons/fonts/cp850-8x16.fnt).
 
 Finally, the display is framed with an 8 pixel border at the sides and a 12
 pixel border at the top and bottom, to make everything fit neatly and to help
