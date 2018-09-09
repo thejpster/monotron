@@ -35,7 +35,7 @@
 //! * SSI0Fss for Keyboard Chip Select on PA3 / 2.09.
 //! * SSI0Rx for Keyboard Data on PA4 / 2.08
 //! * Timer1 Channel A PB4 is H-Sync
-//! * GPIO PC4 is V-Sync
+//! * GPIO PB5 is V-Sync
 
 #![no_main]
 #![feature(asm)]
@@ -199,7 +199,6 @@ fn main() -> ! {
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
-    let portc = p.GPIO_PORTC.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     let mut portf = p.GPIO_PORTF.split(&sc.power_control);
 
@@ -208,7 +207,7 @@ fn main() -> ! {
         .pb4
         .into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
-    let _v_sync = portc.pc4.into_push_pull_output();
+    let _v_sync = portb.pb5.into_push_pull_output();
     // Ssi1Tx
     let _red_data = portf
         .pf1
@@ -452,14 +451,14 @@ impl fb::Hardware for VideoHardware {
 
     /// Called when V-Sync needs to be high.
     fn vsync_on(&mut self) {
-        let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTC::ptr() };
-        unsafe { bb::change_bit(&gpio.data, 4, true) };
+        let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTB::ptr() };
+        unsafe { bb::change_bit(&gpio.data, 5, true) };
     }
 
     /// Called when V-Sync needs to be low.
     fn vsync_off(&mut self) {
-        let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTC::ptr() };
-        unsafe { bb::change_bit(&gpio.data, 4, false) };
+        let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTB::ptr() };
+        unsafe { bb::change_bit(&gpio.data, 5, false) };
     }
 
     /// Write pixels straight to FIFOs
