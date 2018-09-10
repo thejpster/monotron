@@ -3,7 +3,7 @@ use menu;
 use asm;
 use fb::Console;
 use core::fmt::Write;
-use super::{Context, FRAMEBUFFER};
+use super::{Context, FRAMEBUFFER, APPLICATION_RAM};
 
 mod rust_logo;
 
@@ -52,6 +52,18 @@ const ITEM_DUMP: Item = Item {
     help: Some("<addr> <bytes> - Dump RAM/ROM."),
 };
 
+const ITEM_LOAD: Item = Item {
+    item_type: menu::ItemType::Callback(load_file),
+    command: "load",
+    help: Some("<len> - Load program from UART."),
+};
+
+const ITEM_RUN: Item = Item {
+    item_type: menu::ItemType::Callback(run_program),
+    command: "run",
+    help: Some("Run loaded program."),
+};
+
 pub(crate) const ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -62,6 +74,8 @@ pub(crate) const ROOT_MENU: Menu = Menu {
         &ITEM_PEEK,
         &ITEM_POKE,
         &ITEM_DUMP,
+        &ITEM_LOAD,
+        &ITEM_RUN,
     ],
     entry: None,
     exit: None,
@@ -552,6 +566,16 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
     } else {
         writeln!(context, "Missing or bad address.").unwrap();
     }
+}
+
+/// Reads raw binary from the UART and dumps it into application RAM.
+fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+    unimplemented!();
+}
+
+/// Runs a program from application RAM, then returns.
+fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+    unimplemented!();
 }
 
 fn flip_byte(mut b: u8) -> u8 {
