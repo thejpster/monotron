@@ -767,6 +767,13 @@ extern "C" fn wfvbi(_raw_ctx: *mut Context) {
 
 }
 
+extern "C" fn kbhit(raw_ctx: *mut Context) -> i32 {
+    let ctx = unsafe {
+        &mut *raw_ctx
+    };
+    ctx.has_char() as i32
+}
+
 /// Runs a program from application RAM, then returns.
 fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     unsafe {
@@ -777,22 +784,31 @@ fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Conte
         writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
 
         // struct callbacks_t {
+        //     void* p_context;
         //     int32_t(*putchar)(char ch);
         //     int32_t(*puts)(const char*);
         //     int32_t(*readc)(void* p_context);
         //     int32_t(*wfvbi)(void* p_context);
-        //     void* p_context;
+        //     int32_t(*kbhit)(void* p_context);
         // };
 
         #[repr(C)]
         struct Table {
+            context: *mut Context,
             putchar: extern "C" fn(*mut Context, u8) -> i32,
             puts: extern "C" fn(*mut Context, *const u8) -> i32,
             readc: extern "C" fn(*mut Context) -> i32,
             wfvbi: extern "C" fn(*mut Context),
-            context: *mut Context
+            kbhit: extern "C" fn(*mut Context) -> i32,
         }
-        let t = Table { putchar, puts, readc, wfvbi, context: context as *mut Context };
+        let t = Table {
+            context: context as *mut Context,
+            putchar,
+            puts,
+            readc,
+            wfvbi,
+            kbhit,
+        };
         let ptr = addr as *const ();
         let code: extern "C" fn(*const Table) -> u32 = ::core::mem::transmute(ptr);
         let result = code(&t);

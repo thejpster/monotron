@@ -91,6 +91,7 @@ struct Context {
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
     spi: tm4c123x_hal::tm4c123x::SSI0,
+    buffered_char: Option<Input>
 }
 
 enum Input {
@@ -109,10 +110,31 @@ impl Context {
         }
     }
 
+    fn has_char(&mut self) -> bool {
+        let try = self.read();
+        if try.is_some() {
+            self.buffered_char = try;
+            true
+        } else {
+            false
+        }
+    }
+
     fn read(&mut self) -> Option<Input> {
+        if self.buffered_char.is_some() {
+            let mut x = None;
+            core::mem::swap(&mut self.buffered_char, &mut x);
+            return x;
+        }
         if let Ok(ch) = self.rx.read() {
             // Got some serial input
-            Some(Input::Utf8(ch))
+            // Backspace key in screen seems to generate 0x7F (delete).
+            // Map it to backspace (0x08)
+            if ch == 0x7F {
+                Some(Input::Utf8(0x08))
+            } else {
+                Some(Input::Utf8(ch))
+            }
         } else {
             let key = if let Some(word) = self.keyboard_read() {
                 // Got something in the keyboard buffer
@@ -300,6 +322,7 @@ fn main() -> ! {
         rx,
         keyboard,
         spi: keyboard_spi,
+        buffered_char: None,
     };
 
     unsafe {
@@ -345,13 +368,7 @@ fn main() -> ! {
                 }
             }
             Some(Input::Utf8(octet)) => {
-                // Backspace key in screen seems to generate 0x7F (delete).
-                // Map it to backspace (0x08)
-                if octet == 0x7F {
-                    r.input_byte(0x08);
-                } else {
-                    r.input_byte(octet);
-                }
+                r.input_byte(octet);
             }
             Some(Input::Special(code)) => {
                 // Can't handle special chars yet
