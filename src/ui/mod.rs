@@ -1,9 +1,9 @@
-use super::{Context, APPLICATION_RAM, FRAMEBUFFER};
+use super::{Context, Input, APPLICATION_RAM, FRAMEBUFFER};
 use asm;
 use core::fmt::Write;
 use embedded_hal::prelude::*;
 use fb;
-use fb::Console;
+use fb::{BaseConsole, AsciiConsole};
 use menu;
 
 mod rust_logo;
@@ -714,25 +714,57 @@ fn debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Contex
     let app_addr = unsafe { &APPLICATION_RAM as *const _ } as usize;
     writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
     writeln!(context, "Application: 0x{:08x}", app_addr).unwrap();
+    let temp = context.spi.cr0.read();
+    writeln!(context, "SPI CR0: 0x{:08x}", temp.bits()).unwrap();
+    let temp = context.spi.cr1.read();
+    writeln!(context, "SPI CR1: 0x{:08x}", temp.bits()).unwrap();
+    let temp = context.spi.sr.read();
+    writeln!(context, "SPI Status: 0x{:08x}", temp.bits()).unwrap();
 }
 
-extern "C" fn puts(s: *const u8) -> u32 {
+extern "C" fn puts(_raw_ctx: *mut Context, s: *const u8) -> i32 {
     let mut i = 0;
     unsafe {
         while *s.offset(i) != 0 {
             let ch: u8 = *s.offset(i);
-            FRAMEBUFFER.write_glyph(fb::Char::from_byte(ch), None);
+            FRAMEBUFFER.write_character(ch).unwrap();
             i += 1;
         }
     }
     0
 }
 
-extern "C" fn putc(ch: u32) -> u32 {
-    if ch != 0 && ch <= 255 {
-        unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(ch as u8), None) };
+extern "C" fn putchar(_raw_ctx: *mut Context, ch: u8) -> i32 {
+    unsafe { FRAMEBUFFER.write_character(ch).unwrap() };
+    ch as i32
+}
+
+extern "C" fn readc(raw_ctx: *mut Context) -> i32 {
+    let ctx = unsafe {
+        &mut *raw_ctx
+    };
+    loop {
+        match ctx.read() {
+            None => {
+                asm::wfi();
+            }
+            Some(Input::Unicode(_unicode_char)) => {
+                // TODO: Handle keyboard input
+                asm::wfi();
+            }
+            Some(Input::Special(_scancode)) => {
+                // TODO: Handle keyboard input
+                asm::wfi();
+            }
+            Some(Input::Utf8(ch)) => {
+                return ch as i32;
+            }
+        }
     }
-    0
+}
+
+extern "C" fn wfvbi(_raw_ctx: *mut Context) {
+
 }
 
 /// Runs a program from application RAM, then returns.
@@ -743,12 +775,24 @@ fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Conte
             | ((APPLICATION_RAM[1] as u32) << 8)
             | ((APPLICATION_RAM[0] as u32) << 0);
         writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
+
+        // struct callbacks_t {
+        //     int32_t(*putchar)(char ch);
+        //     int32_t(*puts)(const char*);
+        //     int32_t(*readc)(void* p_context);
+        //     int32_t(*wfvbi)(void* p_context);
+        //     void* p_context;
+        // };
+
         #[repr(C)]
         struct Table {
-            putc: extern "C" fn(u32) -> u32,
-            puts: extern "C" fn(*const u8) -> u32,
+            putchar: extern "C" fn(*mut Context, u8) -> i32,
+            puts: extern "C" fn(*mut Context, *const u8) -> i32,
+            readc: extern "C" fn(*mut Context) -> i32,
+            wfvbi: extern "C" fn(*mut Context),
+            context: *mut Context
         }
-        let t = Table { putc, puts };
+        let t = Table { putchar, puts, readc, wfvbi, context: context as *mut Context };
         let ptr = addr as *const ();
         let code: extern "C" fn(*const Table) -> u32 = ::core::mem::transmute(ptr);
         let result = code(&t);
