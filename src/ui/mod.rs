@@ -1,10 +1,10 @@
-use fb;
-use menu;
+use super::{Context, APPLICATION_RAM, FRAMEBUFFER};
 use asm;
-use fb::Console;
 use core::fmt::Write;
-use super::{Context, FRAMEBUFFER, APPLICATION_RAM};
 use embedded_hal::prelude::*;
+use fb;
+use fb::Console;
+use menu;
 
 mod rust_logo;
 
@@ -91,7 +91,7 @@ pub(crate) const ROOT_MENU: Menu = Menu {
 
 struct Fire {
     seed: u32,
-    buffer: [u32; Fire::FLAME_BUFFER_LEN]
+    buffer: [u32; Fire::FLAME_BUFFER_LEN],
 }
 
 /// The test menu item - displays all the glyphs in all the colour combinations
@@ -118,7 +118,10 @@ fn test_alphabet<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Con
         if new_frame != old_frame {
             old_frame = new_frame;
             unsafe {
-                FRAMEBUFFER.write_glyph(fb::Char::from_byte(ch), Some(fb::Attr::new(*fg.unwrap(), *bg.unwrap())));
+                FRAMEBUFFER.write_glyph(
+                    fb::Char::from_byte(ch),
+                    Some(fb::Attr::new(*fg.unwrap(), *bg.unwrap())),
+                );
             }
             fg = fg_wheel.next();
             if ch == 255 {
@@ -142,7 +145,9 @@ fn test_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Conte
 
 /// Display some art
 fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    unsafe { FRAMEBUFFER.clear(); }
+    unsafe {
+        FRAMEBUFFER.clear();
+    }
     write!(context, "SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
     write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
     write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
@@ -257,8 +262,6 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
         }
     }
 
-
-
     write!(context, "\u{001b}Z\u{001b}Y\u{001b}k╔════════════════════════\u{001b}W[MonotronPaint]\u{001b}Y═══════╗").unwrap();
     write!(context, "║\u{001b}W┌[Font]──────────┐┌──────────────────────────┐\u{001b}Y║").unwrap();
     write!(context, "║\u{001b}W│ ☺☻♥♦♣♠•◘○◙♂♀♪♫☼││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
@@ -303,9 +306,11 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
         }
     }
 
-    let mode2_buffer = unsafe { &mut super::APPLICATION_RAM[0..384*288/8] };
+    let mode2_buffer = unsafe { &mut super::APPLICATION_RAM[0..384 * 288 / 8] };
 
-    unsafe { FRAMEBUFFER.clear(); }
+    unsafe {
+        FRAMEBUFFER.clear();
+    }
 
     for (src, dest) in rust_logo::RUST_LOGO_DATA
         .iter()
@@ -319,7 +324,9 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
     // Attach a graphical buffer at a scan-line. It is interpreted as
     // being a grid 48 bytes wide and as long as given. Each line
     // is output twice. We've attached it to the first scan-line.
-    unsafe { FRAMEBUFFER.mode2(mode2_buffer, 0); }
+    unsafe {
+        FRAMEBUFFER.mode2(mode2_buffer, 0);
+    }
     let mut start = 0;
     let mut up = true;
 
@@ -339,7 +346,9 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
                     up = true;
                 }
             }
-            unsafe { FRAMEBUFFER.mode2_shift(start); }
+            unsafe {
+                FRAMEBUFFER.mode2_shift(start);
+            }
             next_frame = this_frame + 1;
         }
         if let Some(_input) = context.read() {
@@ -347,7 +356,9 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
         }
     }
 
-    unsafe { FRAMEBUFFER.mode2_release(); }
+    unsafe {
+        FRAMEBUFFER.mode2_release();
+    }
 
     write!(context, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
     write!(context, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
@@ -370,22 +381,31 @@ fn test_art<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context)
             Some(95) => {
                 for col in 13..=21 {
                     pos.col = fb::Col(col);
-                    unsafe { FRAMEBUFFER.set_attr_at(pos, fb::Attr::new(fb::Colour::Blue, fb::Colour::Black)); }
+                    unsafe {
+                        FRAMEBUFFER
+                            .set_attr_at(pos, fb::Attr::new(fb::Colour::Blue, fb::Colour::Black));
+                    }
                 }
             }
             Some(101) => {
                 for col in 13..=21 {
                     pos.col = fb::Col(col);
-                    unsafe { FRAMEBUFFER.set_attr_at(pos, fb::Attr::new(fb::Colour::White, fb::Colour::Black)); }
+                    unsafe {
+                        FRAMEBUFFER
+                            .set_attr_at(pos, fb::Attr::new(fb::Colour::White, fb::Colour::Black));
+                    }
                 }
             }
             Some(104) => {
                 for col in 13..=21 {
                     pos.col = fb::Col(col);
-                    unsafe { FRAMEBUFFER.set_attr_at(pos, fb::Attr::new(fb::Colour::Red, fb::Colour::Black)); }
+                    unsafe {
+                        FRAMEBUFFER
+                            .set_attr_at(pos, fb::Attr::new(fb::Colour::Red, fb::Colour::Black));
+                    }
                 }
             }
-            _ => {},
+            _ => {}
         }
         if let Some(_input) = context.read() {
             writeln!(context, "\u{001b}W\u{001b}k\u{001b}ZOk...").unwrap();
@@ -403,7 +423,7 @@ impl Fire {
     fn new() -> Fire {
         Fire {
             seed: 123456789,
-            buffer: [0u32; Self::FLAME_BUFFER_LEN]
+            buffer: [0u32; Self::FLAME_BUFFER_LEN],
         }
     }
 
@@ -421,16 +441,20 @@ impl Fire {
             Char::LatinSmallLetterS,
             Char::LatinCapitalLetterS,
             Char::NumberSign,
-            Char::DollarSign
+            Char::DollarSign,
         ];
         // Seed the fire on the last line
         for _i in 0..5 {
-            let idx = (Self::WIDTH*(Self::HEIGHT-1)) + self.random_up_to(Self::WIDTH as u32) as usize;
+            let idx =
+                (Self::WIDTH * (Self::HEIGHT - 1)) + self.random_up_to(Self::WIDTH as u32) as usize;
             self.buffer[idx] = 65;
         }
         // Cascade the flames
         for i in 0..Self::SIZE {
-            self.buffer[i] = (self.buffer[i] + self.buffer[i+1] + self.buffer[i+Self::WIDTH] + self.buffer[i+Self::WIDTH+1]) / 4;
+            self.buffer[i] = (self.buffer[i]
+                + self.buffer[i + 1]
+                + self.buffer[i + Self::WIDTH]
+                + self.buffer[i + Self::WIDTH + 1]) / 4;
             let colour = if self.buffer[i] > 15 {
                 fb::Colour::Blue
             } else if self.buffer[i] > 9 {
@@ -445,7 +469,10 @@ impl Fire {
             } else {
                 CHARS[self.buffer[i] as usize]
             };
-            let pos = fb::Position::new(fb::Row(((i / Self::WIDTH) as u8) + 16), fb::Col((i % Self::WIDTH) as u8));
+            let pos = fb::Position::new(
+                fb::Row(((i / Self::WIDTH) as u8) + 16),
+                fb::Col((i % Self::WIDTH) as u8),
+            );
             fb.write_glyph_at(glyph, pos, Some(fb::Attr::new(colour, fb::Colour::Black)));
         }
     }
@@ -479,7 +506,8 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
     let height = unsafe { FRAMEBUFFER.get_height() };
     let input = input.trim_left_matches("animate ");
     let num_chars = input.chars().count();
-    let attr = unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Black, fb::Colour::Yellow)) };
+    let attr =
+        unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Black, fb::Colour::Yellow)) };
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
@@ -523,21 +551,34 @@ fn test_animation<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Con
 fn item_peek<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
     let mut parts = input.split_whitespace();
     parts.next();
-    if let Some(addr) = parts.next().map_or(None, |p| usize::from_str_radix(p, 16).ok()) {
+    if let Some(addr) = parts
+        .next()
+        .map_or(None, |p| usize::from_str_radix(p, 16).ok())
+    {
         unsafe {
             let data = ::core::ptr::read_volatile(addr as *const u32);
             writeln!(context, "Addr 0x{:08x} is 0x{:08x}", addr, data).unwrap();
         }
     } else {
-        writeln!(context, "Bad address {:?}. Enter hex, without the 0x prefix..", input).unwrap();
+        writeln!(
+            context,
+            "Bad address {:?}. Enter hex, without the 0x prefix..",
+            input
+        ).unwrap();
     }
 }
 
 fn item_poke<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
     let mut parts = input.split_whitespace();
     parts.next();
-    if let Some(addr) = parts.next().map_or(None, |p| usize::from_str_radix(p, 16).ok()) {
-        if let Some(value) = parts.next().map_or(None, |p| u32::from_str_radix(p, 16).ok()) {
+    if let Some(addr) = parts
+        .next()
+        .map_or(None, |p| usize::from_str_radix(p, 16).ok())
+    {
+        if let Some(value) = parts
+            .next()
+            .map_or(None, |p| u32::from_str_radix(p, 16).ok())
+        {
             writeln!(context, "Poking 0x{:08x} to addr 0x{:08x}...", value, addr).unwrap();
             unsafe {
                 ::core::ptr::write_volatile(addr as *mut u32, value);
@@ -553,9 +594,19 @@ fn item_poke<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
     let mut parts = input.split_whitespace();
     parts.next();
-    if let Some(mut addr) = parts.next().map_or(None, |p| usize::from_str_radix(p, 16).ok()) {
-        if let Some(count) = parts.next().map_or(None, |p| u32::from_str_radix(p, 16).ok()) {
-            writeln!(context, "Dumping 0x{:08x} bytes from 0x{:08x}...", count, addr).unwrap();
+    if let Some(mut addr) = parts
+        .next()
+        .map_or(None, |p| usize::from_str_radix(p, 16).ok())
+    {
+        if let Some(count) = parts
+            .next()
+            .map_or(None, |p| u32::from_str_radix(p, 16).ok())
+        {
+            writeln!(
+                context,
+                "Dumping 0x{:08x} bytes from 0x{:08x}...",
+                count, addr
+            ).unwrap();
             for i in 0..count {
                 let data = unsafe { ::core::ptr::read_volatile(addr as *const u8) };
                 write!(context, "{:02x}", data).unwrap();
@@ -590,7 +641,7 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
         let ch = loop {
             match context.rx.read() {
                 Ok(x) => break x,
-                _ => {},
+                _ => {}
             }
         };
         let mut byte = match ch {
@@ -621,7 +672,7 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
         let ch = loop {
             match context.rx.read() {
                 Ok(x) => break x,
-                _ => {},
+                _ => {}
             }
         };
         byte |= match ch {
@@ -687,17 +738,17 @@ extern "C" fn putc(ch: u32) -> u32 {
 /// Runs a program from application RAM, then returns.
 fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     unsafe {
-        let addr = ((APPLICATION_RAM[3] as u32) << 24) | ((APPLICATION_RAM[2] as u32) << 16) | ((APPLICATION_RAM[1] as u32) << 8) | ((APPLICATION_RAM[0] as u32) << 0);
+        let addr = ((APPLICATION_RAM[3] as u32) << 24)
+            | ((APPLICATION_RAM[2] as u32) << 16)
+            | ((APPLICATION_RAM[1] as u32) << 8)
+            | ((APPLICATION_RAM[0] as u32) << 0);
         writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
         #[repr(C)]
         struct Table {
             putc: extern "C" fn(u32) -> u32,
             puts: extern "C" fn(*const u8) -> u32,
         }
-        let t = Table {
-            putc,
-            puts,
-        };
+        let t = Table { putc, puts };
         let ptr = addr as *const ();
         let code: extern "C" fn(*const Table) -> u32 = ::core::mem::transmute(ptr);
         let result = code(&t);

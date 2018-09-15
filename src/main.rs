@@ -44,10 +44,10 @@
 extern crate cortex_m;
 #[macro_use]
 extern crate cortex_m_rt;
-extern crate embedded_hal;
-extern crate panic_semihosting;
 extern crate cortex_m_semihosting;
+extern crate embedded_hal;
 extern crate menu;
+extern crate panic_semihosting;
 extern crate pc_keyboard;
 #[macro_use]
 extern crate tm4c123x_hal;
@@ -57,8 +57,8 @@ mod ui;
 
 use core::fmt::Write;
 use cortex_m::asm;
-use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::bb;
+use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
 use tm4c123x_hal::sysctl;
 
@@ -68,7 +68,7 @@ const ISR_LATENCY: u32 = 94;
 
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
-static mut APPLICATION_RAM: [u8; 24*1024] = [0u8; 24*1024];
+static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
@@ -90,15 +90,14 @@ struct Context {
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
-    spi: tm4c123x_hal::tm4c123x::SSI0
+    spi: tm4c123x_hal::tm4c123x::SSI0,
 }
 
 enum Input {
     Unicode(char),
     Special(pc_keyboard::KeyCode),
-    Utf8(u8)
+    Utf8(u8),
 }
-
 
 impl Context {
     fn keyboard_read(&mut self) -> Option<u16> {
@@ -186,8 +185,8 @@ fn main() -> ! {
     // Priorities go from 0*16 (most urgent) to 15*16 (least urgent)
     // EEE trying with keyboard higher than video
     unsafe {
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 8*16);
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1B, 4*16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 8 * 16);
+        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1B, 4 * 16);
         // nvic.set_priority(tm4c123x_hal::Interrupt::GPIOD, 3*16);
     }
 
@@ -223,9 +222,21 @@ fn main() -> ! {
 
     // Keyboard produces 5V but the chip is 5V tolerant on inputs. We set them
     // floating as we have external pull-ups to 5V.
-    let _keyboard_clock = porta.pa2.into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(&mut porta.control);
-    let _keyboard_select = porta.pa3.into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(&mut porta.control);
-    let _keyboard_data = porta.pa4.into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(&mut porta.control);
+    let _keyboard_clock = porta
+        .pa2
+        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
+            &mut porta.control,
+        );
+    let _keyboard_select = porta
+        .pa3
+        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
+            &mut porta.control,
+        );
+    let _keyboard_data = porta
+        .pa4
+        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
+            &mut porta.control,
+        );
     let keyboard_spi = p.SSI0;
 
     // Configure the keyboard interface
@@ -239,7 +250,9 @@ fn main() -> ! {
     // >> cannot be faster than 6.67 MHz."
     // Typical keyboard clock is 10 to 20 kHz
     // Host must sample data after falling clock edge
-    keyboard_spi.cpsr.write(|w| unsafe { w.cpsdvsr().bits(160) });
+    keyboard_spi
+        .cpsr
+        .write(|w| unsafe { w.cpsdvsr().bits(160) });
     // Configure to receive 11 bits, Freescale (moto) mode SPO=0, SPH=1
     keyboard_spi.cr0.write(|w| {
         w.dss()._11();
@@ -282,7 +295,12 @@ fn main() -> ! {
     let (mut _tx, rx) = uart.split();
 
     let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
-    let mut c = Context { value: 0, rx, keyboard, spi: keyboard_spi };
+    let mut c = Context {
+        value: 0,
+        rx,
+        keyboard,
+        spi: keyboard_spi,
+    };
 
     unsafe {
         FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
@@ -319,7 +337,7 @@ fn main() -> ! {
         // Wait for new UTF-8 input
         match r.context.read() {
             Some(Input::Unicode(ch)) => {
-              let mut char_as_bytes: [u8; 4] = [0u8; 4];
+                let mut char_as_bytes: [u8; 4] = [0u8; 4];
                 // Our menu takes UTF-8 chars for serial compatibility,
                 // so convert our Unicode to UTF8 bytes
                 for octet in ch.encode_utf8(&mut char_as_bytes).bytes() {
@@ -339,7 +357,7 @@ fn main() -> ! {
                 // Can't handle special chars yet
                 writeln!(r.context, "Special char {:?}", code).unwrap();
             }
-            None => {},
+            None => {}
         }
     }
 }
@@ -357,9 +375,15 @@ impl fb::Hardware for VideoHardware {
         // SCR = 0 --------------------^
         let ratio = 80_000_000 / clock_rate;
         // For all sensible divisors of 80 MHz, we want SCR = 0.
-        self.red_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
-        self.blue_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
-        self.green_ch.cpsr.write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        self.red_ch
+            .cpsr
+            .write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        self.blue_ch
+            .cpsr
+            .write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        self.green_ch
+            .cpsr
+            .write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
         self.red_ch.cr0.write(|w| {
             w.dss()._8();
             w.frf().moto();
@@ -426,9 +450,9 @@ impl fb::Hardware for VideoHardware {
         self.h_timer
             .tamatchr
             .modify(|_, w| unsafe { w.bits(multiplier * (width - sync_end) - 1) });
-        self.h_timer
-            .tbmatchr
-            .modify(|_, w| unsafe { w.bits((multiplier * (width - line_start)) + ISR_LATENCY - 1) });
+        self.h_timer.tbmatchr.modify(|_, w| unsafe {
+            w.bits((multiplier * (width - line_start)) + ISR_LATENCY - 1)
+        });
         self.h_timer.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires at start of line
             w.cbeim().set_bit(); // Timer1B fires at start of data
@@ -466,8 +490,7 @@ impl fb::Hardware for VideoHardware {
         let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
         let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
         let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
-        while (ssi_r.sr.read().bits() & 0x02) == 0 {
-        }
+        while (ssi_r.sr.read().bits() & 0x02) == 0 {}
         ssi_r.dr.write(|w| unsafe { w.bits(red) });
         ssi_g.dr.write(|w| unsafe { w.bits(green) });
         ssi_b.dr.write(|w| unsafe { w.bits(blue) });
@@ -501,9 +524,9 @@ interrupt!(TIMER1B, timer1b);
 /// Called on start of pixel data (end of back porch)
 fn timer1b() {
     unsafe {
-    /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
-    /// gets the colour video lined up, as we preload the red channel with 0x00
-    /// 0x00 and the green channel with 0x00.
+        /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
+        /// gets the colour video lined up, as we preload the red channel with 0x00
+        /// 0x00 and the green channel with 0x00.
         asm!(
             "movs    r0, #132;
             movs    r1, #1;
@@ -583,7 +606,6 @@ fn timer1b() {
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
 }
-
 
 // define the hard fault handler
 exception!(HardFault, hard_fault);
