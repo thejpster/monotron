@@ -101,9 +101,9 @@ enum Input {
 
 impl Context {
     fn keyboard_read(&mut self) -> Option<u16> {
-        let word = self.spi.dr.read().bits() as u16;
-        if word != 0 {
-            Some(word)
+        if self.spi.sr.read().rne().bit_is_set() {
+            let data = self.spi.dr.read().bits() as u16;
+            Some(data)
         } else {
             None
         }
