@@ -3,9 +3,9 @@
 import serial
 import sys
 import time
-file = sys.argv[1]
+file = sys.argv[2]
 contents = open(file, "rb").read()
-s = serial.Serial("/dev/ttyACM0", 115200)
+s = serial.Serial(sys.argv[1], 115200)
 s.write("\rload\r".format(len(contents)).encode("ascii"))
 for b in contents:
 	hex = "{:02x}".format(b)
@@ -13,5 +13,7 @@ for b in contents:
 	sys.stdout.write(hex)
 	sys.stdout.flush()
 	time.sleep(0.001)
-s.write(b"\rrun\r")
+s.write(b"\r")
+if "--run" in sys.argv:
+	s.write(b"run\r")
 print("Done!\n")
