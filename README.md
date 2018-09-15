@@ -110,7 +110,7 @@ To exit GDB, you may need to press Ctrl-C multiple times, as it seems it can get
 
 Your VGA connector requires five wires:
 
-* Pin 1: Red - connect to PA5 via a resistive divider.
+* Pin 1: Red - connect to PF1 via a resistive divider.
 * Pin 2: Green - connect to PB7 via a resistive divider.
 * Pin 3: Blue - connect to PD3 via a resistive divider.
 * Pin 5: Ground - connect to GND
@@ -118,7 +118,7 @@ Your VGA connector requires five wires:
 * Pin 7: Green Return - connect to GND
 * Pin 8: Blue Return - connect to GND
 * Pin 13: H-Sync - connect to PB4
-* Pin 14: V-Sync - connect to PC4
+* Pin 14: V-Sync - connect to PB5
 
 The resistive divider needs to drop the 3.3V output down to 0.7V. Some
 monitors are more tolerant of over voltage than others. In a perfect world,
@@ -161,12 +161,33 @@ the blue and red channels in exactly the same fashion.
 
 ### PS/2 Keyboard
 
-PS/2 keyboard support is mostly working. See the [pc-
-keyboard](https://github.com/thejpster/pc-keyboard) crate. Any UK 102-key or
-105-key keyboard should work. Be aware though, there's clearly an issue with
-the interrupt handling as about 10% of keystrokes get corrupted. Currently
-this displays an error on the screen, or perhaps as a double character when
-you only pressed a key once. I'm hoping to improve it.
+PS/2 keyboard support is mostly working, but consider it alpha grade. See the
+[pc- keyboard](https://github.com/thejpster/pc-keyboard) crate. Any UK 102-key
+or 105-key keyboard should work - support for other layouts welcome as a PR!
+
+Be aware, there's clearly an issue with the interrupt handling as about 10% of
+keystrokes get corrupted. Currently this displays an error on the screen, or
+perhaps as a double character when you only pressed a key once. I'm hoping to
+improve it.
+
+The pinout is:
+
+* +CLK: PA2
+* +DATA: PA4
+* Ground: GND
+* Vcc: 5V
+
+Tie PA3 (Keyboard Chip Select) to Ground.
+
+PS/2 keyboards have 5V I/O. It's specified as open-collector but keyboards
+sometimes contain internal pull-up resistors to 5V. All of the LM4F120/TM4C123
+I/O pins are 5V tolerant when in input mode (except PB0, PB1, PD4, PD5). You
+should probably add a 10k pull-up resistor to 5V on both +CLK and +DATA just
+in case your keyboard hasn't got one.
+
+Monotron currently doesn't support talking back to the keyboard (e.g. to turn
+the SCROLL, NUM and CAPS-LOCK lights on)- to do so would probably require more
+robust interface circuitry.
 
 ### UART
 
@@ -185,6 +206,7 @@ use 'exit' to return to the previous menu.
 
 ## Changelog
 
+* Version 0.6.0 - Changed pinout to move PS/2 keyboard to SPI interface
 * Version 0.5.0 - Added 1bpp graphics mode.
 * Version 0.4.0 - Added PS/2 keyboard support.
 * Version 0.3.0 - Backspace works.
