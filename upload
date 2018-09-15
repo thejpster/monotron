@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+
+import serial
+import sys
+import time
+file = sys.argv[1]
+contents = open(file, "rb").read()
+s = serial.Serial("/dev/ttyACM0", 115200)
+s.write("\rload\r".format(len(contents)).encode("ascii"))
+for b in contents:
+	hex = "{:02x}".format(b)
+	s.write(hex.encode("ascii"))
+	sys.stdout.write(hex)
+	sys.stdout.flush()
+	time.sleep(0.001)
+s.write(b"\rrun\r")
+print("Done!\n")

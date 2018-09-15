@@ -288,7 +288,7 @@ fn main() -> ! {
         FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
         FRAMEBUFFER.clear();
         // Prevent block being removed by the linker
-        core::ptr::write_volatile(&mut APPLICATION_RAM[0], 0xAA);
+        core::ptr::write_volatile(&mut APPLICATION_RAM[0], 0x00);
     }
 
     write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
