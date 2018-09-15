@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+import serial
+import sys
+import time
+file = sys.argv[2]
+contents = open(file, "rb").read()
+s = serial.Serial(sys.argv[1], 115200)
+for b in contents:
+	byte = bytes([b])
+	print("Byte: {!r}".format(byte))
+	s.write(byte)
+	time.sleep(0.001)
+print("Done!\n")
