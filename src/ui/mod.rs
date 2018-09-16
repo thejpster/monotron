@@ -704,7 +704,6 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
             APPLICATION_RAM[i] = byte;
         }
         i = i + 1;
-        write!(context, ".").unwrap();
     }
 }
 
