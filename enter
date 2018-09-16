@@ -10,5 +10,5 @@ for b in contents:
 	byte = bytes([b])
 	print("Byte: {!r}".format(byte))
 	s.write(byte)
-	time.sleep(0.001)
+	time.sleep(0.01)
 print("Done!\n")
