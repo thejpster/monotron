@@ -39,12 +39,12 @@ $EndComp
 $Comp
 L Device:R R1
 U 1 1 5B883EA4
-P 4700 3500
-F 0 "R1" V 4907 3500 50  0000 C CNN
-F 1 "330" V 4816 3500 50  0000 C CNN
-F 2 "Resistors_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 4630 3500 50  0001 C CNN
-F 3 "~" H 4700 3500 50  0001 C CNN
-	1    4700 3500
+P 4700 2150
+F 0 "R1" V 4907 2150 50  0000 C CNN
+F 1 "330" V 4816 2150 50  0000 C CNN
+F 2 "Resistors_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 4630 2150 50  0001 C CNN
+F 3 "~" H 4700 2150 50  0001 C CNN
+	1    4700 2150
 	0    -1   -1   0   
 $EndComp
 $Comp
@@ -70,17 +70,7 @@ F 3 " ~" H 2250 4250 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	5300 3500 4850 3500
-Wire Wire Line
-	4400 3500 4400 2800
-Wire Wire Line
-	2600 2800 2600 3450
-Wire Wire Line
 	2600 3450 2900 3450
-Wire Wire Line
-	4550 3500 4400 3500
-Wire Wire Line
-	2600 2800 4400 2800
 Wire Wire Line
 	5300 4300 4850 4300
 Wire Wire Line
@@ -131,14 +121,6 @@ Connection ~ 2050 3750
 Wire Wire Line
 	2050 3750 2050 4250
 Wire Wire Line
-	7200 3300 7450 3300
-Wire Wire Line
-	7450 3300 7450 2350
-Wire Wire Line
-	7450 2350 4150 2350
-Wire Wire Line
-	4150 2350 4150 4050
-Wire Wire Line
 	4150 4050 3500 4050
 Wire Wire Line
 	5300 3400 5050 3400
@@ -146,4 +128,18 @@ Wire Wire Line
 	5050 3400 5050 3850
 Wire Wire Line
 	3500 3850 5050 3850
+Wire Wire Line
+	7200 3800 7650 3800
+Wire Wire Line
+	7650 3800 7650 2150
+Wire Wire Line
+	7650 2150 4850 2150
+Wire Wire Line
+	2600 2150 4550 2150
+Wire Wire Line
+	2600 2150 2600 3450
+Wire Wire Line
+	5300 2900 4150 2900
+Wire Wire Line
+	4150 2900 4150 4050
 $EndSCHEMATC
