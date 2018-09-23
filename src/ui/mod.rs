@@ -704,7 +704,6 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
             APPLICATION_RAM[i] = byte;
         }
         i = i + 1;
-        write!(context, ".").unwrap();
     }
 }
 
@@ -764,7 +763,14 @@ extern "C" fn readc(raw_ctx: *mut Context) -> i32 {
 }
 
 extern "C" fn wfvbi(_raw_ctx: *mut Context) {
-
+    let old_frame = unsafe { FRAMEBUFFER.frame() };
+    loop {
+        asm::wfi();
+        let new_frame = unsafe { FRAMEBUFFER.frame() };
+        if new_frame != old_frame {
+            break;
+        }
+    }
 }
 
 extern "C" fn kbhit(raw_ctx: *mut Context) -> i32 {

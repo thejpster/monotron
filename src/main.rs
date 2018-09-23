@@ -1,6 +1,6 @@
 //! # Monotron
 //!
-//! > A simple 1980's home computer style application for the Stellaris Launchpad
+//! > A simple 1980's home computer style application for the Tiva-C Launchpad
 //!
 //! See README.md for more details.
 //!

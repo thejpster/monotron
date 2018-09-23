@@ -1,14 +1,14 @@
 # Monotron.
 
-> A simple 1980's home computer style application for the Stellaris Launchpad
+> A simple 1980's home computer style application for the Tiva-C Launchpad
 
 ## Introduction
 
-Monotron is powered by a Texas Instruments LM4F120 microcontroller, containing
+Monotron is powered by a Texas Instruments TM4C123 microcontroller, containing
 an ARM Cortex-M4 core and a number of peripherals. This processor was chosen
-because it is available on an inexpensive dev-kit - the Stellaris Launchpad -
-and I happened to have some lying around. The challenge I set myself was, how
-much can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
+because it is available on an inexpensive dev-kit - the Tiva-C Launchpad - and
+I happened to have some lying around. The challenge I set myself was, how much
+can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 
 ![YouTube screenshot of a video of Monotron](screenshot.jpg "Monotron on Youtube")
 [See Monotron in Action!](https://www.youtube.com/watch?v=7x_92PXKSN4)
@@ -27,11 +27,12 @@ much can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 ## Video
 
 Monotron generates an 800x600 VGA video signal at 60 Hz using three SPI
-peripherals and a timer to generate the horizontal sync signals. It can
-do this because the VGA signal has a pixel clock of 40 MHz and the Stellaris
-Launchpad's LM4F120 CPU runs at 80 MHz. We save on the number of pixels
-we have to push through the SPIs by running at half-resolution horizontally
-(giving 400x600), which also halves the pixel clock to 20 MHz.
+peripherals and a timer to generate the horizontal sync signals. It can do
+this because the VGA signal has a pixel clock of 40 MHz and the Tiva-C
+Launchpad's TM4C123 CPU runs at 80 MHz. We save on the number of pixels we
+have to push through the SPIs by running at half-resolution horizontally
+(giving 400x600), which also halves the pixel clock to 20 MHz. I did try 40
+MHz mode and it didn't work.
 
 Monotron has two 'modes' it can display on this VGA output.
 
@@ -75,7 +76,8 @@ text-mode plus an additional `384x288 / 8 = 13,824` bytes of SRAM.
 ## Compiling
 
 You will need to build using Rust Nightly, as we need various experimental
-features for Embedded development that are not yet available in Stable.
+features for Embedded development that are not yet available in Stable. I am
+aiming to support Stable Rust by the Rust 2018 release.
 
 ```
 $ rustup toolchain install nightly
@@ -97,12 +99,17 @@ $ lm4flash ./target/thumbv7em-none-eabihf/release/monotron.bin
 Or you can debug in GDB (which will automatically load the program first):
 
 ```
-$ sudo openocd -f /usr/share/openocd/scripts/board/ek-lm4f120xl.cfg
+$ openocd
 <switch to a different terminal>
 $ cargo run --release
 ```
 
-To exit GDB, you may need to press Ctrl-C multiple times, as it seems it can get a bit stuck.
+OpenOCD should read our `openocd.cfg` file, which directs it to use the
+correct configuration. You may need to run `sudo openocd` if your user doesn't
+have permission to open the USB device.
+
+To exit GDB, you may need to press Ctrl-C multiple
+times, as it seems it can get a bit stuck.
 
 ## Connecting
 
@@ -146,7 +153,7 @@ PB7 o+---------------+
                      |                               |
                     +-+                             +-+
                     | |                             | |
-                    | | DNF                         | | 75
+                    | | Not Fitted                  | | 75
                     | |                             | | (in Monitor)
                     +-+                             +-+
                      |                               |
@@ -154,30 +161,26 @@ PB7 o+---------------+
                     GND                             GND
 ```
 
-DNF means 'did not fit' - you may need to experiment with putting a resistor
-here but I left it out (so basically its resistance is infinite) and it's
-working OK on my monitor. Obviously only one channel is shown above - wire up
-the blue and red channels in exactly the same fashion.
+You may need to experiment with putting a resistor to ground where I left one
+out (so basically its resistance is infinite) but it's working OK on my
+monitor. Obviously only one channel is shown above - wire up the blue and red
+channels in exactly the same fashion. Finally, don't forget to keep your wires
+short! You will have noise if you try and send a 20 MHz signal down 10cm of
+unshielded wire.
 
 ### PS/2 Keyboard
 
-PS/2 keyboard support is mostly working, but consider it alpha grade. See the
-[pc- keyboard](https://github.com/thejpster/pc-keyboard) crate. Any UK 102-key
+PS/2 keyboard support sort of worked, but wasn't reliable so it's currently
+missing. When complete, it will use the
+[pc-keyboard](https://github.com/thejpster/pc-keyboard) crate. Any UK 102-key
 or 105-key keyboard should work - support for other layouts welcome as a PR!
 
-Be aware, there's clearly an issue with the interrupt handling as about 10% of
-keystrokes get corrupted. Currently this displays an error on the screen, or
-perhaps as a double character when you only pressed a key once. I'm hoping to
-improve it.
+The pinout will probably be:
 
-The pinout is:
-
-* +CLK: PA2
-* +DATA: PA4
+* +CLK: PB2
+* +DATA: PE0
 * Ground: GND
 * Vcc: 5V
-
-Tie PA3 (Keyboard Chip Select) to Ground.
 
 PS/2 keyboards have 5V I/O. It's specified as open-collector but keyboards
 sometimes contain internal pull-up resistors to 5V. All of the LM4F120/TM4C123
@@ -191,10 +194,30 @@ robust interface circuitry.
 
 ### UART
 
-Monotron uses UART0 on the Stellaris Launchpad, which is converted to USB
+Monotron uses UART0 on the Tiva-C Launchpad, which is converted to USB
 Serial by the on-board companion chip. Connect with your favourite Serial
 terminal at 115,200bps. Send UTF-8 and it'll get converted to MS-DOS Code Page
 850 inside the Monotron.
+
+I hope to add support for a second UART (UART 1) on an FTDI-compatible 6-pin
+connector (3.3v signalling).
+
+### SD/MMC
+
+One day I might add SD Card support for programing loading/saving.
+
+### I2C
+
+One day I might add I2C support for reading simple sensors or real-time
+clocks.
+
+### Audio
+
+One day I might add 8-bit audio output using a PWM pin. Based on the scan-line
+frequency of 37.879 kHz, and a CPU clock of 80 MHz, I should be able to drive
+an 8-bit PWM at 152 kHz. The
+[monotron-synth](https://github.com/thejpster/monotron-synth) has the
+beginnings of a four-channel synthesiser which can bleep and bloop.
 
 ## Running
 
