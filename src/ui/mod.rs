@@ -713,12 +713,6 @@ fn debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Contex
     let app_addr = unsafe { &APPLICATION_RAM as *const _ } as usize;
     writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
     writeln!(context, "Application: 0x{:08x}", app_addr).unwrap();
-    let temp = context.spi.cr0.read();
-    writeln!(context, "SPI CR0: 0x{:08x}", temp.bits()).unwrap();
-    let temp = context.spi.cr1.read();
-    writeln!(context, "SPI CR1: 0x{:08x}", temp.bits()).unwrap();
-    let temp = context.spi.sr.read();
-    writeln!(context, "SPI Status: 0x{:08x}", temp.bits()).unwrap();
 }
 
 extern "C" fn puts(_raw_ctx: *mut Context, s: *const u8) -> i32 {
@@ -762,7 +756,7 @@ extern "C" fn readc(raw_ctx: *mut Context) -> i32 {
     }
 }
 
-extern "C" fn wfvbi(_raw_ctx: *mut Context) {
+pub(crate) extern "C" fn wfvbi(_raw_ctx: *mut Context) {
     let old_frame = unsafe { FRAMEBUFFER.frame() };
     loop {
         asm::wfi();

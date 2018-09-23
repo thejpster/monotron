@@ -31,11 +31,9 @@
 //! * SSI1Tx for Red on PF1 / 3.10
 //! * SSI2Tx for Green on PB7 / 3.04=2.06
 //! * SSI3Tx for Blue on PD3 / 3.06
-//! * SSI0Clk for Keyboard Clock on PA2 / 2.10
-//! * SSI0Fss for Keyboard Chip Select on PA3 / 2.09.
-//! * SSI0Rx for Keyboard Data on PA4 / 2.08
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PB5 is V-Sync
+//! * M0PWM4 on PE4 is PWM Audio output
 
 #![no_main]
 #![feature(asm)]
@@ -52,6 +50,7 @@ extern crate pc_keyboard;
 #[macro_use]
 extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
+extern crate monotron_synth as synth;
 
 mod ui;
 
@@ -61,6 +60,7 @@ use tm4c123x_hal::bb;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
 use tm4c123x_hal::sysctl;
+use synth::*;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
@@ -69,6 +69,8 @@ const ISR_LATENCY: u32 = 94;
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
+
+static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
@@ -90,7 +92,6 @@ struct Context {
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
-    spi: tm4c123x_hal::tm4c123x::SSI0,
     buffered_char: Option<Input>
 }
 
@@ -102,21 +103,20 @@ enum Input {
 
 impl Context {
     fn keyboard_read(&mut self) -> Option<u16> {
-        if self.spi.sr.read().rne().bit_is_set() {
-            let data = self.spi.dr.read().bits() as u16;
-            Some(data)
-        } else {
-            None
-        }
+        None
     }
 
     fn has_char(&mut self) -> bool {
-        let try = self.read();
-        if try.is_some() {
-            self.buffered_char = try;
+        if self.buffered_char.is_some() {
             true
         } else {
-            false
+            let try = self.read();
+            if try.is_some() {
+                self.buffered_char = try;
+                true
+            } else {
+                false
+            }
         }
     }
 
@@ -217,10 +217,12 @@ fn main() -> ! {
     enable(sysctl::Domain::Ssi1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi2, &mut sc.power_control);
     enable(sysctl::Domain::Ssi3, &mut sc.power_control);
+    enable(sysctl::Domain::Pwm0, &mut sc.power_control);
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
+    let mut porte = p.GPIO_PORTE.split(&sc.power_control);
     let mut portf = p.GPIO_PORTF.split(&sc.power_control);
 
     // T0CCP0
@@ -241,52 +243,23 @@ fn main() -> ! {
     let _blue_data = portd
         .pd3
         .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
+    // Audio PWM output
+    let _audio_pin = porte.pe4.into_af_push_pull::<tm4c123x_hal::gpio::AF4>(&mut porte.control);
 
-    // Keyboard produces 5V but the chip is 5V tolerant on inputs. We set them
-    // floating as we have external pull-ups to 5V.
-    let _keyboard_clock = porta
-        .pa2
-        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
-            &mut porta.control,
-        );
-    let _keyboard_select = porta
-        .pa3
-        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
-            &mut porta.control,
-        );
-    let _keyboard_data = porta
-        .pa4
-        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
-            &mut porta.control,
-        );
-    let keyboard_spi = p.SSI0;
+    // Configure PWM peripheral. We use M0PWM4 on PE4. That's pwmA on the third
+    // pair (the pairs are 0/1, 2/3, 4/5 and 6/7) of the first PWM peripheral.
+    // We want up/down mode. We have a load value 256 and a comparator value
+    // set according to the volume level for the current sample.
 
-    // Configure the keyboard interface
-    keyboard_spi.cr1.write(|w| w.sse().clear_bit());
-    // Slave mode
-    keyboard_spi.cr1.modify(|_, w| w.ms().set_bit());
-    // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
-    // So CPSDVSR = 160, SCR = 0 gives us 500 kHz which is fine
-    // >> "For slave mode, the system clock or the PIOSC must be at least 12
-    // >> times faster than the SSInClk, with the restriction that SSInClk
-    // >> cannot be faster than 6.67 MHz."
-    // Typical keyboard clock is 10 to 20 kHz
-    // Host must sample data after falling clock edge
-    keyboard_spi
-        .cpsr
-        .write(|w| unsafe { w.cpsdvsr().bits(160) });
-    // Configure to receive 11 bits, Freescale (moto) mode SPO=0, SPH=1
-    keyboard_spi.cr0.write(|w| {
-        w.dss()._11();
-        w.frf().moto();
-        w.spo().clear_bit();
-        w.sph().set_bit();
-        w
-    });
-    // Set clock source to sysclk
-    keyboard_spi.cc.modify(|_, w| w.cs().syspll());
-    // Enable
-    keyboard_spi.cr1.modify(|_, w| w.sse().set_bit());
+    let pwm = p.PWM0;
+    pwm.ctl.write(|w| w.globalsync0().clear_bit());
+    // Mode = 1 => Count up/down mode
+    pwm._2_ctl.write(|w| w.enable().set_bit().mode().set_bit());
+    pwm._2_gena.write(|w| w.actcmpau().zero().actcmpad().one());
+    // 528 cycles (264 up and down) = 4 loops per video line (2112 cycles)
+    pwm._2_load.write(|w| unsafe { w.load().bits(263) });
+    pwm._2_cmpa.write(|w| unsafe { w.compa().bits(64) });
+    pwm.enable.write(|w| w.pwm4en().set_bit());
 
     unsafe {
         let hw = VideoHardware {
@@ -321,7 +294,6 @@ fn main() -> ! {
         value: 0,
         rx,
         keyboard,
-        spi: keyboard_spi,
         buffered_char: None,
     };
 
@@ -356,7 +328,107 @@ fn main() -> ! {
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
 
+    struct Track<'a> {
+        channel: Channel,
+        play_idx: usize,
+        max_frames: usize,
+        notes: &'a [(usize, Option<(Note, u8, Waveform)>)]
+    }
+
+    // Bass line
+    let mut track0 = Track {
+        channel: Channel::Channel0,
+        play_idx: 0,
+        max_frames: 120,
+        notes: &[
+            (0, Some((Note::C2, MAX_VOLUME, Waveform::Sawtooth))),
+            (5, None),
+            (15, Some((Note::C2, MAX_VOLUME, Waveform::Sawtooth))),
+            (20, None),
+            (30, Some((Note::C2, MAX_VOLUME, Waveform::Sawtooth))),
+            (35, None),
+            (45, Some((Note::C2, MAX_VOLUME, Waveform::Sawtooth))),
+            (50, None),
+            (60, Some((Note::G2, MAX_VOLUME, Waveform::Sawtooth))),
+            (65, None),
+            (75, Some((Note::G2, MAX_VOLUME, Waveform::Sawtooth))),
+            (80, None),
+            (90, Some((Note::G2, MAX_VOLUME, Waveform::Sawtooth))),
+            (95, None),
+            (105, Some((Note::G2, MAX_VOLUME, Waveform::Sawtooth))),
+            (110, None),
+        ]
+    };
+
+    // Hi-hat
+    let mut track1 = Track {
+        channel: Channel::Channel1,
+        play_idx: 0,
+        max_frames: 120,
+        notes: &[
+        (30, Some((Note::C3, MAX_VOLUME, Waveform::Noise))),
+        (33, None),
+        (90, Some((Note::C3, MAX_VOLUME, Waveform::Noise))),
+        (93, None),
+        ]
+    };
+
+    // Scale
+    let mut track2 = Track {
+        channel: Channel::Channel2,
+        play_idx: 0,
+        max_frames: 120,
+        notes: &[
+        (0, Some((Note::C4, MAX_VOLUME, Waveform::Sine))),
+        (15, Some((Note::D4, MAX_VOLUME, Waveform::Sine))),
+        (30, Some((Note::E4, MAX_VOLUME, Waveform::Sine))),
+        (45, Some((Note::F4, MAX_VOLUME, Waveform::Sine))),
+        (60, Some((Note::G4, MAX_VOLUME, Waveform::Sine))),
+        (75, Some((Note::A4, MAX_VOLUME, Waveform::Sine))),
+        (90, Some((Note::B4, MAX_VOLUME, Waveform::Sine))),
+        (105, Some((Note::C5, MAX_VOLUME, Waveform::Sine))),
+        ]
+    };
+
+    // Toot-toot
+    let mut track3 = Track {
+        channel: Channel::Channel3,
+        play_idx: 0,
+        max_frames: 240,
+        notes: &[
+            (0, Some((Note::C4, MAX_VOLUME / 4, Waveform::Square))),
+            (20, None),
+            (30, Some((Note::C4, MAX_VOLUME / 4, Waveform::Square))),
+            (50, None),
+        ]
+    };
+
+
+    let mut frame_count = 0;
     loop {
+        ui::wfvbi(r.context as *mut Context);
+
+        let mut again = true;
+        while again  {
+            again = false;
+            for track in &mut[&mut track0, &mut track1, &mut track2, &mut track3] {
+                let (start_frame, event) = track.notes[track.play_idx];
+                if (frame_count % track.max_frames) == start_frame {
+                    if let Some((note, volume, waveform)) = event {
+                        unsafe { G_SYNTH.play(track.channel, note, None, volume, waveform) };
+                    } else {
+                        unsafe { G_SYNTH.off(track.channel) };
+                    }
+                    track.play_idx += 1;
+                    if track.play_idx >= track.notes.len() {
+                        track.play_idx = 0;
+                    }
+                    again = true;
+                }
+            }
+        }
+        frame_count += 1;
+
         // Wait for new UTF-8 input
         match r.context.read() {
             Some(Input::Unicode(ch)) => {
@@ -516,8 +588,10 @@ impl fb::Hardware for VideoHardware {
 
 interrupt!(TIMER1A, timer1a);
 
+
 /// Called on start of sync pulse (end of front porch)
 fn timer1a() {
+    let pwm = unsafe { &*tm4c123x_hal::tm4c123x::PWM0::ptr() };
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
     let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
     let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
@@ -531,6 +605,10 @@ fn timer1a() {
     ssi_g.dr.write(|w| unsafe { w.data().bits(0) });
     // Run the draw routine
     unsafe { FRAMEBUFFER.isr_sol() };
+    // Run the audio routine
+    let sample = unsafe { G_SYNTH.next() };
+    let sample: u8 = sample.into();
+    pwm._2_cmpa.write(|w| unsafe { w.compa().bits(sample as u16) });
     // Clear timer A interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());

@@ -16,8 +16,9 @@ opt-level = "s"
 [dependencies]
 
 [dependencies.tm4c123x-hal]
-version = "0.4.0"
+version = "0.4.1"
 features = ["rt"]
+# path = "../tm4c123x-hal"
 
 [dependencies.menu]
 version = "0.1"
@@ -47,3 +48,7 @@ version = "0.3"
 
 [dependencies.pc-keyboard]
 version = "0.1.1"
+
+[dependencies.monotron-synth]
+version = "0.1"
+
