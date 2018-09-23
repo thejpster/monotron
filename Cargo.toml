@@ -2,7 +2,7 @@
 name = "monotron"
 version = "0.5.0"
 authors = ["Jorge Aparicio <jorge@japaric.io>", "Jonathan 'theJPster' Pallant <monotron@thejpster.org.uk>"]
-description = "A simple 1980's home computer style application for the Stellaris Launchpad."
+description = "A simple 1980's home computer style application for the Tiva-C Launchpad."
 keywords = ["arm", "cortex-m", "template", "video", "menu"]
 categories = ["embedded", "no-std"]
 license = "MIT OR Apache-2.0"
