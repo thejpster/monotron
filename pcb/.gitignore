@@ -1,4 +1,5 @@
 # KiCad
 *-cache.lib
 *.bak
+*.bck
 _saved_*
