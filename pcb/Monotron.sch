@@ -142,4 +142,37 @@ Wire Wire Line
 	5300 2900 4150 2900
 Wire Wire Line
 	4150 2900 4150 4050
+$Comp
+L Connector:Mini-DIN-6 J2
+U 1 1 5BAD1E91
+P 2700 6450
+F 0 "J2" H 2700 6817 50  0000 C CNN
+F 1 "Mini-DIN-6" H 2700 6726 50  0000 C CNN
+F 2 "" H 2700 6450 50  0001 C CNN
+F 3 "http://service.powerdynamics.com/ec/Catalog17/Section%2011.pdf" H 2700 6450 50  0001 C CNN
+	1    2700 6450
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:AudioJack3_Ground J3
+U 1 1 5BAD2006
+P 4050 6400
+F 0 "J3" H 4054 6742 50  0000 C CNN
+F 1 "AudioJack3_Ground" H 4054 6651 50  0000 C CNN
+F 2 "" H 4050 6400 50  0001 C CNN
+F 3 "~" H 4050 6400 50  0001 C CNN
+	1    4050 6400
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:DB9_Male J4
+U 1 1 5BAD20FF
+P 9600 3600
+F 0 "J4" H 9780 3646 50  0000 L CNN
+F 1 "DB9_Male" H 9780 3555 50  0000 L CNN
+F 2 "" H 9600 3600 50  0001 C CNN
+F 3 " ~" H 9600 3600 50  0001 C CNN
+	1    9600 3600
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
