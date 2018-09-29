@@ -54,6 +54,9 @@ extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
 
 mod ui;
+mod api;
+mod rust_logo;
+mod demos;
 
 use core::fmt::Write;
 use cortex_m::asm;
