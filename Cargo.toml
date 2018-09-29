@@ -8,10 +8,15 @@ categories = ["embedded", "no-std"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/thejpster/monotron"
 
+[[bin]]
+name = "monotron"
+test = false
+bench = false
+
 [profile.release]
 lto = true
 debug = true
-opt-level = "s"
+codegen-units = 1
 
 [dependencies]
 
@@ -25,9 +30,10 @@ version = "0.1"
 # path = "../menu"
 
 [dependencies.vga-framebuffer]
-version = "0.7.0"
-# git = "https://github.com/thejpster/vga-framebuffer-rs"
+# version = "0.7.0"
+git = "https://github.com/thejpster/vga-framebuffer-rs"
 # path = "../vga-framebuffer-rs"
+features = ["const_fn"]
 
 [dependencies.embedded-hal]
 version = "0.1.1"
