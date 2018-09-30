@@ -52,6 +52,7 @@ extern crate pc_keyboard;
 #[macro_use]
 extern crate tm4c123x_hal;
 extern crate vga_framebuffer as fb;
+extern crate monotron_interface;
 
 mod ui;
 mod api;
