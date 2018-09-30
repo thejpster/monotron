@@ -59,7 +59,8 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     unsafe {
         FRAMEBUFFER.clear();
     }
-    write!(context, "SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
+    write!(context, "\u{001b}^SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
+    write!(context, "\u{001b}vSCORE 0300      HIGH 0000          3    ╩       ").unwrap();
     write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
     write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
     write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
@@ -93,7 +94,7 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     writeln!(context, "\u{001b}G          ╔════════════╦╦════════════╗").unwrap();
     writeln!(context, "          ║\u{001b}C············\u{001b}G║║\u{001b}C············\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G┌───┐\u{001b}C·\u{001b}G║║\u{001b}C·\u{001b}G┌───┐\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G║").unwrap();
-    writeln!(context, "          ║○│  │\u{001b}C·\u{001b}G│   │\u{001b}C·\u{001b}G║║\u{001b}C·\u{001b}G│   │\u{001b}C·\u{001b}G│  │○║").unwrap();
+    writeln!(context, "          ║O│  │\u{001b}C·\u{001b}G│   │\u{001b}C·\u{001b}G║║\u{001b}C·\u{001b}G│   │\u{001b}C·\u{001b}G│  │O║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G└──┘\u{001b}C·\u{001b}G└───┘\u{001b}C·\u{001b}G╚╝\u{001b}C·\u{001b}G└───┘\u{001b}C·\u{001b}G└──┘\u{001b}C·\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C··························\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G┌┐\u{001b}C·\u{001b}G┌──────┐\u{001b}C·\u{001b}G┌┐\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G║").unwrap();
@@ -111,7 +112,7 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     writeln!(context, "          ║\u{001b}C············\u{001b}G││\u{001b}C············\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G┌───┐\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G┌───┐\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G└─┐│\u{001b}C·\u{001b}G└───┘\u{001b}C·\u{001b}G└┘\u{001b}C·\u{001b}G└───┘\u{001b}C·\u{001b}G│┌─┘\u{001b}C·\u{001b}G║").unwrap();
-    writeln!(context, "          ║○\u{001b}C··\u{001b}G││\u{001b}C·······\u{001b}Y◄►\u{001b}C·······\u{001b}G││\u{001b}C··\u{001b}G○║").unwrap();
+    writeln!(context, "          ║O\u{001b}C··\u{001b}G││\u{001b}C·······\u{001b}Y◄►\u{001b}C·······\u{001b}G││\u{001b}C··\u{001b}GO║").unwrap();
     writeln!(context, "          ╠═╗\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G┌┐\u{001b}C·\u{001b}G┌──────┐\u{001b}C·\u{001b}G┌┐\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G╔═╣").unwrap();
     writeln!(context, "          ╠═╝\u{001b}C·\u{001b}G└┘\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G└──┐┌──┘\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G└┘\u{001b}C·\u{001b}G╚═╣").unwrap();
     writeln!(context, "          ║\u{001b}C······\u{001b}G││\u{001b}C····\u{001b}G││\u{001b}C····\u{001b}G││\u{001b}C······\u{001b}G║").unwrap();
@@ -175,8 +176,8 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
 
     write!(context, "\u{001b}Z\u{001b}Y\u{001b}k╔════════════════════════\u{001b}W[MonotronPaint]\u{001b}Y═══════╗").unwrap();
     write!(context, "║\u{001b}W┌[Font]──────────┐┌──────────────────────────┐\u{001b}Y║").unwrap();
-    write!(context, "║\u{001b}W│ ☺☻♥♦♣♠•◘○◙♂♀♪♫☼││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
-    write!(context, "║\u{001b}W│►◄↕‼¶§▬↨↑↓→←∟↔▲▼││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
+    write!(context, "║\u{001b}W│ ☺☻♥♦♣♠•......♫☼││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
+    write!(context, "║\u{001b}W│►◄↕‼¶§▬↨↑↓→.∟↔▲▼││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
     write!(context, "║\u{001b}W│ !\"#$%&'()*+,-./││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
     write!(context, "║\u{001b}W│0123456789:;<=>?││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
     write!(context, "║\u{001b}W│@ABCDEFGHIJKLMNO││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
@@ -287,36 +288,6 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
         if this_frame == next_frame {
             next_frame = this_frame + 1;
             f.draw_fire(unsafe { &mut FRAMEBUFFER });
-        }
-        match unsafe { FRAMEBUFFER.line() } {
-            Some(95) => {
-                for col in 13..=21 {
-                    pos.col = fb::Col(col);
-                    unsafe {
-                        FRAMEBUFFER
-                            .set_attr_at(pos, fb::Attr::new(fb::Colour::Blue, fb::Colour::Black));
-                    }
-                }
-            }
-            Some(101) => {
-                for col in 13..=21 {
-                    pos.col = fb::Col(col);
-                    unsafe {
-                        FRAMEBUFFER
-                            .set_attr_at(pos, fb::Attr::new(fb::Colour::White, fb::Colour::Black));
-                    }
-                }
-            }
-            Some(104) => {
-                for col in 13..=21 {
-                    pos.col = fb::Col(col);
-                    unsafe {
-                        FRAMEBUFFER
-                            .set_attr_at(pos, fb::Attr::new(fb::Colour::Red, fb::Colour::Black));
-                    }
-                }
-            }
-            _ => {}
         }
         if let Some(_input) = context.read() {
             writeln!(context, "\u{001b}W\u{001b}k\u{001b}ZOk...").unwrap();
