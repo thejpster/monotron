@@ -279,7 +279,6 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     write!(context, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
     write!(context, "╚══════════════════════════════════════════════╝").unwrap();
     write!(context, "          by theJPster / @therealjpster").unwrap();
-    let mut pos = fb::Position::new(fb::Row(6), fb::Col(0));
     let mut next_frame = unsafe { FRAMEBUFFER.frame() } + 1;
     let mut f = Fire::new();
     loop {
