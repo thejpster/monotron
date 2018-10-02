@@ -77,7 +77,7 @@ U 1 1 5BAD1E91
 P 6200 1500
 F 0 "J2" H 6200 1867 50  0000 C CNN
 F 1 "Mini-DIN-6" H 6200 1776 50  0000 C CNN
-F 2 "" H 6200 1500 50  0001 C CNN
+F 2 "Monotron:5749180-1" H 6200 1500 50  0001 C CNN
 F 3 "http://service.powerdynamics.com/ec/Catalog17/Section%2011.pdf" H 6200 1500 50  0001 C CNN
 	1    6200 1500
 	1    0    0    -1  
