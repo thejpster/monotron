@@ -1,35 +1,16 @@
-use super::{api, Context, APPLICATION_RAM, FRAMEBUFFER};
+use crate::{api, Context, APPLICATION_RAM, FRAMEBUFFER, demos};
 use core::fmt::Write;
 use embedded_hal::prelude::*;
-use fb::{self, BaseConsole};
+use crate::fb::{self, BaseConsole};
 use menu;
-use demos;
 
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
-
-const TEST_ALPHABET: Item = Item {
-    item_type: menu::ItemType::Callback(demos::test_alphabet),
-    command: "alphabet",
-    help: Some("Scrolls some test text output."),
-};
 
 const TEST_CLEAR: Item = Item {
     item_type: menu::ItemType::Callback(test_clear),
     command: "clear",
     help: Some("Resets the display."),
-};
-
-const TEST_ANIMATION: Item = Item {
-    item_type: menu::ItemType::Callback(demos::test_animation),
-    command: "animate",
-    help: Some("Bounces argument around."),
-};
-
-const TEST_ART: Item = Item {
-    item_type: menu::ItemType::Callback(demos::test_art),
-    command: "art",
-    help: Some("Show some art."),
 };
 
 const ITEM_PEEK: Item = Item {
@@ -59,7 +40,7 @@ const ITEM_LOAD: Item = Item {
 const ITEM_DEBUG: Item = Item {
     item_type: menu::ItemType::Callback(debug_info),
     command: "debug",
-    help: Some("- Show some debug info."),
+    help: Some("Show some debug info."),
 };
 
 const ITEM_RUN: Item = Item {
@@ -68,12 +49,15 @@ const ITEM_RUN: Item = Item {
     help: Some("Run loaded program."),
 };
 
+const ITEM_DEMOS: Item = Item {
+    item_type: menu::ItemType::Menu(&demos::DEMO_MENU),
+    command: "demos",
+    help: Some("Enter demo menu."),
+};
+
 pub(crate) const ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
-        &TEST_ALPHABET,
-        &TEST_ANIMATION,
-        &TEST_ART,
         &TEST_CLEAR,
         &ITEM_PEEK,
         &ITEM_POKE,
@@ -81,6 +65,7 @@ pub(crate) const ROOT_MENU: Menu = Menu {
         &ITEM_LOAD,
         &ITEM_RUN,
         &ITEM_DEBUG,
+        &ITEM_DEMOS,
     ],
     entry: None,
     exit: None,
@@ -257,6 +242,7 @@ fn debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Contex
     let app_addr = unsafe { &APPLICATION_RAM as *const _ } as usize;
     writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
     writeln!(context, "Application: 0x{:08x}", app_addr).unwrap();
+    writeln!(context, "Chip: {:?}", tm4c123x_hal::sysctl::chip_id::get());
 }
 
 /// Runs a program from application RAM, then returns.

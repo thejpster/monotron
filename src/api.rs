@@ -1,6 +1,6 @@
-use super::{Context, Input, FRAMEBUFFER};
-use asm;
-use fb::AsciiConsole;
+use crate::{Context, Input, FRAMEBUFFER};
+use cortex_m::asm;
+use crate::fb::AsciiConsole;
 
 pub(crate) extern "C" fn puts(_raw_ctx: *mut Context, s: *const u8) -> i32 {
     let mut i = 0;

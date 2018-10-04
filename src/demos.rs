@@ -1,10 +1,36 @@
-use super::{Context, FRAMEBUFFER};
-use asm;
+use crate::{Context, FRAMEBUFFER, rust_logo, ui};
+use cortex_m::asm;
 use core::fmt::Write;
-use fb;
-use fb::BaseConsole;
-use rust_logo;
-use ui;
+use crate::fb::{self, BaseConsole};
+
+pub(crate) const DEMO_MENU: ui::Menu = ui::Menu {
+    label: "demo",
+    items: &[
+        &TEST_ALPHABET,
+        &TEST_ANIMATION,
+        &TEST_ART,
+    ],
+    entry: Some(|_menu, ctx| writeln!(ctx, "Welcome to the demo area.").unwrap()),
+    exit: Some(|_menu, ctx| writeln!(ctx, "Thanks for trying some demos!").unwrap()),
+};
+
+const TEST_ALPHABET: ui::Item = ui::Item {
+    item_type: menu::ItemType::Callback(test_alphabet),
+    command: "alphabet",
+    help: Some("Scrolls some test text output."),
+};
+
+const TEST_ANIMATION: ui::Item = ui::Item {
+    item_type: menu::ItemType::Callback(test_animation),
+    command: "animate",
+    help: Some("Bounces argument around."),
+};
+
+const TEST_ART: ui::Item = ui::Item {
+    item_type: menu::ItemType::Callback(test_art),
+    command: "art",
+    help: Some("Show some art."),
+};
 
 struct Fire {
     seed: u32,
@@ -41,6 +67,9 @@ pub(crate) fn test_alphabet<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str
                 );
             }
             fg = fg_wheel.next();
+            if fg == bg {
+                fg = fg_wheel.next();
+            }
             if ch == 255 {
                 bg = bg_wheel.next();
                 ch = 0;
@@ -311,7 +340,7 @@ impl Fire {
     /// Draws a flame effect.
     /// Based on https://gist.github.com/msimpson/1096950.
     fn draw_fire(&mut self, fb: &mut fb::FrameBuffer<super::VideoHardware>) {
-        use fb::Char;
+        use crate::fb::Char;
         const CHARS: [Char; 10] = [
             Char::Space,
             Char::FullStop,
@@ -363,9 +392,9 @@ impl Fire {
         let buckets = ::core::u32::MAX / limit;
         let upper_edge = buckets * limit;
         loop {
-            let try = self.random();
-            if try < upper_edge {
-                return try / buckets;
+            let attempt = self.random();
+            if attempt < upper_edge {
+                return attempt / buckets;
             }
         }
     }
@@ -379,7 +408,7 @@ impl Fire {
 
 /// Another test menu item - displays an animation.
 pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str, context: &mut Context) {
-    let mut old_frame = 0;
+    let mut next_frame = unsafe { FRAMEBUFFER.frame() };
     let mut pos = fb::Position::origin();
     let mut left = true;
     let mut down = true;
@@ -388,12 +417,12 @@ pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str
     let input = input.trim_left_matches("animate ");
     let num_chars = input.chars().count();
     let attr =
-        unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Black, fb::Colour::Yellow)) };
+        unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Yellow, fb::Colour::Black)) };
     loop {
         asm::wfi();
         let new_frame = unsafe { FRAMEBUFFER.frame() };
-        if new_frame != old_frame {
-            old_frame = new_frame;
+        if new_frame >= next_frame {
+            next_frame = next_frame + 30;
             if left {
                 pos.col.incr();
             } else {
@@ -423,7 +452,10 @@ pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str
             }
         }
         if let Some(_input) = context.read() {
-            unsafe { FRAMEBUFFER.set_attr(attr) };
+            unsafe {
+                FRAMEBUFFER.set_attr(attr);
+                FRAMEBUFFER.clear();
+            };
             break;
         }
     }

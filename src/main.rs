@@ -38,41 +38,33 @@
 //! * GPIO PB5 is V-Sync
 
 #![no_main]
-#![feature(asm)]
 #![no_std]
-
-extern crate cortex_m;
-#[macro_use]
-extern crate cortex_m_rt;
-extern crate cortex_m_semihosting;
-extern crate embedded_hal;
-extern crate menu;
-extern crate panic_semihosting;
-extern crate pc_keyboard;
-#[macro_use]
-extern crate tm4c123x_hal;
-extern crate vga_framebuffer as fb;
-extern crate monotron_interface;
+#![feature(asm)]
 
 mod ui;
 mod api;
 mod rust_logo;
 mod demos;
 
+extern crate panic_halt;
+
+use vga_framebuffer as fb;
 use core::fmt::Write;
-use cortex_m::asm;
 use tm4c123x_hal::bb;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
 use tm4c123x_hal::sysctl;
+use tm4c123x_hal::interrupt;
+use cortex_m_rt::{entry, exception};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 const ISR_LATENCY: u32 = 94;
 
-static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
-
+// Must come first
 static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
+
+static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
@@ -115,9 +107,9 @@ impl Context {
     }
 
     fn has_char(&mut self) -> bool {
-        let try = self.read();
-        if try.is_some() {
-            self.buffered_char = try;
+        let attempt = self.read();
+        if attempt.is_some() {
+            self.buffered_char = attempt;
             true
         } else {
             false
@@ -186,8 +178,7 @@ fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
     sysctl::reset(sc, p);
 }
 
-entry!(main);
-
+#[entry]
 fn main() -> ! {
     let p = tm4c123x_hal::Peripherals::take().unwrap();
     let cp = tm4c123x_hal::CorePeripherals::take().unwrap();
@@ -518,9 +509,8 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-interrupt!(TIMER1A, timer1a);
-
 /// Called on start of sync pulse (end of front porch)
+interrupt!(TIMER1A, timer1a);
 fn timer1a() {
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
     let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
@@ -540,9 +530,8 @@ fn timer1a() {
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
-interrupt!(TIMER1B, timer1b);
-
 /// Called on start of pixel data (end of back porch)
+interrupt!(TIMER1B, timer1b);
 fn timer1b() {
     unsafe {
         /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
@@ -628,17 +617,15 @@ fn timer1b() {
     timer.icr.write(|w| w.cbecint().set_bit());
 }
 
-// define the hard fault handler
-exception!(HardFault, hard_fault);
-
-fn hard_fault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
+#[exception]
+/// The hard fault handler
+fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
     panic!("HardFault at {:#?}", ef);
 }
 
-// define the default exception handler
-exception!(*, default_handler);
-
-fn default_handler(irqn: i16) {
+#[exception]
+/// The default exception handler
+fn DefaultHandler(irqn: i16) {
     panic!("Unhandled exception (IRQn = {})", irqn);
 }
 
