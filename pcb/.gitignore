@@ -2,4 +2,5 @@
 *-cache.lib
 *.bak
 *.bck
+*.kicad_pcb-bak
 _saved_*
