@@ -1,7 +1,7 @@
 (export (version D)
   (design
     (source /home/hanno/Projects/monotron/pcb/Monotron.sch)
-    (date "2018-10-05T16:00:11 CEST")
+    (date "2018-10-05T16:50:17 CEST")
     (tool "Eeschema 5.0.0")
     (sheet (number 1) (name /) (tstamps /)
       (title_block
@@ -72,6 +72,7 @@
       (tstamp 5BAD20FF))
     (comp (ref J5)
       (value Conn_02x05_Counter_Clockwise)
+      (footprint Pin_Headers:Pin_Header_Straight_2x05_Pitch2.54mm)
       (datasheet ~)
       (libsource (lib Connector_Generic) (part Conn_02x05_Counter_Clockwise) (description "Generic connector, double row, 02x05, counter clockwise pin numbering scheme (similar to DIP packge numbering), script generated (kicad-library-utils/schlib/autogen/connector/)"))
       (sheetpath (names /) (tstamps /))

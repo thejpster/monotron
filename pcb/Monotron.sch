@@ -198,7 +198,7 @@ U 1 1 5BAE3147
 P 5300 6150
 F 0 "J5" H 5350 6567 50  0000 C CNN
 F 1 "Conn_02x05_Counter_Clockwise" H 5350 6476 50  0000 C CNN
-F 2 "" H 5300 6150 50  0001 C CNN
+F 2 "Pin_Headers:Pin_Header_Straight_2x05_Pitch2.54mm" H 5300 6150 50  0001 C CNN
 F 3 "~" H 5300 6150 50  0001 C CNN
 	1    5300 6150
 	1    0    0    -1  
