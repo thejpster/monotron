@@ -164,11 +164,14 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
         }
     }
     writeln!(context, "Reading hex...").unwrap();
+    context.uart.write_all(b"READY");
     let mut i = 0;
     let max_bytes = unsafe { APPLICATION_RAM.len() };
+    const ACK_EVERY: usize = 4;
+    let mut ack_count = 0;
     while i < max_bytes {
         let ch = loop {
-            match context.rx.read() {
+            match context.uart.read() {
                 Ok(x) => break x,
                 _ => {}
             }
@@ -196,10 +199,10 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
             b'd' => 0xD0,
             b'e' => 0xE0,
             b'f' => 0xF0,
-            _ => return,
+            _ => break,
         };
         let ch = loop {
-            match context.rx.read() {
+            match context.uart.read() {
                 Ok(x) => break x,
                 _ => {}
             }
@@ -227,13 +230,20 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
             b'd' => 0x0D,
             b'e' => 0x0E,
             b'f' => 0x0F,
-            _ => return,
+            _ => break,
         };
         unsafe {
             APPLICATION_RAM[i] = byte;
+            ack_count += 1;
+            if ack_count >= ACK_EVERY {
+                let _ = context.uart.write(b'X');
+                ack_count = 0;
+            }
         }
         i = i + 1;
     }
+    let digest = crc::crc32::checksum_ieee(unsafe { &APPLICATION_RAM[0..i] });
+    writeln!(context, "Loaded {} bytes, CRC32 0x{:08x}", i, digest);
 }
 
 /// Print some debug info.

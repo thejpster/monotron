@@ -3,16 +3,29 @@
 import serial
 import sys
 import time
+
+ACK_EVERY = 4
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
 file = sys.argv[2]
 contents = open(file, "rb").read()
-s = serial.Serial(sys.argv[1], 115200)
+s = serial.Serial(sys.argv[1], 115200, timeout=1.0)
+s.read()
 s.write("\rload\r".format(len(contents)).encode("ascii"))
-for b in contents:
-	hex = "{:02x}".format(b)
-	s.write(hex.encode("ascii"))
-	sys.stdout.write(hex)
-	sys.stdout.flush()
-	time.sleep(0.001)
+check = s.read(size=10)
+assert check == b"READY", "Check = {}, not READY".format(check)
+for block in chunks(contents, ACK_EVERY):
+	for b in block:
+		hex = "{:02x}".format(b)
+		s.write(hex.encode("ascii"))
+		sys.stdout.write(hex)
+	if len(block) == ACK_EVERY:
+		sys.stdout.flush()
+		assert s.read(size=1) == b"X"
 s.write(b"\r")
 if "--run" in sys.argv:
 	s.write(b"run\r")

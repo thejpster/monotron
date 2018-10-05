@@ -52,6 +52,10 @@ version = "0.2"
 [dependencies.pc-keyboard]
 version = "0.1.1"
 
+[dependencies.crc]
+version = "1.8.1"
+default-features = false
+
 [dependencies.monotron-interface]
 # path = "../monotron-interface"
 git = "https://github.com/thejpster/monotron-interface"

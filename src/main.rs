@@ -75,14 +75,21 @@ struct VideoHardware {
 
 struct Context {
     pub value: u32,
-    rx: tm4c123x_hal::serial::Rx<
+    uart: tm4c123x_hal::serial::Serial<
         tm4c123x_hal::serial::UART0,
+        tm4c123x_hal::gpio::gpioa::PA1<
+            tm4c123x_hal::gpio::AlternateFunction<
+                tm4c123x_hal::gpio::AF1,
+                tm4c123x_hal::gpio::PushPull,
+            >,
+        >,
         tm4c123x_hal::gpio::gpioa::PA0<
             tm4c123x_hal::gpio::AlternateFunction<
                 tm4c123x_hal::gpio::AF1,
                 tm4c123x_hal::gpio::PushPull,
             >,
         >,
+        (),
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
@@ -122,7 +129,7 @@ impl Context {
             core::mem::swap(&mut self.buffered_char, &mut x);
             return x;
         }
-        if let Ok(ch) = self.rx.read() {
+        if let Ok(ch) = self.uart.read() {
             // Got some serial input
             // Backspace key in screen seems to generate 0x7F (delete).
             // Map it to backspace (0x08)
@@ -309,12 +316,11 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
-    let (mut _tx, rx) = uart.split();
 
     let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
     let mut c = Context {
         value: 0,
-        rx,
+        uart,
         keyboard,
         spi: keyboard_spi,
         buffered_char: None,
