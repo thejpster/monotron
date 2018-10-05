@@ -203,15 +203,15 @@ F 3 "~" H 5300 6150 50  0001 C CNN
 	1    5300 6150
 	1    0    0    -1  
 $EndComp
-Text GLabel 4650 5950 0    50   Input ~ 0
+Text GLabel 6100 6050 2    50   Input ~ 0
 +DATA
 Wire Wire Line
 	5100 5950 4650 5950
-Text GLabel 4650 6050 0    50   Input ~ 0
+Text GLabel 6100 6250 2    50   Input ~ 0
 +CLK
 Wire Wire Line
 	4650 6050 5100 6050
-Text GLabel 4650 6150 0    50   Input ~ 0
+Text GLabel 4650 6350 0    50   Input ~ 0
 Audio
 Wire Wire Line
 	5100 6150 4650 6150
@@ -276,19 +276,19 @@ Wire Wire Line
 	6050 2050 5700 2050
 Wire Wire Line
 	5700 1500 5700 2050
-Text GLabel 4650 6250 0    50   Input ~ 0
+Text GLabel 4650 5950 0    50   Input ~ 0
 JoystickUp
-Text GLabel 4650 6350 0    50   Input ~ 0
+Text GLabel 4650 6150 0    50   Input ~ 0
 JoystickDown
-Text GLabel 6100 5950 2    50   Input ~ 0
+Text GLabel 4650 6250 0    50   Input ~ 0
 JoystickLeft
-Text GLabel 6100 6050 2    50   Input ~ 0
-JoystickRight
-Text GLabel 6100 6150 2    50   Input ~ 0
-BInputPaddle
-Text GLabel 6100 6250 2    50   Input ~ 0
-InputTrigger
 Text GLabel 6100 6350 2    50   Input ~ 0
+JoystickRight
+Text GLabel 6100 5950 2    50   Input ~ 0
+BInputPaddle
+Text GLabel 4650 6050 0    50   Input ~ 0
+InputTrigger
+Text GLabel 6100 6150 2    50   Input ~ 0
 AInputPaddle
 Wire Wire Line
 	5100 6250 4650 6250
