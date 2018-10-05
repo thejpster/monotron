@@ -2,7 +2,7 @@
 
   (general
     (thickness 1.6)
-    (drawings 6)
+    (drawings 7)
     (tracks 125)
     (zones 0)
     (modules 13)
@@ -764,7 +764,10 @@
     )
   )
 
-  (gr_line (start 152.4 16.51) (end 41.91 16.51) (layer Edge.Cuts) (width 0.15))
+  (gr_line (start 152.4 16.51) (end 43.18 16.51) (layer Edge.Cuts) (width 0.2))
+  (gr_text "Designed and Manufactured by Braun Robotics\nhttps://braun-robotics.com\nMade in Odenwald" (at 129.54 26.67) (layer F.Cu)
+    (effects (font (size 1 1) (thickness 0.2)))
+  )
   (gr_line (start 152.4 19.05) (end 152.4 16.51) (layer Edge.Cuts) (width 0.15))
   (gr_line (start 152.4 106.68) (end 152.4 19.05) (layer Edge.Cuts) (width 0.15))
   (gr_line (start 38.1 106.68) (end 152.4 106.68) (layer Edge.Cuts) (width 0.15))
