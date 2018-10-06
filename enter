@@ -10,7 +10,7 @@ for b in contents:
 	byte = bytes([b])
 	print("Byte: {!r}".format(byte))
 	s.write(byte)
-	time.sleep(0.01)
+	time.sleep(0.1)
 if "--run" in sys.argv:
     s.write(b"RUN\r")
 print("Done!\n")
