@@ -1,6 +1,6 @@
 use crate::{Context, Input, FRAMEBUFFER};
 use cortex_m::asm;
-use crate::fb::AsciiConsole;
+use crate::fb::{BaseConsole, AsciiConsole, Position, Row, Col};
 
 pub(crate) extern "C" fn puts(_raw_ctx: *mut Context, s: *const u8) -> i32 {
     let mut i = 0;
@@ -59,4 +59,9 @@ pub(crate) extern "C" fn kbhit(raw_ctx: *mut Context) -> i32 {
         &mut *raw_ctx
     };
     ctx.has_char() as i32
+}
+
+pub(crate) extern "C" fn move_cursor(_raw_ctx: *mut Context, row: u8, col: u8) {
+    let p = Position::new(Row(row), Col(col));
+    unsafe { let _ = FRAMEBUFFER.set_pos(p); }
 }

@@ -281,6 +281,7 @@ fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Conte
             readc: extern "C" fn(*mut Context) -> i32,
             wfvbi: extern "C" fn(*mut Context),
             kbhit: extern "C" fn(*mut Context) -> i32,
+            move_cursor: extern "C" fn(*mut Context, u8, u8),
         }
         let t = Table {
             context: context as *mut Context,
@@ -289,6 +290,7 @@ fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Conte
             readc: api::readc,
             wfvbi: api::wfvbi,
             kbhit: api::kbhit,
+            move_cursor: api::move_cursor
         };
         let ptr = addr as *const ();
         let code: extern "C" fn(*const Table) -> u32 = ::core::mem::transmute(ptr);
