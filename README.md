@@ -117,9 +117,9 @@ times, as it seems it can get a bit stuck.
 
 Your VGA connector requires five wires:
 
-* Pin 1: Red - connect to PF1 via a resistive divider.
-* Pin 2: Green - connect to PB7 via a resistive divider.
-* Pin 3: Blue - connect to PD3 via a resistive divider.
+* Pin 1: Red - connect to PF1 via a 330 Ohm resistor.
+* Pin 2: Green - connect to PB7 via a 330 Ohm resistor.
+* Pin 3: Blue - connect to PD3 via a 330 Ohm resistor.
 * Pin 5: Ground - connect to GND
 * Pin 6: Red Return - connect to GND
 * Pin 7: Green Return - connect to GND
@@ -127,46 +127,47 @@ Your VGA connector requires five wires:
 * Pin 13: H-Sync - connect to PB4
 * Pin 14: V-Sync - connect to PB5
 
-The resistive divider needs to drop the 3.3V output down to 0.7V. Some
-monitors are more tolerant of over voltage than others. In a perfect world,
-your board would offer a 75 ohm source impendance matching the monitor's 75
-ohm impedance, to reduce reflections, but at this resolution it doesn't really
-matter. In any case, a 75 ohm source impedance will probably pull too much
-current out of the GPIO pin and cause you problems.
-
 I'm using this arrangement using random resistors I found on my desk, and it
 works for me (although the picture is a bit dim, as it actually produces about
-0.2V peak rather than 0.7V):
+0.6V peak rather than 0.7V):
 
 ```
 -----+
-     |
-PB7 o+---------------+
-     |               |
-     |              +-+
-     |              | |
-     |              | | 330 Ohm
-     |              | |
-     |              +-+
------+               |
-                     +----------- VGA pin 2----------+
-                     |                               |
-                    +-+                             +-+
-                    | |                             | |
-                    | | Not Fitted                  | | 75
-                    | |                             | | (in Monitor)
-                    +-+                             +-+
-                     |                               |
-                     o                               o
-                    GND                             GND
+     |     +------+ 330 Ohm        Co-ax in the VGA cable
+PB7 o+-----|      |------------(o)==================)+
+     |     +------+                                  |
+-----+                                               |
+                                                    +-+
+                                                    | |
+                                                    | | 75 Ohm
+                                                    | | (in Monitor)
+                                                    +-+
+                                                     |
+                                                     o
+                                                    GND
 ```
 
-You may need to experiment with putting a resistor to ground where I left one
-out (so basically its resistance is infinite) but it's working OK on my
-monitor. Obviously only one channel is shown above - wire up the blue and red
-channels in exactly the same fashion. Finally, don't forget to keep your wires
-short! You will have noise if you try and send a 20 MHz signal down 10cm of
+The 330 Ohm resistor forms a resistive divider with the 75 Ohm resistor in the
+monitor. This is needed to drop the 3.3V output down to 0.7V. Some monitors
+are more tolerant of over voltage than others. The higher the resistor you
+use, the less current you pulling out of the GPIO pin (we're just over 8mA
+currently, which is a bit high) but the lower the voltage the monitor will see
+and the dimmer your picture will be. Conversely if you lower the resistor,
+more current will flow but it'll be a brigher picture. I'd save your chip from
+damage and just wind the brightness control up!
+
+Obviously only one channel is shown above - wire up the blue and red channels
+in exactly the same fashion. Finally, don't forget to keep your wires short!
+You will have noise if you try and send a 20 MHz signal down 10cm of
 unshielded wire.
+
+In a perfect world, your board would offer a 75 ohm source impendance matching
+the monitor's 75 ohm impedance, to reduce reflections, but at this resolution
+it doesn't seem to matter. If you want do do that, you'll need to make a
+resistive divider to drop the 3.3V to 1.4V, and then feed that through a
+high-bandwidth (>20 MHz) unity-gain amplifier, with a 75 ohm resistor on the
+output. The pair of 75 ohm resistors will then drop the 1.4V to 0.7V in the
+monitor.
 
 ### PS/2 Keyboard
 

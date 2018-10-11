@@ -7,44 +7,47 @@ keywords = ["arm", "cortex-m", "template", "video", "menu"]
 categories = ["embedded", "no-std"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/thejpster/monotron"
+edition = "2018"
+
+[[bin]]
+name = "monotron"
+test = false
+bench = false
 
 [profile.release]
 lto = true
 debug = true
-opt-level = "s"
-
-[dependencies]
+codegen-units = 1
+opt-level = "z"
 
 [dependencies.tm4c123x-hal]
-version = "0.4.1"
+version = "0.5.0"
 features = ["rt"]
 # path = "../tm4c123x-hal"
 
 [dependencies.menu]
-version = "0.1"
+version = "0.2.1"
 # git = "https://github.com/thejpster/menu"
 # path = "../menu"
 
 [dependencies.vga-framebuffer]
-version = "0.7.0"
-# git = "https://github.com/thejpster/vga-framebuffer-rs"
+# version = "0.7.0"
+git = "https://github.com/thejpster/vga-framebuffer-rs"
 # path = "../vga-framebuffer-rs"
+features = ["const_fn"]
 
 [dependencies.embedded-hal]
 version = "0.1.1"
 features = ["unproven"]
 
 [dependencies.cortex-m]
-version = "0.5"
+version = "0.5.7"
 
 [dependencies.cortex-m-rt]
-version = "0.5"
+version = "0.6.1"
 
-[dependencies.panic-semihosting]
-version = "0.3"
-
-[dependencies.cortex-m-semihosting]
-version = "0.3"
+[dependencies.panic-halt]
+version = "0.2"
 
 [dependencies.pc-keyboard]
 version = "0.1.1"
@@ -52,3 +55,10 @@ version = "0.1.1"
 [dependencies.monotron-synth]
 version = "0.1"
 
+[dependencies.crc]
+version = "1.8.1"
+default-features = false
+
+[dependencies.monotron-interface]
+# path = "../monotron-interface"
+git = "https://github.com/thejpster/monotron-interface"

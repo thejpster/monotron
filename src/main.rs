@@ -33,44 +33,44 @@
 //! * SSI3Tx for Blue on PD3 / 3.06
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PB5 is V-Sync
-//! * M0PWM4 on PE4 is PWM Audio output
+//! * M0PWM4 for Audio on PE4 / 1.05.
+//!
+//! Reserved for future use:
+//! * SSI0, for interfacing with an SD/MMC card.
+//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
+//! * PB0/PB1/PC4/PC5 for a 5-wire 3.3v UART.
+//! * PB2/PE0 for PS/2 +CLK and +DATA.
 
 #![no_main]
-#![feature(asm)]
 #![no_std]
-
-extern crate cortex_m;
-#[macro_use]
-extern crate cortex_m_rt;
-extern crate cortex_m_semihosting;
-extern crate embedded_hal;
-extern crate menu;
-extern crate panic_semihosting;
-extern crate pc_keyboard;
-#[macro_use]
-extern crate tm4c123x_hal;
-extern crate vga_framebuffer as fb;
-extern crate monotron_synth as synth;
+#![feature(asm)]
 
 mod ui;
+mod api;
+mod rust_logo;
+mod demos;
 
+extern crate panic_halt;
+
+use vga_framebuffer as fb;
 use core::fmt::Write;
-use cortex_m::asm;
 use tm4c123x_hal::bb;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
 use tm4c123x_hal::sysctl;
 use synth::*;
+use tm4c123x_hal::interrupt;
+use cortex_m_rt::{entry, exception};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 const ISR_LATENCY: u32 = 94;
 
-static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
-
+// Must come first
 static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
 
 static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
+static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 struct VideoHardware {
     h_timer: tm4c123x_hal::tm4c123x::TIMER1,
@@ -81,14 +81,21 @@ struct VideoHardware {
 
 struct Context {
     pub value: u32,
-    rx: tm4c123x_hal::serial::Rx<
+    uart: tm4c123x_hal::serial::Serial<
         tm4c123x_hal::serial::UART0,
+        tm4c123x_hal::gpio::gpioa::PA1<
+            tm4c123x_hal::gpio::AlternateFunction<
+                tm4c123x_hal::gpio::AF1,
+                tm4c123x_hal::gpio::PushPull,
+            >,
+        >,
         tm4c123x_hal::gpio::gpioa::PA0<
             tm4c123x_hal::gpio::AlternateFunction<
                 tm4c123x_hal::gpio::AF1,
                 tm4c123x_hal::gpio::PushPull,
             >,
         >,
+        (),
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
@@ -107,16 +114,12 @@ impl Context {
     }
 
     fn has_char(&mut self) -> bool {
-        if self.buffered_char.is_some() {
+        let attempt = self.read();
+        if attempt.is_some() {
+            self.buffered_char = attempt;
             true
         } else {
-            let try = self.read();
-            if try.is_some() {
-                self.buffered_char = try;
-                true
-            } else {
-                false
-            }
+            false
         }
     }
 
@@ -126,7 +129,7 @@ impl Context {
             core::mem::swap(&mut self.buffered_char, &mut x);
             return x;
         }
-        if let Ok(ch) = self.rx.read() {
+        if let Ok(ch) = self.uart.read() {
             // Got some serial input
             // Backspace key in screen seems to generate 0x7F (delete).
             // Map it to backspace (0x08)
@@ -182,8 +185,7 @@ fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
     sysctl::reset(sc, p);
 }
 
-entry!(main);
-
+#[entry]
 fn main() -> ! {
     let p = tm4c123x_hal::Peripherals::take().unwrap();
     let cp = tm4c123x_hal::CorePeripherals::take().unwrap();
@@ -287,12 +289,11 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
-    let (mut _tx, rx) = uart.split();
 
     let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
     let mut c = Context {
         value: 0,
-        rx,
+        uart,
         keyboard,
         buffered_char: None,
     };
@@ -586,10 +587,8 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-interrupt!(TIMER1A, timer1a);
-
-
 /// Called on start of sync pulse (end of front porch)
+interrupt!(TIMER1A, timer1a);
 fn timer1a() {
     let pwm = unsafe { &*tm4c123x_hal::tm4c123x::PWM0::ptr() };
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
@@ -614,9 +613,8 @@ fn timer1a() {
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
-interrupt!(TIMER1B, timer1b);
-
 /// Called on start of pixel data (end of back porch)
+interrupt!(TIMER1B, timer1b);
 fn timer1b() {
     unsafe {
         /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
@@ -702,17 +700,15 @@ fn timer1b() {
     timer.icr.write(|w| w.cbecint().set_bit());
 }
 
-// define the hard fault handler
-exception!(HardFault, hard_fault);
-
-fn hard_fault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
+#[exception]
+/// The hard fault handler
+fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
     panic!("HardFault at {:#?}", ef);
 }
 
-// define the default exception handler
-exception!(*, default_handler);
-
-fn default_handler(irqn: i16) {
+#[exception]
+/// The default exception handler
+fn DefaultHandler(irqn: i16) {
     panic!("Unhandled exception (IRQn = {})", irqn);
 }
 
