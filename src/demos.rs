@@ -7,6 +7,7 @@ pub(crate) const DEMO_MENU: ui::Menu = ui::Menu {
     label: "demo",
     items: &[
         &TEST_ALPHABET,
+        &TEST_TELETEXT,
         &TEST_ANIMATION,
         &TEST_ART,
     ],
@@ -18,6 +19,12 @@ const TEST_ALPHABET: ui::Item = ui::Item {
     item_type: menu::ItemType::Callback(test_alphabet),
     command: "alphabet",
     help: Some("Scrolls some test text output."),
+};
+
+const TEST_TELETEXT: ui::Item = ui::Item {
+    item_type: menu::ItemType::Callback(test_teletext),
+    command: "teletext",
+    help: Some("Scrolls some test text output in the teletext font."),
 };
 
 const TEST_ANIMATION: ui::Item = ui::Item {
@@ -83,12 +90,91 @@ pub(crate) fn test_alphabet<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str
     }
 }
 
+/// The test menu item - displays all the glyphs in all the colour combinations
+pub(crate) fn test_teletext<'a>(menu: &ui::Menu, item: &ui::Item, input: &str, context: &mut Context) {
+    unsafe {
+        FRAMEBUFFER.set_custom_font(Some(&fb::freebsd_teletext::FONT_DATA));
+    }
+    test_alphabet(menu, item, input, context);
+    unsafe {
+        FRAMEBUFFER.set_custom_font(None);
+    }
+}
+
 /// Display some art
 pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, context: &mut Context) {
-    unsafe {
-        FRAMEBUFFER.clear();
+    space_invaders(context);
+
+    pacman(context);
+
+    desktop(context);
+
+    paint(context);
+
+    bitmap_test(context);
+
+    flame_demo(context);
+
+    ferris(context);
+}
+
+/// Another test menu item - displays an animation.
+pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str, context: &mut Context) {
+    let mut next_frame = unsafe { FRAMEBUFFER.frame() };
+    let mut pos = fb::Position::origin();
+    let mut left = true;
+    let mut down = true;
+    let width = unsafe { FRAMEBUFFER.get_width() };
+    let height = unsafe { FRAMEBUFFER.get_height() };
+    let input = input.trim_left_matches("animate ");
+    let num_chars = input.chars().count();
+    let attr =
+        unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Yellow, fb::Colour::Black)) };
+    loop {
+        asm::wfi();
+        let new_frame = unsafe { FRAMEBUFFER.frame() };
+        if new_frame >= next_frame {
+            next_frame = next_frame + 30;
+            if left {
+                pos.col.incr();
+            } else {
+                pos.col.decr();
+            }
+            if down {
+                pos.row.incr();
+            } else {
+                pos.row.decr();
+            }
+            if pos.col == fb::Col::origin() {
+                left = true;
+            }
+            if pos.col == fb::Col(width.0 - num_chars as u8) {
+                left = false;
+            }
+            if pos.row == fb::Row::origin() {
+                down = true;
+            }
+            if pos.row == height {
+                down = false;
+            }
+            unsafe {
+                FRAMEBUFFER.clear();
+                FRAMEBUFFER.set_pos(pos).unwrap();
+                write!(FRAMEBUFFER, "{}", input).unwrap();
+            }
+        }
+        if let Some(_input) = context.read() {
+            unsafe {
+                FRAMEBUFFER.set_attr(attr);
+                FRAMEBUFFER.clear();
+            };
+            break;
+        }
     }
-    write!(context, "\u{001b}^SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
+}
+
+fn space_invaders(context: &mut Context) {
+    write!(context, "\u{001b}Z\u{001b}^SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
     write!(context, "\u{001b}vSCORE 0300      HIGH 0000          3    ╩       ").unwrap();
     write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
     write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
@@ -111,12 +197,10 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     writeln!(context, "").unwrap();
     writeln!(context, "       ═╩═").unwrap();
     writeln!(context, "Press a key...").unwrap();
-    loop {
-        asm::wfi();
-        if let Some(_input) = context.read() {
-            break;
-        }
-    }
+    wait_for_key(context);
+}
+
+fn pacman(context: &mut Context) {
     writeln!(context, "\u{001b}Y\u{001b}k\u{001b}Z").unwrap();
     writeln!(context, "              1UP   HIGH SCORE").unwrap();
     writeln!(context, "                00        00").unwrap();
@@ -151,13 +235,10 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     writeln!(context, "          ╚══════════════════════════╝").unwrap();
     writeln!(context, "             ◄► ◄► ◄►").unwrap();
     write!(context, "\n\n\nPress a key...").unwrap();
-    loop {
-        asm::wfi();
-        if let Some(_input) = context.read() {
-            break;
-        }
-    }
+    wait_for_key(context);
+}
 
+fn desktop(context: &mut Context) {
     write!(context, "\u{001b}Z\u{001b}K\u{001b}w  \u{001b}RF\u{001b}Kile   \u{001b}RE\u{001b}Kdit  \u{001b}RV\u{001b}Kiew   \u{001b}RT\u{001b}Kools  \u{001b}RH\u{001b}Kelp               ").unwrap();
     write!(context, "\u{001b}B\u{001b}c████████████████████████████████████████████████").unwrap();
     write!(context, "████████████████████████████████████████████████").unwrap();
@@ -194,15 +275,11 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     write!(context, "████████████████████████████████████████████████").unwrap();
     write!(context, "████████████████████████████████████████████████").unwrap();
     write!(context, "\u{001b}K\u{001b}w▒\u{001b}W\u{001b}kCAPS\u{001b}K\u{001b}w▒\u{001b}W\u{001b}kINS\u{001b}K\u{001b}w▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\u{001b}W\u{001b}k[Version v1.2]\u{001b}K\u{001b}w").unwrap();
+    wait_for_key(context);
+    writeln!(context, "\u{001b}W\u{001b}b\u{001b}Z").unwrap();
+}
 
-    loop {
-        asm::wfi();
-        if let Some(_input) = context.read() {
-            writeln!(context, "\u{001b}W\u{001b}b\u{001b}ZOk...").unwrap();
-            break;
-        }
-    }
-
+fn paint(context: &mut Context) {
     write!(context, "\u{001b}Z\u{001b}Y\u{001b}k╔════════════════════════\u{001b}W[MonotronPaint]\u{001b}Y═══════╗").unwrap();
     write!(context, "║\u{001b}W┌[Font]──────────┐┌──────────────────────────┐\u{001b}Y║").unwrap();
     write!(context, "║\u{001b}W│ ☺☻♥♦♣♠•......♫☼││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
@@ -239,14 +316,10 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     write!(context, "║\u{001b}W│S:48x36 ││\u{001b}K      \u{001b}W││\u{001b}Y\u{001b}b                          \u{001b}W\u{001b}k│\u{001b}Y║").unwrap();
     write!(context, "║\u{001b}W└────────┘└──────┘└──────────────────────────┘\u{001b}Y║").unwrap();
     write!(context, "╚══════════════════════════════════════════════").unwrap();
+    wait_for_key(context);
+}
 
-    loop {
-        asm::wfi();
-        if let Some(_input) = context.read() {
-            break;
-        }
-    }
-
+fn bitmap_test(context: &mut Context) {
     let mode2_buffer = unsafe { &mut super::APPLICATION_RAM[0..384 * 288 / 8] };
 
     unsafe {
@@ -300,7 +373,9 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
     unsafe {
         FRAMEBUFFER.mode2_release();
     }
+}
 
+fn flame_demo(context: &mut Context) {
     write!(context, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
     write!(context, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
     write!(context, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
@@ -406,56 +481,75 @@ impl Fire {
     }
 }
 
-/// Another test menu item - displays an animation.
-pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str, context: &mut Context) {
-    let mut next_frame = unsafe { FRAMEBUFFER.frame() };
-    let mut pos = fb::Position::origin();
-    let mut left = true;
-    let mut down = true;
-    let width = unsafe { FRAMEBUFFER.get_width() };
-    let height = unsafe { FRAMEBUFFER.get_height() };
-    let input = input.trim_left_matches("animate ");
-    let num_chars = input.chars().count();
-    let attr =
-        unsafe { FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::Yellow, fb::Colour::Black)) };
-    loop {
-        asm::wfi();
-        let new_frame = unsafe { FRAMEBUFFER.frame() };
-        if new_frame >= next_frame {
-            next_frame = next_frame + 30;
-            if left {
-                pos.col.incr();
-            } else {
-                pos.col.decr();
-            }
-            if down {
-                pos.row.incr();
-            } else {
-                pos.row.decr();
-            }
-            if pos.col == fb::Col::origin() {
-                left = true;
-            }
-            if pos.col == fb::Col(width.0 - num_chars as u8) {
-                left = false;
-            }
-            if pos.row == fb::Row::origin() {
-                down = true;
-            }
-            if pos.row == height {
-                down = false;
-            }
-            unsafe {
-                FRAMEBUFFER.clear();
-                FRAMEBUFFER.set_pos(pos).unwrap();
-                write!(FRAMEBUFFER, "{}", input).unwrap();
+fn ferris(context: &mut Context) {
+    use crate::ferris::FERRIS_TELETEXT_DATA;
+    // We have a 40x25 teletext image. Let's display it on our 48x36 screen, centered.
+    // For each teletext line, we need 4 spaces, the line, then four spaces.
+    // For each teletext char, we interpret any control chars and display any visible chars.
+    unsafe { FRAMEBUFFER.set_custom_font(Some(&fb::freebsd_teletext::FONT_DATA)) };
+    for line in FERRIS_TELETEXT_DATA.chunks(40) {
+        write!(context, "\u{001B}W    ").unwrap();
+        let mut contiguous = true;
+        let mut text = true;
+        for &ch in line {
+            match ch {
+                0x01 | 0x81 => { write!(context, "\u{001B}R "); text = true; },
+                0x02 | 0x82 => { write!(context, "\u{001B}G "); text = true; },
+                0x03 | 0x83 => { write!(context, "\u{001B}Y "); text = true; },
+                0x04 | 0x84 => { write!(context, "\u{001B}B "); text = true; },
+                0x05 | 0x85 => { write!(context, "\u{001B}M "); text = true; },
+                0x06 | 0x86 => { write!(context, "\u{001B}C "); text = true; },
+                0x07 | 0x87 => { write!(context, "\u{001B}W "); text = true; },
+                0x11 | 0x91 => { write!(context, "\u{001B}R "); text = false; },
+                0x12 | 0x92 => { write!(context, "\u{001B}G "); text = false; },
+                0x13 | 0x93 => { write!(context, "\u{001B}Y "); text = false; },
+                0x14 | 0x94 => { write!(context, "\u{001B}B "); text = false; },
+                0x15 | 0x95 => { write!(context, "\u{001B}M "); text = false; },
+                0x16 | 0x96 => { write!(context, "\u{001B}C "); text = false; },
+                0x17 | 0x97 => { write!(context, "\u{001B}W "); text = false; },
+                0x19 | 0x99 => { write!(context, " "); contiguous = true; },
+                0x1A | 0x9A => { write!(context, " "); contiguous = false; },
+                // 0x80 Connected Bottom
+                // 0xA0 Seperated Bottom
+                // 0xC0 Connected Top
+                // 0xE0 Separated Top
+                0x20...0x3F | 0x60...0x7F => {
+                    let new_ch = if text {
+                        ch
+                    } else if contiguous {
+                        ch + 0x60
+                    } else {
+                        ch + 0x80
+                    };
+                    unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(new_ch), None) };
+                }
+                0x40...0x5F => {
+                    unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(ch), None) };
+                }
+                0xA0...0xBF | 0xE0...0xFF => {
+                    let new_ch = if text {
+                        ch - 0x80
+                    } else if contiguous {
+                        ch - 0x20
+                    } else {
+                        ch
+                    };
+                    unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(new_ch), None) };
+                }
+                _ => { write!(context, " "); },
             }
         }
+        writeln!(context, "").unwrap();
+    }
+    wait_for_key(context);
+    unsafe { FRAMEBUFFER.set_custom_font(None) };
+    write!(context, "\u{001B}W\u{001B}k\u{001B}Z");
+}
+
+fn wait_for_key(context: &mut Context) {
+    loop {
+        asm::wfi();
         if let Some(_input) = context.read() {
-            unsafe {
-                FRAMEBUFFER.set_attr(attr);
-                FRAMEBUFFER.clear();
-            };
             break;
         }
     }

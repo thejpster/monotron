@@ -48,6 +48,7 @@
 mod ui;
 mod api;
 mod rust_logo;
+mod ferris;
 mod demos;
 
 extern crate panic_halt;
