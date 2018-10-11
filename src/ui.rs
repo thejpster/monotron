@@ -7,8 +7,8 @@ use menu;
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
 
-const TEST_CLEAR: Item = Item {
-    item_type: menu::ItemType::Callback(test_clear),
+const ITEM_CLEAR: Item = Item {
+    item_type: menu::ItemType::Callback(item_clear),
     command: "clear",
     help: Some("Resets the display."),
 };
@@ -32,21 +32,27 @@ const ITEM_DUMP: Item = Item {
 };
 
 const ITEM_LOAD: Item = Item {
-    item_type: menu::ItemType::Callback(load_file),
+    item_type: menu::ItemType::Callback(item_load_file),
     command: "load",
     help: Some("<len> - Load program from UART."),
 };
 
 const ITEM_DEBUG: Item = Item {
-    item_type: menu::ItemType::Callback(debug_info),
+    item_type: menu::ItemType::Callback(item_debug_info),
     command: "debug",
     help: Some("Show some debug info."),
 };
 
 const ITEM_RUN: Item = Item {
-    item_type: menu::ItemType::Callback(run_program),
+    item_type: menu::ItemType::Callback(item_run_program),
     command: "run",
     help: Some("Run loaded program."),
+};
+
+const ITEM_BEEP: Item = Item {
+    item_type: menu::ItemType::Callback(item_beep),
+    command: "beep",
+    help: Some("Make a beep."),
 };
 
 const ITEM_DEMOS: Item = Item {
@@ -55,16 +61,18 @@ const ITEM_DEMOS: Item = Item {
     help: Some("Enter demo menu."),
 };
 
+
 pub(crate) const ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
-        &TEST_CLEAR,
+        &ITEM_CLEAR,
         &ITEM_PEEK,
         &ITEM_POKE,
         &ITEM_DUMP,
         &ITEM_LOAD,
         &ITEM_RUN,
         &ITEM_DEBUG,
+        &ITEM_BEEP,
         &ITEM_DEMOS,
     ],
     entry: None,
@@ -72,7 +80,7 @@ pub(crate) const ROOT_MENU: Menu = Menu {
 };
 
 /// Clears the screen
-fn test_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
+fn item_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
     unsafe { FRAMEBUFFER.clear() };
     unsafe { FRAMEBUFFER.set_pos(fb::Position::origin()).unwrap() };
 }
@@ -157,7 +165,7 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 }
 
 /// Reads raw binary from the UART and dumps it into application RAM.
-fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     unsafe {
         for b in APPLICATION_RAM.iter_mut() {
             *b = 0x00;
@@ -247,7 +255,7 @@ fn load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context
 }
 
 /// Print some debug info.
-fn debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     let fb_addr = unsafe { &FRAMEBUFFER as *const _ } as usize;
     let app_addr = unsafe { &APPLICATION_RAM as *const _ } as usize;
     writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
@@ -256,7 +264,7 @@ fn debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Contex
 }
 
 /// Runs a program from application RAM, then returns.
-fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
+fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     unsafe {
         let addr = ((APPLICATION_RAM[3] as u32) << 24)
             | ((APPLICATION_RAM[2] as u32) << 16)
@@ -296,6 +304,73 @@ fn run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Conte
         let code: extern "C" fn(*const Table) -> u32 = ::core::mem::transmute(ptr);
         let result = code(&t);
         writeln!(context, "Result: {}", result);
+    }
+}
+
+/// Makes a short beep.
+///
+/// The first argument sets the waveform (sine, sawtooth, square or noise).
+/// The second sets the frequency (in Hz).
+/// The third sets the duration (in 60Hz frames).
+/// The fourth sets the channel.
+fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
+    use monotron_synth::*;
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    let waveform = match parts.next() {
+        Some("square") | None => Waveform::Square,
+        Some("sine") => Waveform::Sine,
+        Some("sawtooth") => Waveform::Sawtooth,
+        Some("noise") => Waveform::Noise,
+        e => {
+            writeln!(context, "Unknown wave argument {:?}", e);
+            return;
+        }
+    };
+    let frequency = if let Some(arg) = parts.next() {
+        match u16::from_str_radix(arg, 10) {
+            Ok(f) => f,
+            Err(e) => {
+                writeln!(context, "Bad frequency argument {:?}", e);
+                return;
+            }
+        }
+    } else {
+        440
+    };
+    let duration = if let Some(arg) = parts.next() {
+        match usize::from_str_radix(arg, 10) {
+            Ok(f) => f,
+            Err(e) => {
+                writeln!(context, "Bad duration argument {:?}", e);
+                return;
+            }
+        }
+    } else {
+        60
+    };
+    let channel = match parts.next() {
+        Some("0") | None => CHANNEL_0,
+        Some("1") => CHANNEL_1,
+        Some("2") => CHANNEL_2,
+        e => {
+            writeln!(context, "Unknown duration argument {:?}", e);
+            return;
+        }
+    };
+
+    writeln!(context, "Playing...\r\nWaveform: {:?}\r\nFreq: {} Hz\r\nDuration: {} frames", waveform, frequency, duration).unwrap();
+
+    unsafe {
+        crate::G_SYNTH.play(channel, Frequency::from_hertz(frequency), MAX_VOLUME, waveform);
+    }
+
+    for _ in 0..duration {
+        api::wfvbi(context);
+    }
+
+    unsafe {
+        crate::G_SYNTH.play(channel, Frequency::from_hertz(frequency), 0, waveform);
     }
 }
 

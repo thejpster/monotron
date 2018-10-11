@@ -53,7 +53,9 @@ version = "0.2"
 version = "0.1.1"
 
 [dependencies.monotron-synth]
-version = "0.1"
+# version = "0.1"
+# path = "../monotron-synth"
+git = "https://github.com/thejpster/monotron-synth"
 
 [dependencies.crc]
 version = "1.8.1"
