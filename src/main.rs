@@ -31,11 +31,15 @@
 //! * SSI1Tx for Red on PF1 / 3.10
 //! * SSI2Tx for Green on PB7 / 3.04=2.06
 //! * SSI3Tx for Blue on PD3 / 3.06
-//! * SSI0Clk for Keyboard Clock on PA2 / 2.10
-//! * SSI0Fss for Keyboard Chip Select on PA3 / 2.09.
-//! * SSI0Rx for Keyboard Data on PA4 / 2.08
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PB5 is V-Sync
+//! * M0PWM4 for Audio on PE4 / 1.05.
+//!
+//! Reserved for future use:
+//! * SSI0, for interfacing with an SD/MMC card.
+//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
+//! * PB0/PB1/PC4/PC5 for a 5-wire 3.3v UART.
+//! * PB2/PE0 for PS/2 +CLK and +DATA.
 
 #![no_main]
 #![no_std]
