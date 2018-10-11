@@ -31,11 +31,15 @@
 //! * SSI1Tx for Red on PF1 / 3.10
 //! * SSI2Tx for Green on PB7 / 3.04=2.06
 //! * SSI3Tx for Blue on PD3 / 3.06
-//! * SSI0Clk for Keyboard Clock on PA2 / 2.10
-//! * SSI0Fss for Keyboard Chip Select on PA3 / 2.09.
-//! * SSI0Rx for Keyboard Data on PA4 / 2.08
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PB5 is V-Sync
+//! * M0PWM4 for Audio on PE4 / 1.05.
+//!
+//! Reserved for future use:
+//! * SSI0, for interfacing with an SD/MMC card.
+//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
+//! * PB0/PB1/PC4/PC5 for a 5-wire 3.3v UART.
+//! * PB2/PE0 for PS/2 +CLK and +DATA.
 
 #![no_main]
 #![no_std]
@@ -54,6 +58,7 @@ use tm4c123x_hal::bb;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
 use tm4c123x_hal::sysctl;
+use monotron_synth::*;
 use tm4c123x_hal::interrupt;
 use cortex_m_rt::{entry, exception};
 
@@ -64,6 +69,7 @@ const ISR_LATENCY: u32 = 94;
 // Must come first
 static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
 
+static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 struct VideoHardware {
@@ -93,7 +99,6 @@ struct Context {
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
-    spi: tm4c123x_hal::tm4c123x::SSI0,
     buffered_char: Option<Input>
 }
 
@@ -105,12 +110,7 @@ enum Input {
 
 impl Context {
     fn keyboard_read(&mut self) -> Option<u16> {
-        if self.spi.sr.read().rne().bit_is_set() {
-            let data = self.spi.dr.read().bits() as u16;
-            Some(data)
-        } else {
-            None
-        }
+        None
     }
 
     fn has_char(&mut self) -> bool {
@@ -219,10 +219,12 @@ fn main() -> ! {
     enable(sysctl::Domain::Ssi1, &mut sc.power_control);
     enable(sysctl::Domain::Ssi2, &mut sc.power_control);
     enable(sysctl::Domain::Ssi3, &mut sc.power_control);
+    enable(sysctl::Domain::Pwm0, &mut sc.power_control);
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
+    let mut porte = p.GPIO_PORTE.split(&sc.power_control);
     let mut portf = p.GPIO_PORTF.split(&sc.power_control);
 
     // T0CCP0
@@ -243,52 +245,23 @@ fn main() -> ! {
     let _blue_data = portd
         .pd3
         .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
+    // Audio PWM output
+    let _audio_pin = porte.pe4.into_af_push_pull::<tm4c123x_hal::gpio::AF4>(&mut porte.control);
 
-    // Keyboard produces 5V but the chip is 5V tolerant on inputs. We set them
-    // floating as we have external pull-ups to 5V.
-    let _keyboard_clock = porta
-        .pa2
-        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
-            &mut porta.control,
-        );
-    let _keyboard_select = porta
-        .pa3
-        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
-            &mut porta.control,
-        );
-    let _keyboard_data = porta
-        .pa4
-        .into_af_open_drain::<tm4c123x_hal::gpio::AF2, tm4c123x_hal::gpio::Floating>(
-            &mut porta.control,
-        );
-    let keyboard_spi = p.SSI0;
+    // Configure PWM peripheral. We use M0PWM4 on PE4. That's pwmA on the third
+    // pair (the pairs are 0/1, 2/3, 4/5 and 6/7) of the first PWM peripheral.
+    // We want up/down mode. We have a load value 256 and a comparator value
+    // set according to the volume level for the current sample.
 
-    // Configure the keyboard interface
-    keyboard_spi.cr1.write(|w| w.sse().clear_bit());
-    // Slave mode
-    keyboard_spi.cr1.modify(|_, w| w.ms().set_bit());
-    // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
-    // So CPSDVSR = 160, SCR = 0 gives us 500 kHz which is fine
-    // >> "For slave mode, the system clock or the PIOSC must be at least 12
-    // >> times faster than the SSInClk, with the restriction that SSInClk
-    // >> cannot be faster than 6.67 MHz."
-    // Typical keyboard clock is 10 to 20 kHz
-    // Host must sample data after falling clock edge
-    keyboard_spi
-        .cpsr
-        .write(|w| unsafe { w.cpsdvsr().bits(160) });
-    // Configure to receive 11 bits, Freescale (moto) mode SPO=0, SPH=1
-    keyboard_spi.cr0.write(|w| {
-        w.dss()._11();
-        w.frf().moto();
-        w.spo().clear_bit();
-        w.sph().set_bit();
-        w
-    });
-    // Set clock source to sysclk
-    keyboard_spi.cc.modify(|_, w| w.cs().syspll());
-    // Enable
-    keyboard_spi.cr1.modify(|_, w| w.sse().set_bit());
+    let pwm = p.PWM0;
+    pwm.ctl.write(|w| w.globalsync0().clear_bit());
+    // Mode = 1 => Count up/down mode
+    pwm._2_ctl.write(|w| w.enable().set_bit().mode().set_bit());
+    pwm._2_gena.write(|w| w.actcmpau().zero().actcmpad().one());
+    // 528 cycles (264 up and down) = 4 loops per video line (2112 cycles)
+    pwm._2_load.write(|w| unsafe { w.load().bits(263) });
+    pwm._2_cmpa.write(|w| unsafe { w.compa().bits(64) });
+    pwm.enable.write(|w| w.pwm4en().set_bit());
 
     unsafe {
         let hw = VideoHardware {
@@ -322,7 +295,6 @@ fn main() -> ! {
         value: 0,
         uart,
         keyboard,
-        spi: keyboard_spi,
         buffered_char: None,
     };
 
@@ -358,6 +330,7 @@ fn main() -> ! {
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
 
     loop {
+        api::wfvbi(r.context);
         // Wait for new UTF-8 input
         match r.context.read() {
             Some(Input::Unicode(ch)) => {
@@ -518,6 +491,7 @@ impl fb::Hardware for VideoHardware {
 /// Called on start of sync pulse (end of front porch)
 interrupt!(TIMER1A, timer1a);
 fn timer1a() {
+    let pwm = unsafe { &*tm4c123x_hal::tm4c123x::PWM0::ptr() };
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
     let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
     let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
@@ -531,6 +505,10 @@ fn timer1a() {
     ssi_g.dr.write(|w| unsafe { w.data().bits(0) });
     // Run the draw routine
     unsafe { FRAMEBUFFER.isr_sol() };
+    // Run the audio routine
+    let sample = unsafe { G_SYNTH.next() };
+    let sample: u8 = sample.into();
+    pwm._2_cmpa.write(|w| unsafe { w.compa().bits(sample as u16) });
     // Clear timer A interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());

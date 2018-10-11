@@ -22,8 +22,8 @@ opt-level = "z"
 
 [dependencies.tm4c123x-hal]
 version = "0.5.0"
-# path = "../tm4c123x-hal"
 features = ["rt"]
+# path = "../tm4c123x-hal"
 
 [dependencies.menu]
 version = "0.2.1"
@@ -51,6 +51,11 @@ version = "0.2"
 
 [dependencies.pc-keyboard]
 version = "0.1.1"
+
+[dependencies.monotron-synth]
+# version = "0.1"
+# path = "../monotron-synth"
+git = "https://github.com/thejpster/monotron-synth"
 
 [dependencies.crc]
 version = "1.8.1"
