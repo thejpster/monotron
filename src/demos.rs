@@ -1,7 +1,10 @@
-use crate::{Context, FRAMEBUFFER, rust_logo, ui};
+use crate::{Context, FRAMEBUFFER, rust_logo, ui, api};
 use cortex_m::asm;
 use core::fmt::Write;
 use crate::fb::{self, BaseConsole};
+
+static FERRIS_TELETEXT_DATA: [u8; 1000] = *include_bytes!("ferris.dat");
+static WEATHER_TELETEXT_DATA: [u8; 1000] = *include_bytes!("weather.dat");
 
 pub(crate) const DEMO_MENU: ui::Menu = ui::Menu {
     label: "demo",
@@ -111,11 +114,13 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
 
     paint(context);
 
+    teletext(context, &FERRIS_TELETEXT_DATA);
+
+    teletext(context, &WEATHER_TELETEXT_DATA);
+
     bitmap_test(context);
 
     flame_demo(context);
-
-    ferris(context);
 }
 
 /// Another test menu item - displays an animation.
@@ -383,15 +388,10 @@ fn flame_demo(context: &mut Context) {
     write!(context, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
     write!(context, "╚══════════════════════════════════════════════╝").unwrap();
     write!(context, "          by theJPster / @therealjpster").unwrap();
-    let mut next_frame = unsafe { FRAMEBUFFER.frame() } + 1;
     let mut f = Fire::new();
     loop {
-        asm::wfi();
-        let this_frame = unsafe { FRAMEBUFFER.frame() };
-        if this_frame == next_frame {
-            next_frame = this_frame + 1;
-            f.draw_fire(unsafe { &mut FRAMEBUFFER });
-        }
+        api::wfvbi(context);
+        f.draw_fire(unsafe { &mut FRAMEBUFFER });
         if let Some(_input) = context.read() {
             writeln!(context, "\u{001b}W\u{001b}k\u{001b}ZOk...").unwrap();
             break;
@@ -481,38 +481,45 @@ impl Fire {
     }
 }
 
-fn ferris(context: &mut Context) {
-    use crate::ferris::FERRIS_TELETEXT_DATA;
+fn teletext(context: &mut Context, data: &[u8; 1000]) {
     // We have a 40x25 teletext image. Let's display it on our 48x36 screen, centered.
     // For each teletext line, we need 4 spaces, the line, then four spaces.
     // For each teletext char, we interpret any control chars and display any visible chars.
     unsafe { FRAMEBUFFER.set_custom_font(Some(&fb::freebsd_teletext::FONT_DATA)) };
-    for line in FERRIS_TELETEXT_DATA.chunks(40) {
-        write!(context, "\u{001B}W    ").unwrap();
+    write!(context, "\u{001B}Z").unwrap();
+    for line in data.chunks(40) {
+        write!(context, "\u{001B}W\u{001B}k    ").unwrap();
         let mut contiguous = true;
+        let mut bg = 'k';
         let mut text = true;
         for &ch in line {
+            let ch = if ch > 0x80 {
+                ch - 0x80
+            } else {
+                ch
+            };
             match ch {
-                0x01 | 0x81 => { write!(context, "\u{001B}R "); text = true; },
-                0x02 | 0x82 => { write!(context, "\u{001B}G "); text = true; },
-                0x03 | 0x83 => { write!(context, "\u{001B}Y "); text = true; },
-                0x04 | 0x84 => { write!(context, "\u{001B}B "); text = true; },
-                0x05 | 0x85 => { write!(context, "\u{001B}M "); text = true; },
-                0x06 | 0x86 => { write!(context, "\u{001B}C "); text = true; },
-                0x07 | 0x87 => { write!(context, "\u{001B}W "); text = true; },
-                0x11 | 0x91 => { write!(context, "\u{001B}R "); text = false; },
-                0x12 | 0x92 => { write!(context, "\u{001B}G "); text = false; },
-                0x13 | 0x93 => { write!(context, "\u{001B}Y "); text = false; },
-                0x14 | 0x94 => { write!(context, "\u{001B}B "); text = false; },
-                0x15 | 0x95 => { write!(context, "\u{001B}M "); text = false; },
-                0x16 | 0x96 => { write!(context, "\u{001B}C "); text = false; },
-                0x17 | 0x97 => { write!(context, "\u{001B}W "); text = false; },
-                0x19 | 0x99 => { write!(context, " "); contiguous = true; },
-                0x1A | 0x9A => { write!(context, " "); contiguous = false; },
-                // 0x80 Connected Bottom
-                // 0xA0 Seperated Bottom
-                // 0xC0 Connected Top
-                // 0xE0 Separated Top
+                0x01 => { write!(context, "\u{001B}R "); text = true; bg = 'r'; },
+                0x02 => { write!(context, "\u{001B}G "); text = true; bg = 'g'; },
+                0x03 => { write!(context, "\u{001B}Y "); text = true; bg = 'y'; },
+                0x04 => { write!(context, "\u{001B}B "); text = true; bg = 'b'; },
+                0x05 => { write!(context, "\u{001B}M "); text = true; bg = 'm'; },
+                0x06 => { write!(context, "\u{001B}C "); text = true; bg = 'c'; },
+                0x07 => { write!(context, "\u{001B}W "); text = true; bg = 'w'; },
+                0x11 => { write!(context, "\u{001B}R "); text = false; bg = 'r'; },
+                0x12 => { write!(context, "\u{001B}G "); text = false; bg = 'g'; },
+                0x13 => { write!(context, "\u{001B}Y "); text = false; bg = 'y'; },
+                0x14 => { write!(context, "\u{001B}B "); text = false; bg = 'b'; },
+                0x15 => { write!(context, "\u{001B}M "); text = false; bg = 'm'; },
+                0x16 => { write!(context, "\u{001B}C "); text = false; bg = 'c'; },
+                0x17 => { write!(context, "\u{001B}W "); text = false; bg = 'w'; },
+                0x19 => { write!(context, " "); contiguous = true; },
+                0x1A => { write!(context, " "); contiguous = false; },
+                0x1C => { write!(context, "\u{001B}k"); },
+                0x1D => { write!(context, "\u{001B}{} ", bg); }
+                // We have contiguous at 0x80..0x9F and 0xC0..0xDF
+                // We have separated at 0xA0..0xBF and 0xE0..0xFF
+                // Teletext has graphics at 0x20..0x3F and 0x60..0x7F
                 0x20...0x3F | 0x60...0x7F => {
                     let new_ch = if text {
                         ch
@@ -525,16 +532,6 @@ fn ferris(context: &mut Context) {
                 }
                 0x40...0x5F => {
                     unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(ch), None) };
-                }
-                0xA0...0xBF | 0xE0...0xFF => {
-                    let new_ch = if text {
-                        ch - 0x80
-                    } else if contiguous {
-                        ch - 0x20
-                    } else {
-                        ch
-                    };
-                    unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(new_ch), None) };
                 }
                 _ => { write!(context, " "); },
             }
