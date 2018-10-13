@@ -19,9 +19,10 @@ can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 * 32 KiB SRAM (24 KiB usable for applications)
 * 256 KiB Flash ROM
 * Choice of low-memory text display mode or full bitmap graphics mode
-* PS/2 keyboard input
+* 8-bit mono audio output
 * USB Serial I/O
 * Simple command-line interface
+* Loadable apps
 * Watch this space!
 
 ## Video
@@ -54,7 +55,13 @@ and can have any foreground and background colour from the supported set:
 
 The text buffer takes up `48 x 36 x 2 = 3,456` bytes of SRAM.
 
-The built-in font is taken from [FreeBSD](http://web.mit.edu/freebsd/head/share/syscons/fonts/cp850-8x16.fnt).
+The built-in font is taken from
+[FreeBSD](http://web.mit.edu/freebsd/head/share/syscons/fonts/cp850-8x16.fnt).
+There's also a second font which implements Teletext block graphics (or
+'sixels').
+
+Any line of text can be displayed in "double height" mode, showing either the
+top-half or bottom-half.
 
 Finally, the display is framed with an 8 pixel border at the sides and a 12
 pixel border at the top and bottom, to make everything fit neatly and to help
@@ -169,6 +176,26 @@ high-bandwidth (>20 MHz) unity-gain amplifier, with a 75 ohm resistor on the
 output. The pair of 75 ohm resistors will then drop the 1.4V to 0.7V in the
 monitor.
 
+### UART
+
+Monotron uses UART0 on the Tiva-C Launchpad, which is converted to USB
+Serial by the on-board companion chip. Connect with your favourite Serial
+terminal at 115,200bps. Send UTF-8 and it'll get converted to MS-DOS Code Page
+850 inside the Monotron.
+
+I hope to add support for a second UART (UART 1) on an FTDI-compatible 6-pin
+connector (3.3v signalling).
+
+### Audio
+
+Monotron can generate 8-bit audio output using PWM on pin PE4. I use the
+[monotron- synth](https://github.com/thejpster/monotron-synth) which has a
+three-channel wavetable synthesiser which can bleep and bloop with square
+waves, sine waves, sawtooth waves and generate white noise.
+
+You'll need to run the pin through a low-pass filter to remove the noise, and
+connect it to an amplifier as the GPIO pin won't really supply much current.
+
 ### PS/2 Keyboard
 
 PS/2 keyboard support sort of worked, but wasn't reliable so it's currently
@@ -193,16 +220,6 @@ Monotron currently doesn't support talking back to the keyboard (e.g. to turn
 the SCROLL, NUM and CAPS-LOCK lights on)- to do so would probably require more
 robust interface circuitry.
 
-### UART
-
-Monotron uses UART0 on the Tiva-C Launchpad, which is converted to USB
-Serial by the on-board companion chip. Connect with your favourite Serial
-terminal at 115,200bps. Send UTF-8 and it'll get converted to MS-DOS Code Page
-850 inside the Monotron.
-
-I hope to add support for a second UART (UART 1) on an FTDI-compatible 6-pin
-connector (3.3v signalling).
-
 ### SD/MMC
 
 One day I might add SD Card support for programing loading/saving.
@@ -212,14 +229,6 @@ One day I might add SD Card support for programing loading/saving.
 One day I might add I2C support for reading simple sensors or real-time
 clocks.
 
-### Audio
-
-One day I might add 8-bit audio output using a PWM pin. Based on the scan-line
-frequency of 37.879 kHz, and a CPU clock of 80 MHz, I should be able to drive
-an 8-bit PWM at 152 kHz. The
-[monotron-synth](https://github.com/thejpster/monotron-synth) has the
-beginnings of a four-channel synthesiser which can bleep and bloop.
-
 ## Running
 
 When running, a simple command driven interface is presented. Commands can be
@@ -228,9 +237,46 @@ whitespace and then interpreted based on the left-most word. Enter the command
 'help' to see a list of commands. Some commands place you in to a sub-menu -
 use 'exit' to return to the previous menu.
 
+## Loading apps
+
+Applications can be compiled and loaded into RAM for exection. They must be
+linked to run from address `0x2000_0DF4`. The first four bytes of the image
+must be the address of the start function, with prototype `fn start(const
+struct callbacks_t* callbacks) -> int32`. The callback structure is:
+
+```C
+struct callbacks_t {
+    void* p_context;
+    int32_t(*putchar)(void* p_context, char ch);
+    int32_t(*puts)(void* p_context, const char*);
+    int32_t(*readc)(void* p_context);
+    void(*wfvbi)(void* p_context);
+    int32_t(*kbhit)(void* p_context);
+    void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
+    int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
+};
+```
+
+The C functions exported to the apps are:
+
+* `puts` - print an 8-bit string (certain escape sequences are understood)
+* `putchar` - print an 8-bit character
+* `readc` - blocking wait for keyboard/serial input
+* `wfvbi` - wait for next Vertical Blanking Interval
+* `kbhit` - return 1 if a key has been pressed (and so `readc` won't block)
+* `move_cursor` - move the cursor to change where the next print goes
+* `play` - play a note on one of the synthesizer channels
+
+You can use the `upload` Python script in this repo to upload binary images
+into RAM.
+
+See [monotron-apps](https://github.com/thejpster/monotron-apps) for example
+apps which will run from Monotron's RAM, along with a wrapper which makes
+using the callbacks as simple as using a normal C library.
+
 ## Changelog
 
-* Version 0.6.0 - Changed pinout to move PS/2 keyboard to SPI interface
+* Version 0.6.0 - Added sound and support for apps running from RAM. Removed PS/2 keyboard support.
 * Version 0.5.0 - Added 1bpp graphics mode.
 * Version 0.4.0 - Added PS/2 keyboard support.
 * Version 0.3.0 - Backspace works.
