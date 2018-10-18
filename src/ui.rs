@@ -271,39 +271,9 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut 
             | ((APPLICATION_RAM[1] as u32) << 8)
             | ((APPLICATION_RAM[0] as u32) << 0);
         writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
-
-        // struct callbacks_t {
-        //     void* p_context;
-        //     int32_t(*putchar)(char ch);
-        //     int32_t(*puts)(const char*);
-        //     int32_t(*readc)(void* p_context);
-        //     int32_t(*wfvbi)(void* p_context);
-        //     int32_t(*kbhit)(void* p_context);
-        // };
-
-        #[repr(C)]
-        struct Table {
-            context: *mut Context,
-            putchar: extern "C" fn(*mut Context, u8) -> i32,
-            puts: extern "C" fn(*mut Context, *const u8) -> i32,
-            readc: extern "C" fn(*mut Context) -> i32,
-            wfvbi: extern "C" fn(*mut Context),
-            kbhit: extern "C" fn(*mut Context) -> i32,
-            move_cursor: extern "C" fn(*mut Context, u8, u8),
-            play: extern "C" fn (*mut Context, u32, u8, u8, u8) -> i32,
-        }
-        let t = Table {
-            context: context as *mut Context,
-            putchar: api::putchar,
-            puts: api::puts,
-            readc: api::readc,
-            wfvbi: api::wfvbi,
-            kbhit: api::kbhit,
-            move_cursor: api::move_cursor,
-            play: api::play,
-        };
+        let t = api::get_table(context);
         let ptr = addr as *const ();
-        let code: extern "C" fn(*const Table) -> u32 = ::core::mem::transmute(ptr);
+        let code: extern "C" fn(*const api::Table) -> u32 = ::core::mem::transmute(ptr);
         let result = code(&t);
         writeln!(context, "Result: {}", result);
     }

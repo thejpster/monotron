@@ -2,6 +2,44 @@ use crate::{Context, Input, FRAMEBUFFER};
 use cortex_m::asm;
 use crate::fb::{BaseConsole, AsciiConsole, Position, Row, Col, TEXT_MAX_COL, TEXT_MAX_ROW};
 
+/// struct callbacks_t {
+///    void* p_context;
+///    int32_t (*putchar)(void* p_context, char ch);
+///    int32_t (*puts)(void* p_context, const char*);
+///    int32_t (*readc)(void* p_context);
+///    void (*wfvbi)(void* p_context);
+///    int32_t (*kbhit)(void* p_context);
+///    void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
+///    int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
+///    void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
+/// };
+#[repr(C)]
+pub(crate) struct Table {
+    context: *mut Context,
+    putchar: extern "C" fn(*mut Context, u8) -> i32,
+    puts: extern "C" fn(*mut Context, *const u8) -> i32,
+    readc: extern "C" fn(*mut Context) -> i32,
+    wfvbi: extern "C" fn(*mut Context),
+    kbhit: extern "C" fn(*mut Context) -> i32,
+    move_cursor: extern "C" fn(*mut Context, u8, u8),
+    play: extern "C" fn (*mut Context, u32, u8, u8, u8) -> i32,
+    change_font: extern "C" fn (*mut Context, u32, *const u8),
+}
+
+pub(crate) fn get_table(context: &mut Context) -> Table {
+    Table {
+        context: context as *mut Context,
+        putchar: putchar,
+        puts: puts,
+        readc: readc,
+        wfvbi: wfvbi,
+        kbhit: kbhit,
+        move_cursor: move_cursor,
+        play: play,
+        change_font: change_font
+    }
+}
+
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
 /// Escape sequences are handled by the `vga-framebuffer` crate, but they include:
 ///
@@ -26,7 +64,7 @@ use crate::fb::{BaseConsole, AsciiConsole, Position, Row, Col, TEXT_MAX_COL, TEX
 /// * `ESC g` - set the background colour for subsequent characters to Green.
 /// * `ESC b` - set the background colour for subsequent characters to Blue.
 /// * `ESC k` - set the background colour for subsequent characters to Black.
-/// * `ESC z` - clear the screen.
+/// * `ESC Z` - clear the screen.
 ///
 /// The screen will automatically scroll when you get to the bottom.
 pub(crate) extern "C" fn puts(_raw_ctx: *mut Context, s: *const u8) -> i32 {
@@ -151,4 +189,37 @@ pub(crate) extern "C" fn play(_raw_ctx: *mut Context, frequency: u32, channel: u
     }
 
     0
+}
+
+/// Set the system font.
+///
+/// 0 sets it to the normal font (CodePage 850)
+/// 1 sets it to the Teletext font.
+/// 2 sets it to the given custom font.
+///
+/// The second argument is only valid if the first argument is 2,
+/// and it must be a pointer to an array of 4096 bytes, with static lifetime.
+pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: *const u8) {
+    let new_font = match mode {
+        0 => {
+            Some(None)
+        }
+        1 => {
+            Some(Some(&vga_framebuffer::freebsd_teletext::FONT_DATA[..]))
+        }
+        2 if !p_font.is_null() => {
+            let font_data: &'static [u8] = unsafe {
+                core::slice::from_raw_parts(p_font, 4096)
+            };
+            Some(Some(font_data))
+        }
+        _ => {
+            None
+        }
+    };
+    if let Some(f) = new_font {
+        unsafe {
+            FRAMEBUFFER.set_custom_font(f);
+        }
+    }
 }
