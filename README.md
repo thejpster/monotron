@@ -276,6 +276,7 @@ using the callbacks as simple as using a normal C library.
 
 ## Changelog
 
+* Version 0.6.1 - Add Teletext font and support for font-switching in apps.
 * Version 0.6.0 - Added sound and support for apps running from RAM. Removed PS/2 keyboard support.
 * Version 0.5.0 - Added 1bpp graphics mode.
 * Version 0.4.0 - Added PS/2 keyboard support.
