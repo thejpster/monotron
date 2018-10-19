@@ -24,6 +24,7 @@ pub(crate) struct Table {
     move_cursor: extern "C" fn(*mut Context, u8, u8),
     play: extern "C" fn (*mut Context, u32, u8, u8, u8) -> i32,
     change_font: extern "C" fn (*mut Context, u32, *const u8),
+    get_joystick: extern "C" fn (*mut Context) -> u8
 }
 
 pub(crate) fn get_table(context: &mut Context) -> Table {
@@ -36,7 +37,8 @@ pub(crate) fn get_table(context: &mut Context) -> Table {
         kbhit: kbhit,
         move_cursor: move_cursor,
         play: play,
-        change_font: change_font
+        change_font: change_font,
+        get_joystick: get_joystick
     }
 }
 
@@ -222,4 +224,12 @@ pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: 
             FRAMEBUFFER.set_custom_font(f);
         }
     }
+}
+
+/// Get the joystick state
+pub(crate) extern "C" fn get_joystick(raw_ctx: *mut Context) -> u8 {
+    let ctx = unsafe {
+        &mut *raw_ctx
+    };
+    ctx.joystick.get_state().as_u8()
 }

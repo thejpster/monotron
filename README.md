@@ -21,6 +21,7 @@ can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 * Choice of low-memory text display mode or full bitmap graphics mode
 * 8-bit mono audio output
 * USB Serial I/O
+* Atari 9-pin joystick interface
 * Simple command-line interface
 * Loadable apps
 * Watch this space!
@@ -196,6 +197,20 @@ waves, sine waves, sawtooth waves and generate white noise.
 You'll need to run the pin through a low-pass filter to remove the noise, and
 connect it to an amplifier as the GPIO pin won't really supply much current.
 
+### Joystick
+
+There are five active-low inputs corresponding to Up, Down, Left, Right and Fire.
+You can connect these inputs to a standard Atari 9-pin Joystick as follows:
+
+| Monotron Pin | Joystick Pin | Function |
+|--------------|--------------|----------|
+| PC6          | 1            | Up       |
+| PC7          | 2            | Down     |
+| PD6          | 3            | Left     |
+| PD7          | 4            | Right    |
+| PF0          | 6            | Fire     |
+| GND          | 8            | Ground   |
+
 ### PS/2 Keyboard
 
 PS/2 keyboard support sort of worked, but wasn't reliable so it's currently
@@ -276,6 +291,7 @@ using the callbacks as simple as using a normal C library.
 
 ## Changelog
 
+* Version 0.6.2 - Add Joystick support.
 * Version 0.6.1 - Add Teletext font and support for font-switching in apps.
 * Version 0.6.0 - Added sound and support for apps running from RAM. Removed PS/2 keyboard support.
 * Version 0.5.0 - Added 1bpp graphics mode.

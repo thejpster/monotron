@@ -77,6 +77,14 @@ struct VideoHardware {
     blue_ch: tm4c123x_hal::tm4c123x::SSI3,
 }
 
+struct Joystick {
+    up: tm4c123x_hal::gpio::gpioc::PC6<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+    down: tm4c123x_hal::gpio::gpioc::PC7<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+    left: tm4c123x_hal::gpio::gpiod::PD6<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+    right: tm4c123x_hal::gpio::gpiod::PD7<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+    fire: tm4c123x_hal::gpio::gpiof::PF0<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+}
+
 struct Context {
     pub value: u32,
     uart: tm4c123x_hal::serial::Serial<
@@ -97,13 +105,80 @@ struct Context {
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
-    buffered_char: Option<Input>
+    buffered_char: Option<Input>,
+    joystick: Joystick
 }
 
 enum Input {
     Unicode(char),
     Special(pc_keyboard::KeyCode),
     Utf8(u8),
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct JoystickState(u8);
+
+impl JoystickState {
+    const UP:    u8 = 0b10000;
+    const DOWN:  u8 = 0b01000;
+    const LEFT:  u8 = 0b00100;
+    const RIGHT: u8 = 0b00010;
+    const FIRE:  u8 = 0b00001;
+
+    fn new(up: bool, down: bool, left: bool, right: bool, fire: bool) -> Self {
+        let mut b = 0;
+        if up {
+            b |= Self::UP;
+        }
+        if down {
+            b |= Self::DOWN;
+        }
+        if left {
+            b |= Self::LEFT;
+        }
+        if right {
+            b |= Self::RIGHT;
+        }
+        if fire {
+            b |= Self::FIRE;
+        }
+        JoystickState(b)
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        self.0
+    }
+
+    pub fn is_up(&self) -> bool {
+        (self.0 & Self::UP) != 0
+    }
+
+    pub fn is_down(&self) -> bool {
+        (self.0 & Self::DOWN) != 0
+    }
+
+    pub fn is_left(&self) -> bool {
+        (self.0 & Self::LEFT) != 0
+    }
+
+    pub fn is_right(&self) -> bool {
+        (self.0 & Self::RIGHT) != 0
+    }
+
+    pub fn fire_pressed(&self) -> bool {
+        (self.0 & Self::FIRE) != 0
+    }
+}
+
+impl Joystick {
+    fn get_state(&self) -> JoystickState {
+        let is_up = self.up.is_low();
+        let is_down = self.down.is_low();
+        let is_left = self.left.is_low();
+        let is_right = self.right.is_low();
+        let is_fire = self.fire.is_low();
+        JoystickState::new(is_up, is_down, is_left, is_right, is_fire)
+    }
 }
 
 impl Context {
@@ -221,6 +296,7 @@ fn main() -> ! {
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
+    let portc = p.GPIO_PORTC.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     let mut porte = p.GPIO_PORTE.split(&sc.power_control);
     let mut portf = p.GPIO_PORTF.split(&sc.power_control);
@@ -294,6 +370,13 @@ fn main() -> ! {
         uart,
         keyboard,
         buffered_char: None,
+        joystick: Joystick {
+            up: portc.pc6.into_pull_up_input(),
+            down: portc.pc7.into_pull_up_input(),
+            left: portd.pd6.into_pull_up_input(),
+            right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
+            fire: portf.pf0.unlock(&mut portf.control).into_pull_up_input(),
+        }
     };
 
     unsafe {
