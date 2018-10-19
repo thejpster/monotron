@@ -62,13 +62,11 @@ use monotron_synth::*;
 use tm4c123x_hal::interrupt;
 use cortex_m_rt::{entry, exception};
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 const ISR_LATENCY: u32 = 94;
 
-// Must come first
 static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
-
+static VERSION: &'static str = env!("CARGO_PKG_VERSION");
+static GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 

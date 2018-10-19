@@ -7,62 +7,62 @@ use menu;
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
 
-const ITEM_CLEAR: Item = Item {
+static ITEM_CLEAR: Item = Item {
     item_type: menu::ItemType::Callback(item_clear),
     command: "clear",
     help: Some("Resets the display."),
 };
 
-const ITEM_PEEK: Item = Item {
+static ITEM_PEEK: Item = Item {
     item_type: menu::ItemType::Callback(item_peek),
     command: "peek",
     help: Some("<addr> - Read a register."),
 };
 
-const ITEM_POKE: Item = Item {
+static ITEM_POKE: Item = Item {
     item_type: menu::ItemType::Callback(item_poke),
     command: "poke",
     help: Some("<addr> <value> - Write a register."),
 };
 
-const ITEM_DUMP: Item = Item {
+static ITEM_DUMP: Item = Item {
     item_type: menu::ItemType::Callback(item_dump),
     command: "dump",
     help: Some("<addr> <bytes> - Dump RAM/ROM."),
 };
 
-const ITEM_LOAD: Item = Item {
+static ITEM_LOAD: Item = Item {
     item_type: menu::ItemType::Callback(item_load_file),
     command: "load",
     help: Some("<len> - Load program from UART."),
 };
 
-const ITEM_DEBUG: Item = Item {
+static ITEM_DEBUG: Item = Item {
     item_type: menu::ItemType::Callback(item_debug_info),
     command: "debug",
     help: Some("Show some debug info."),
 };
 
-const ITEM_RUN: Item = Item {
+static ITEM_RUN: Item = Item {
     item_type: menu::ItemType::Callback(item_run_program),
     command: "run",
     help: Some("Run loaded program."),
 };
 
-const ITEM_BEEP: Item = Item {
+static ITEM_BEEP: Item = Item {
     item_type: menu::ItemType::Callback(item_beep),
     command: "beep",
     help: Some("Make a beep."),
 };
 
-const ITEM_DEMOS: Item = Item {
+static ITEM_DEMOS: Item = Item {
     item_type: menu::ItemType::Menu(&demos::DEMO_MENU),
     command: "demos",
     help: Some("Enter demo menu."),
 };
 
 
-pub(crate) const ROOT_MENU: Menu = Menu {
+pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
         &ITEM_CLEAR,

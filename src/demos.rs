@@ -6,7 +6,7 @@ use crate::fb::{self, BaseConsole};
 static FERRIS_TELETEXT_DATA: [u8; 1000] = *include_bytes!("ferris.dat");
 static WEATHER_TELETEXT_DATA: [u8; 1000] = *include_bytes!("weather.dat");
 
-pub(crate) const DEMO_MENU: ui::Menu = ui::Menu {
+pub(crate) static DEMO_MENU: ui::Menu = ui::Menu {
     label: "demo",
     items: &[
         &TEST_ALPHABET,
@@ -18,25 +18,25 @@ pub(crate) const DEMO_MENU: ui::Menu = ui::Menu {
     exit: Some(|_menu, ctx| writeln!(ctx, "Thanks for trying some demos!").unwrap()),
 };
 
-const TEST_ALPHABET: ui::Item = ui::Item {
+static TEST_ALPHABET: ui::Item = ui::Item {
     item_type: menu::ItemType::Callback(test_alphabet),
     command: "alphabet",
     help: Some("Scrolls some test text output."),
 };
 
-const TEST_TELETEXT: ui::Item = ui::Item {
+static TEST_TELETEXT: ui::Item = ui::Item {
     item_type: menu::ItemType::Callback(test_teletext),
     command: "teletext",
     help: Some("Scrolls some test text output in the teletext font."),
 };
 
-const TEST_ANIMATION: ui::Item = ui::Item {
+static TEST_ANIMATION: ui::Item = ui::Item {
     item_type: menu::ItemType::Callback(test_animation),
     command: "animate",
     help: Some("Bounces argument around."),
 };
 
-const TEST_ART: ui::Item = ui::Item {
+static TEST_ART: ui::Item = ui::Item {
     item_type: menu::ItemType::Callback(test_art),
     command: "art",
     help: Some("Show some art."),
@@ -327,8 +327,14 @@ fn paint(context: &mut Context) {
 fn bitmap_test(context: &mut Context) {
     let mode2_buffer = unsafe { &mut super::APPLICATION_RAM[0..384 * 288 / 8] };
 
-    unsafe {
-        FRAMEBUFFER.clear();
+    // Set up a checkerboard background
+    let bg_chars = ['r', 'g', 'b', 'c', 'm', 'y', 'w'];
+    let mut bg_wheel = bg_chars.iter().cycle();
+    // Set all squares to black on white
+    write!(context, "\u{001B}K\u{001B}w\u{001B}Z");
+    // Paint a checkerboard with background colours
+    for _ in 0..((48*36)-1) {
+        write!(context, "\u{001B}{} ", bg_wheel.next().unwrap()).unwrap();
     }
 
     for (src, dest) in rust_logo::RUST_LOGO_DATA
@@ -381,7 +387,7 @@ fn bitmap_test(context: &mut Context) {
 }
 
 fn flame_demo(context: &mut Context) {
-    write!(context, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
+    write!(context, "\u{001b}W\u{001b}k\u{001b}Z╔══════════════════════════════════════════════╗").unwrap();
     write!(context, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
     write!(context, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
     write!(context, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
