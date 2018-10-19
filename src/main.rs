@@ -82,7 +82,7 @@ struct Joystick {
     down: tm4c123x_hal::gpio::gpioc::PC7<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
     left: tm4c123x_hal::gpio::gpiod::PD6<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
     right: tm4c123x_hal::gpio::gpiod::PD7<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
-    fire: tm4c123x_hal::gpio::gpiof::PF0<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+    fire: tm4c123x_hal::gpio::gpiof::PF4<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
 }
 
 struct Context {
@@ -375,7 +375,7 @@ fn main() -> ! {
             down: portc.pc7.into_pull_up_input(),
             left: portd.pd6.into_pull_up_input(),
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
-            fire: portf.pf0.unlock(&mut portf.control).into_pull_up_input(),
+            fire: portf.pf4.unlock(&mut portf.control).into_pull_up_input(),
         }
     };
 

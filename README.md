@@ -202,14 +202,14 @@ connect it to an amplifier as the GPIO pin won't really supply much current.
 There are five active-low inputs corresponding to Up, Down, Left, Right and Fire.
 You can connect these inputs to a standard Atari 9-pin Joystick as follows:
 
-| Monotron Pin | Joystick Pin | Function |
-|--------------|--------------|----------|
-| PC6          | 1            | Up       |
-| PC7          | 2            | Down     |
-| PD6          | 3            | Left     |
-| PD7          | 4            | Right    |
-| PF0          | 6            | Fire     |
-| GND          | 8            | Ground   |
+| Launchpad Pin | Tiva-C Pin | Joystick Pin | Function |
+|---------------|------------|--------------|----------|
+| J4.6          | PC6        | 1            | Up       |
+| J4.7          | PC7        | 2            | Down     |
+| J4.8          | PD6        | 3            | Left     |
+| J4.9          | PD7        | 4            | Right    |
+| J4.10         | PF4        | 6            | Fire     |
+| J3.2          | GND        | 8            | Ground   |
 
 ### PS/2 Keyboard
 
