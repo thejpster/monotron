@@ -375,7 +375,7 @@ fn main() -> ! {
             down: portc.pc7.into_pull_up_input(),
             left: portd.pd6.into_pull_up_input(),
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
-            fire: portf.pf4.unlock(&mut portf.control).into_pull_up_input(),
+            fire: portf.pf4.into_pull_up_input(),
         }
     };
 

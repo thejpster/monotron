@@ -291,6 +291,7 @@ using the callbacks as simple as using a normal C library.
 
 ## Changelog
 
+* Version 0.6.3 - Fixed Joystick support.
 * Version 0.6.2 - Add Joystick support.
 * Version 0.6.1 - Add Teletext font and support for font-switching in apps.
 * Version 0.6.0 - Added sound and support for apps running from RAM. Removed PS/2 keyboard support.
