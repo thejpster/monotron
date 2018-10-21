@@ -50,7 +50,7 @@ mod api;
 mod rust_logo;
 mod demos;
 
-extern crate panic_halt;
+extern crate panic_semihosting;
 
 use vga_framebuffer as fb;
 use core::fmt::Write;
@@ -63,8 +63,11 @@ use tm4c123x_hal::interrupt;
 use cortex_m_rt::{entry, exception};
 
 const ISR_LATENCY: u32 = 94;
+const TOTAL_RAM_LEN: usize = 32768;
+const OS_RAM_LEN: usize = 8192;
+const APPLICATION_START_ADDR: *mut u8 = (0x20000000 + OS_RAM_LEN) as *mut u8;
+const APPLICATION_LEN: usize = TOTAL_RAM_LEN - OS_RAM_LEN;
 
-static mut APPLICATION_RAM: [u8; 24 * 1024] = [0u8; 24 * 1024];
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 static GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
@@ -382,8 +385,6 @@ fn main() -> ! {
     unsafe {
         FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
         FRAMEBUFFER.clear();
-        // Prevent block being removed by the linker
-        core::ptr::write_volatile(&mut APPLICATION_RAM[0], 0x00);
     }
 
     write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
@@ -395,7 +396,7 @@ fn main() -> ! {
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     writeln!(c, "Copyright © theJPster 2018").unwrap();
 
-    let (stack_space, data_space) = unsafe {
+    let stack_space = unsafe {
         extern "C" {
             static __ebss: u32;
             static __sdata: u32;
@@ -403,9 +404,9 @@ fn main() -> ! {
         let ebss = &__ebss as *const u32 as usize;
         let start = &__sdata as *const u32 as usize;
         let total = ebss - start;
-        (32768 - total, APPLICATION_RAM.len())
+        8192 - total
     };
-    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, data_space).unwrap();
+    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, 24 * 1024).unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);

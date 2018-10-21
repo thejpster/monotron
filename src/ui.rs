@@ -1,4 +1,4 @@
-use crate::{api, Context, APPLICATION_RAM, FRAMEBUFFER, demos};
+use crate::{api, Context, FRAMEBUFFER, APPLICATION_START_ADDR, APPLICATION_LEN, demos};
 use core::fmt::Write;
 use embedded_hal::prelude::*;
 use crate::fb::{self, BaseConsole};
@@ -166,15 +166,16 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 
 /// Reads raw binary from the UART and dumps it into application RAM.
 fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    unsafe {
-        for b in APPLICATION_RAM.iter_mut() {
-            *b = 0x00;
-        }
+    let application_ram: &'static mut [u8] = unsafe {
+        core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN)
+    };
+    for b in application_ram.iter_mut() {
+        *b = 0x00;
     }
     writeln!(context, "Reading hex...").unwrap();
     context.uart.write_all(b"READY");
     let mut i = 0;
-    let max_bytes = unsafe { APPLICATION_RAM.len() };
+    let max_bytes = application_ram.len();
     const ACK_EVERY: usize = 4;
     let mut ack_count = 0;
     while i < max_bytes {
@@ -240,43 +241,43 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
             b'f' => 0x0F,
             _ => break,
         };
-        unsafe {
-            APPLICATION_RAM[i] = byte;
-            ack_count += 1;
-            if ack_count >= ACK_EVERY {
-                let _ = context.uart.write(b'X');
-                ack_count = 0;
-            }
+        application_ram[i] = byte;
+        ack_count += 1;
+        if ack_count >= ACK_EVERY {
+            let _ = context.uart.write(b'X');
+            ack_count = 0;
         }
         i = i + 1;
     }
-    let digest = crc::crc32::checksum_ieee(unsafe { &APPLICATION_RAM[0..i] });
+    let digest = crc::crc32::checksum_ieee(&application_ram[0..i]);
     writeln!(context, "Loaded {} bytes, CRC32 0x{:08x}", i, digest);
 }
 
 /// Print some debug info.
 fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
     let fb_addr = unsafe { &FRAMEBUFFER as *const _ } as usize;
-    let app_addr = unsafe { &APPLICATION_RAM as *const _ } as usize;
     writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
-    writeln!(context, "Application: 0x{:08x}", app_addr).unwrap();
+    writeln!(context, "Application: 0x{:08p}", APPLICATION_START_ADDR).unwrap();
     writeln!(context, "Chip: {:?}", tm4c123x_hal::sysctl::chip_id::get());
 }
 
 /// Runs a program from application RAM, then returns.
 fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    unsafe {
-        let addr = ((APPLICATION_RAM[3] as u32) << 24)
-            | ((APPLICATION_RAM[2] as u32) << 16)
-            | ((APPLICATION_RAM[1] as u32) << 8)
-            | ((APPLICATION_RAM[0] as u32) << 0);
-        writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
-        let t = api::get_table(context);
-        let ptr = addr as *const ();
+    let application_ram: &'static mut [u8] = unsafe {
+        core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN)
+    };
+    let addr = ((application_ram[3] as u32) << 24)
+        | ((application_ram[2] as u32) << 16)
+        | ((application_ram[1] as u32) << 8)
+        | ((application_ram[0] as u32) << 0);
+    writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
+    let t = api::get_table(context);
+    let ptr = addr as *const ();
+    let result = unsafe {
         let code: extern "C" fn(*const api::Table) -> u32 = ::core::mem::transmute(ptr);
-        let result = code(&t);
-        writeln!(context, "Result: {}", result);
-    }
+        code(&t)
+    };
+    writeln!(context, "Result: {}", result);
 }
 
 /// Makes a short beep.

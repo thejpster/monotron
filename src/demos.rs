@@ -1,4 +1,4 @@
-use crate::{Context, FRAMEBUFFER, rust_logo, ui, api};
+use crate::{Context, FRAMEBUFFER, APPLICATION_START_ADDR, APPLICATION_LEN, rust_logo, ui, api};
 use cortex_m::asm;
 use core::fmt::Write;
 use crate::fb::{self, BaseConsole};
@@ -325,7 +325,10 @@ fn paint(context: &mut Context) {
 }
 
 fn bitmap_test(context: &mut Context) {
-    let mode2_buffer = unsafe { &mut super::APPLICATION_RAM[0..384 * 288 / 8] };
+    let application_ram: &'static mut [u8] = unsafe {
+        core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN)
+    };
+    let mode2_buffer = &mut application_ram[0..384 * 288 / 8];
 
     // Set up a checkerboard background
     let bg_chars = ['r', 'g', 'b', 'c', 'm', 'y', 'w'];
