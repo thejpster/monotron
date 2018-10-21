@@ -46,11 +46,9 @@
 #![feature(asm)]
 
 mod api;
-mod demos;
-mod rust_logo;
 mod ui;
 
-extern crate panic_semihosting;
+extern crate panic_halt;
 
 use core::fmt::Write;
 use cortex_m_rt::{entry, exception};

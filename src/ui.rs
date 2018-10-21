@@ -1,6 +1,6 @@
 use core::fmt::Write;
 use crate::fb::{self, BaseConsole};
-use crate::{api, demos, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
+use crate::{api, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
 use embedded_hal::prelude::*;
 use menu;
 
@@ -55,12 +55,6 @@ static ITEM_BEEP: Item = Item {
     help: Some("Make a beep."),
 };
 
-static ITEM_DEMOS: Item = Item {
-    item_type: menu::ItemType::Menu(&demos::DEMO_MENU),
-    command: "demos",
-    help: Some("Enter demo menu."),
-};
-
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -72,7 +66,6 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_RUN,
         &ITEM_DEBUG,
         &ITEM_BEEP,
-        &ITEM_DEMOS,
     ],
     entry: None,
     exit: None,
