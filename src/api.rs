@@ -1,6 +1,6 @@
-use crate::{Context, Input, FRAMEBUFFER};
 use cortex_m::asm;
-use crate::fb::{BaseConsole, AsciiConsole, Position, Row, Col, TEXT_MAX_COL, TEXT_MAX_ROW};
+use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row, TEXT_MAX_COL, TEXT_MAX_ROW};
+use crate::{Context, Input, FRAMEBUFFER};
 
 /// struct callbacks_t {
 ///    void* p_context;
@@ -22,9 +22,9 @@ pub(crate) struct Table {
     wfvbi: extern "C" fn(*mut Context),
     kbhit: extern "C" fn(*mut Context) -> i32,
     move_cursor: extern "C" fn(*mut Context, u8, u8),
-    play: extern "C" fn (*mut Context, u32, u8, u8, u8) -> i32,
-    change_font: extern "C" fn (*mut Context, u32, *const u8),
-    get_joystick: extern "C" fn (*mut Context) -> u8
+    play: extern "C" fn(*mut Context, u32, u8, u8, u8) -> i32,
+    change_font: extern "C" fn(*mut Context, u32, *const u8),
+    get_joystick: extern "C" fn(*mut Context) -> u8,
 }
 
 pub(crate) fn get_table(context: &mut Context) -> Table {
@@ -38,7 +38,7 @@ pub(crate) fn get_table(context: &mut Context) -> Table {
         move_cursor: move_cursor,
         play: play,
         change_font: change_font,
-        get_joystick: get_joystick
+        get_joystick: get_joystick,
     }
 }
 
@@ -96,9 +96,7 @@ pub(crate) extern "C" fn putchar(_raw_ctx: *mut Context, ch: u8) -> i32 {
 /// TODO: Currently UTF-8 input is passed through unchanged and there's no
 /// keyboard support.
 pub(crate) extern "C" fn readc(raw_ctx: *mut Context) -> i32 {
-    let ctx = unsafe {
-        &mut *raw_ctx
-    };
+    let ctx = unsafe { &mut *raw_ctx };
     loop {
         match ctx.read() {
             None => {
@@ -138,9 +136,7 @@ pub(crate) extern "C" fn wfvbi(_raw_ctx: *mut Context) {
 /// Returns 1 if there is a character in the input buffer (i.e. a key has been
 /// pressed), and returns 0 otherwise.
 pub(crate) extern "C" fn kbhit(raw_ctx: *mut Context) -> i32 {
-    let ctx = unsafe {
-        &mut *raw_ctx
-    };
+    let ctx = unsafe { &mut *raw_ctx };
     ctx.has_char() as i32
 }
 
@@ -153,7 +149,9 @@ pub(crate) extern "C" fn move_cursor(_raw_ctx: *mut Context, row: u8, col: u8) {
     if col as usize <= TEXT_MAX_COL {
         if row as usize <= TEXT_MAX_ROW {
             let p = Position::new(Row(row), Col(col));
-            unsafe { let _ = FRAMEBUFFER.set_pos(p); }
+            unsafe {
+                let _ = FRAMEBUFFER.set_pos(p);
+            }
         }
     }
 }
@@ -165,7 +163,13 @@ pub(crate) extern "C" fn move_cursor(_raw_ctx: *mut Context, row: u8, col: u8) {
 /// `waveform` - the waveform to play (0 for square, 1 for sine, 2 for sawtooth, 3 for noise).
 /// `volume` - the volume to use (0..255).
 /// Returns 0 on success, anything else on error.
-pub(crate) extern "C" fn play(_raw_ctx: *mut Context, frequency: u32, channel: u8, waveform: u8, volume: u8) -> i32 {
+pub(crate) extern "C" fn play(
+    _raw_ctx: *mut Context,
+    frequency: u32,
+    channel: u8,
+    waveform: u8,
+    volume: u8,
+) -> i32 {
     use monotron_synth::*;
     let frequency = Frequency::from_centi_hertz(frequency);
     let channel = match channel {
@@ -203,21 +207,13 @@ pub(crate) extern "C" fn play(_raw_ctx: *mut Context, frequency: u32, channel: u
 /// and it must be a pointer to an array of 4096 bytes, with static lifetime.
 pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: *const u8) {
     let new_font = match mode {
-        0 => {
-            Some(None)
-        }
-        1 => {
-            Some(Some(&vga_framebuffer::freebsd_teletext::FONT_DATA[..]))
-        }
+        0 => Some(None),
+        1 => Some(Some(&vga_framebuffer::freebsd_teletext::FONT_DATA[..])),
         2 if !p_font.is_null() => {
-            let font_data: &'static [u8] = unsafe {
-                core::slice::from_raw_parts(p_font, 4096)
-            };
+            let font_data: &'static [u8] = unsafe { core::slice::from_raw_parts(p_font, 4096) };
             Some(Some(font_data))
         }
-        _ => {
-            None
-        }
+        _ => None,
     };
     if let Some(f) = new_font {
         unsafe {
@@ -228,8 +224,6 @@ pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: 
 
 /// Get the joystick state
 pub(crate) extern "C" fn get_joystick(raw_ctx: *mut Context) -> u8 {
-    let ctx = unsafe {
-        &mut *raw_ctx
-    };
+    let ctx = unsafe { &mut *raw_ctx };
     ctx.joystick.get_state().as_u8()
 }

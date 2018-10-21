@@ -1,7 +1,7 @@
-use crate::{api, Context, FRAMEBUFFER, APPLICATION_START_ADDR, APPLICATION_LEN, demos};
 use core::fmt::Write;
-use embedded_hal::prelude::*;
 use crate::fb::{self, BaseConsole};
+use crate::{api, demos, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
+use embedded_hal::prelude::*;
 use menu;
 
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
@@ -60,7 +60,6 @@ static ITEM_DEMOS: Item = Item {
     command: "demos",
     help: Some("Enter demo menu."),
 };
-
 
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
@@ -166,9 +165,8 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 
 /// Reads raw binary from the UART and dumps it into application RAM.
 fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    let application_ram: &'static mut [u8] = unsafe {
-        core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN)
-    };
+    let application_ram: &'static mut [u8] =
+        unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
     for b in application_ram.iter_mut() {
         *b = 0x00;
     }
@@ -263,9 +261,8 @@ fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut C
 
 /// Runs a program from application RAM, then returns.
 fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    let application_ram: &'static mut [u8] = unsafe {
-        core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN)
-    };
+    let application_ram: &'static mut [u8] =
+        unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
     let addr = ((application_ram[3] as u32) << 24)
         | ((application_ram[2] as u32) << 16)
         | ((application_ram[1] as u32) << 8)
@@ -332,10 +329,19 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         }
     };
 
-    writeln!(context, "Playing...\r\nWaveform: {:?}\r\nFreq: {} Hz\r\nDuration: {} frames", waveform, frequency, duration).unwrap();
+    writeln!(
+        context,
+        "Playing...\r\nWaveform: {:?}\r\nFreq: {} Hz\r\nDuration: {} frames",
+        waveform, frequency, duration
+    ).unwrap();
 
     unsafe {
-        crate::G_SYNTH.play(channel, Frequency::from_hertz(frequency), MAX_VOLUME, waveform);
+        crate::G_SYNTH.play(
+            channel,
+            Frequency::from_hertz(frequency),
+            MAX_VOLUME,
+            waveform,
+        );
     }
 
     for _ in 0..duration {

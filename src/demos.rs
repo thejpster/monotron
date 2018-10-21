@@ -1,19 +1,14 @@
-use crate::{Context, FRAMEBUFFER, APPLICATION_START_ADDR, APPLICATION_LEN, rust_logo, ui, api};
-use cortex_m::asm;
 use core::fmt::Write;
+use cortex_m::asm;
 use crate::fb::{self, BaseConsole};
+use crate::{api, rust_logo, ui, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
 
 static FERRIS_TELETEXT_DATA: [u8; 1000] = *include_bytes!("ferris.dat");
 static WEATHER_TELETEXT_DATA: [u8; 1000] = *include_bytes!("weather.dat");
 
 pub(crate) static DEMO_MENU: ui::Menu = ui::Menu {
     label: "demo",
-    items: &[
-        &TEST_ALPHABET,
-        &TEST_TELETEXT,
-        &TEST_ANIMATION,
-        &TEST_ART,
-    ],
+    items: &[&TEST_ALPHABET, &TEST_TELETEXT, &TEST_ANIMATION, &TEST_ART],
     entry: Some(|_menu, ctx| writeln!(ctx, "Welcome to the demo area.").unwrap()),
     exit: Some(|_menu, ctx| writeln!(ctx, "Thanks for trying some demos!").unwrap()),
 };
@@ -48,7 +43,12 @@ struct Fire {
 }
 
 /// The test menu item - displays all the glyphs in all the colour combinations
-pub(crate) fn test_alphabet<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, context: &mut Context) {
+pub(crate) fn test_alphabet<'a>(
+    _menu: &ui::Menu,
+    _item: &ui::Item,
+    _input: &str,
+    context: &mut Context,
+) {
     let mut old_frame = 0;
     let mut ch = 0u8;
     const COLOURS: [fb::Colour; 8] = [
@@ -94,7 +94,12 @@ pub(crate) fn test_alphabet<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str
 }
 
 /// The test menu item - displays all the glyphs in all the colour combinations
-pub(crate) fn test_teletext<'a>(menu: &ui::Menu, item: &ui::Item, input: &str, context: &mut Context) {
+pub(crate) fn test_teletext<'a>(
+    menu: &ui::Menu,
+    item: &ui::Item,
+    input: &str,
+    context: &mut Context,
+) {
     unsafe {
         FRAMEBUFFER.set_custom_font(Some(&fb::freebsd_teletext::FONT_DATA));
     }
@@ -105,7 +110,12 @@ pub(crate) fn test_teletext<'a>(menu: &ui::Menu, item: &ui::Item, input: &str, c
 }
 
 /// Display some art
-pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, context: &mut Context) {
+pub(crate) fn test_art<'a>(
+    _menu: &ui::Menu,
+    _item: &ui::Item,
+    _input: &str,
+    context: &mut Context,
+) {
     space_invaders(context);
 
     pacman(context);
@@ -124,7 +134,12 @@ pub(crate) fn test_art<'a>(_menu: &ui::Menu, _item: &ui::Item, _input: &str, con
 }
 
 /// Another test menu item - displays an animation.
-pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str, context: &mut Context) {
+pub(crate) fn test_animation<'a>(
+    _menu: &ui::Menu,
+    _item: &ui::Item,
+    input: &str,
+    context: &mut Context,
+) {
     let mut next_frame = unsafe { FRAMEBUFFER.frame() };
     let mut pos = fb::Position::origin();
     let mut left = true;
@@ -179,25 +194,43 @@ pub(crate) fn test_animation<'a>(_menu: &ui::Menu, _item: &ui::Item, input: &str
 }
 
 fn space_invaders(context: &mut Context) {
-    write!(context, "\u{001b}Z\u{001b}^SCORE 0300      HIGH 0000          3    ╩       ").unwrap();
-    write!(context, "\u{001b}vSCORE 0300      HIGH 0000          3    ╩       ").unwrap();
-    write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
+    write!(
+        context,
+        "\u{001b}Z\u{001b}^SCORE 0300      HIGH 0000          3    ╩       "
+    ).unwrap();
+    write!(
+        context,
+        "\u{001b}vSCORE 0300      HIGH 0000          3    ╩       "
+    ).unwrap();
+    write!(
+        context,
+        "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           "
+    ).unwrap();
     write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
     write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
     write!(context, "▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀         ").unwrap();
     writeln!(context, "").unwrap();
-    write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
+    write!(
+        context,
+        "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           "
+    ).unwrap();
     write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
     write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
     write!(context, "▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀         ").unwrap();
     writeln!(context, "").unwrap();
-    write!(context, "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           ").unwrap();
+    write!(
+        context,
+        "  ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀     ▀▄ ▄▀           "
+    ).unwrap();
     write!(context, " ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄   ▄█▀█▀█▄          ").unwrap();
     write!(context, "█▀█████▀█ █▀█████▀█ █▀█████▀█ █▀█████▀█         ").unwrap();
     write!(context, "▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀ ▀ ▀▄ ▄▀ ▀         ").unwrap();
     writeln!(context, "").unwrap();
     writeln!(context, "        |").unwrap();
-    write!(context, "  ██░▒  |   ████      ████      ████      ████  ").unwrap();
+    write!(
+        context,
+        "  ██░▒  |   ████      ████      ████      ████  "
+    ).unwrap();
     write!(context, "██████▓▓  ████████  ████████  ████████  ████████").unwrap();
     writeln!(context, "").unwrap();
     writeln!(context, "       ═╩═").unwrap();
@@ -214,7 +247,10 @@ fn pacman(context: &mut Context) {
     writeln!(context, "          ║\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G┌───┐\u{001b}C·\u{001b}G║║\u{001b}C·\u{001b}G┌───┐\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G║").unwrap();
     writeln!(context, "          ║O│  │\u{001b}C·\u{001b}G│   │\u{001b}C·\u{001b}G║║\u{001b}C·\u{001b}G│   │\u{001b}C·\u{001b}G│  │O║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G└──┘\u{001b}C·\u{001b}G└───┘\u{001b}C·\u{001b}G╚╝\u{001b}C·\u{001b}G└───┘\u{001b}C·\u{001b}G└──┘\u{001b}C·\u{001b}G║").unwrap();
-    writeln!(context, "          ║\u{001b}C··························\u{001b}G║").unwrap();
+    writeln!(
+        context,
+        "          ║\u{001b}C··························\u{001b}G║"
+    ).unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G┌┐\u{001b}C·\u{001b}G┌──────┐\u{001b}C·\u{001b}G┌┐\u{001b}C·\u{001b}G┌──┐\u{001b}C·\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G└──┘\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G└──┐┌──┘\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G└──┘\u{001b}C·\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C······\u{001b}G││\u{001b}C····\u{001b}G││\u{001b}C····\u{001b}G││\u{001b}C······\u{001b}G║").unwrap();
@@ -224,7 +260,10 @@ fn pacman(context: &mut Context) {
     writeln!(context, "          ═════╝\u{001b}C·\u{001b}G└┘ ╔══════╗ └┘\u{001b}C·\u{001b}G╚═════").unwrap();
     writeln!(context, "                \u{001b}C·\u{001b}G   ║\u{001b}R☺ \u{001b}G☺ \u{001b}B☺\u{001b}G ║   \u{001b}C·\u{001b}G      ").unwrap();
     writeln!(context, "          ═════╗\u{001b}C·\u{001b}G┌┐ ╚══════╝ ┌┐\u{001b}C·\u{001b}G╔═════").unwrap();
-    writeln!(context, "               ║\u{001b}C·\u{001b}G││  READY!  ││\u{001b}C·\u{001b}G║     ").unwrap();
+    writeln!(
+        context,
+        "               ║\u{001b}C·\u{001b}G││  READY!  ││\u{001b}C·\u{001b}G║     "
+    ).unwrap();
     writeln!(context, "               ║\u{001b}C·\u{001b}G││ ┌──────┐ ││\u{001b}C·\u{001b}G║     ").unwrap();
     writeln!(context, "          ╔════╝\u{001b}C·\u{001b}G└┘ └──┐┌──┘ └┘\u{001b}C·\u{001b}G╚════╗").unwrap();
     writeln!(context, "          ║\u{001b}C············\u{001b}G││\u{001b}C············\u{001b}G║").unwrap();
@@ -236,7 +275,10 @@ fn pacman(context: &mut Context) {
     writeln!(context, "          ║\u{001b}C······\u{001b}G││\u{001b}C····\u{001b}G││\u{001b}C····\u{001b}G││\u{001b}C······\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G┌────┘└──┐\u{001b}C·\u{001b}G││\u{001b}C·\u{001b}G┌──┘└────┐\u{001b}C·\u{001b}G║").unwrap();
     writeln!(context, "          ║\u{001b}C·\u{001b}G└────────┘\u{001b}C·\u{001b}G└┘\u{001b}C·\u{001b}G└────────┘\u{001b}C·\u{001b}G║").unwrap();
-    writeln!(context, "          ║\u{001b}C··························\u{001b}G║").unwrap();
+    writeln!(
+        context,
+        "          ║\u{001b}C··························\u{001b}G║"
+    ).unwrap();
     writeln!(context, "          ╚══════════════════════════╝").unwrap();
     writeln!(context, "             ◄► ◄► ◄►").unwrap();
     write!(context, "\n\n\nPress a key...").unwrap();
@@ -325,9 +367,8 @@ fn paint(context: &mut Context) {
 }
 
 fn bitmap_test(context: &mut Context) {
-    let application_ram: &'static mut [u8] = unsafe {
-        core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN)
-    };
+    let application_ram: &'static mut [u8] =
+        unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
     let mode2_buffer = &mut application_ram[0..384 * 288 / 8];
 
     // Set up a checkerboard background
@@ -336,7 +377,7 @@ fn bitmap_test(context: &mut Context) {
     // Set all squares to black on white
     write!(context, "\u{001B}K\u{001B}w\u{001B}Z");
     // Paint a checkerboard with background colours
-    for _ in 0..((48*36)-1) {
+    for _ in 0..((48 * 36) - 1) {
         write!(context, "\u{001B}{} ", bg_wheel.next().unwrap()).unwrap();
     }
 
@@ -448,7 +489,8 @@ impl Fire {
             self.buffer[i] = (self.buffer[i]
                 + self.buffer[i + 1]
                 + self.buffer[i + Self::WIDTH]
-                + self.buffer[i + Self::WIDTH + 1]) / 4;
+                + self.buffer[i + Self::WIDTH + 1])
+                / 4;
             let colour = if self.buffer[i] > 15 {
                 fb::Colour::Blue
             } else if self.buffer[i] > 9 {
@@ -502,30 +544,92 @@ fn teletext(context: &mut Context, data: &[u8; 1000]) {
         let mut bg = 'k';
         let mut text = true;
         for &ch in line {
-            let ch = if ch > 0x80 {
-                ch - 0x80
-            } else {
-                ch
-            };
+            let ch = if ch > 0x80 { ch - 0x80 } else { ch };
             match ch {
-                0x01 => { write!(context, "\u{001B}R "); text = true; bg = 'r'; },
-                0x02 => { write!(context, "\u{001B}G "); text = true; bg = 'g'; },
-                0x03 => { write!(context, "\u{001B}Y "); text = true; bg = 'y'; },
-                0x04 => { write!(context, "\u{001B}B "); text = true; bg = 'b'; },
-                0x05 => { write!(context, "\u{001B}M "); text = true; bg = 'm'; },
-                0x06 => { write!(context, "\u{001B}C "); text = true; bg = 'c'; },
-                0x07 => { write!(context, "\u{001B}W "); text = true; bg = 'w'; },
-                0x11 => { write!(context, "\u{001B}R "); text = false; bg = 'r'; },
-                0x12 => { write!(context, "\u{001B}G "); text = false; bg = 'g'; },
-                0x13 => { write!(context, "\u{001B}Y "); text = false; bg = 'y'; },
-                0x14 => { write!(context, "\u{001B}B "); text = false; bg = 'b'; },
-                0x15 => { write!(context, "\u{001B}M "); text = false; bg = 'm'; },
-                0x16 => { write!(context, "\u{001B}C "); text = false; bg = 'c'; },
-                0x17 => { write!(context, "\u{001B}W "); text = false; bg = 'w'; },
-                0x19 => { write!(context, " "); contiguous = true; },
-                0x1A => { write!(context, " "); contiguous = false; },
-                0x1C => { write!(context, "\u{001B}k"); },
-                0x1D => { write!(context, "\u{001B}{} ", bg); }
+                0x01 => {
+                    write!(context, "\u{001B}R ");
+                    text = true;
+                    bg = 'r';
+                }
+                0x02 => {
+                    write!(context, "\u{001B}G ");
+                    text = true;
+                    bg = 'g';
+                }
+                0x03 => {
+                    write!(context, "\u{001B}Y ");
+                    text = true;
+                    bg = 'y';
+                }
+                0x04 => {
+                    write!(context, "\u{001B}B ");
+                    text = true;
+                    bg = 'b';
+                }
+                0x05 => {
+                    write!(context, "\u{001B}M ");
+                    text = true;
+                    bg = 'm';
+                }
+                0x06 => {
+                    write!(context, "\u{001B}C ");
+                    text = true;
+                    bg = 'c';
+                }
+                0x07 => {
+                    write!(context, "\u{001B}W ");
+                    text = true;
+                    bg = 'w';
+                }
+                0x11 => {
+                    write!(context, "\u{001B}R ");
+                    text = false;
+                    bg = 'r';
+                }
+                0x12 => {
+                    write!(context, "\u{001B}G ");
+                    text = false;
+                    bg = 'g';
+                }
+                0x13 => {
+                    write!(context, "\u{001B}Y ");
+                    text = false;
+                    bg = 'y';
+                }
+                0x14 => {
+                    write!(context, "\u{001B}B ");
+                    text = false;
+                    bg = 'b';
+                }
+                0x15 => {
+                    write!(context, "\u{001B}M ");
+                    text = false;
+                    bg = 'm';
+                }
+                0x16 => {
+                    write!(context, "\u{001B}C ");
+                    text = false;
+                    bg = 'c';
+                }
+                0x17 => {
+                    write!(context, "\u{001B}W ");
+                    text = false;
+                    bg = 'w';
+                }
+                0x19 => {
+                    write!(context, " ");
+                    contiguous = true;
+                }
+                0x1A => {
+                    write!(context, " ");
+                    contiguous = false;
+                }
+                0x1C => {
+                    write!(context, "\u{001B}k");
+                }
+                0x1D => {
+                    write!(context, "\u{001B}{} ", bg);
+                }
                 // We have contiguous at 0x80..0x9F and 0xC0..0xDF
                 // We have separated at 0xA0..0xBF and 0xE0..0xFF
                 // Teletext has graphics at 0x20..0x3F and 0x60..0x7F
@@ -542,7 +646,9 @@ fn teletext(context: &mut Context, data: &[u8; 1000]) {
                 0x40...0x5F => {
                     unsafe { FRAMEBUFFER.write_glyph(fb::Char::from_byte(ch), None) };
                 }
-                _ => { write!(context, " "); },
+                _ => {
+                    write!(context, " ");
+                }
             }
         }
         writeln!(context, "").unwrap();
@@ -566,4 +672,3 @@ fn flip_byte(mut b: u8) -> u8 {
     b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
     (b & 0xAA) >> 1 | (b & 0x55) << 1
 }
-

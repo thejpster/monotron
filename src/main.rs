@@ -45,22 +45,22 @@
 #![no_std]
 #![feature(asm)]
 
-mod ui;
 mod api;
-mod rust_logo;
 mod demos;
+mod rust_logo;
+mod ui;
 
 extern crate panic_semihosting;
 
-use vga_framebuffer as fb;
 use core::fmt::Write;
+use cortex_m_rt::{entry, exception};
+use monotron_synth::*;
 use tm4c123x_hal::bb;
+use tm4c123x_hal::interrupt;
 use tm4c123x_hal::prelude::*;
 use tm4c123x_hal::serial::{NewlineMode, Serial};
 use tm4c123x_hal::sysctl;
-use monotron_synth::*;
-use tm4c123x_hal::interrupt;
-use cortex_m_rt::{entry, exception};
+use vga_framebuffer as fb;
 
 const ISR_LATENCY: u32 = 94;
 const TOTAL_RAM_LEN: usize = 32768;
@@ -109,7 +109,7 @@ struct Context {
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
     buffered_char: Option<Input>,
-    joystick: Joystick
+    joystick: Joystick,
 }
 
 enum Input {
@@ -122,11 +122,11 @@ enum Input {
 pub struct JoystickState(u8);
 
 impl JoystickState {
-    const UP:    u8 = 0b10000;
-    const DOWN:  u8 = 0b01000;
-    const LEFT:  u8 = 0b00100;
+    const UP: u8 = 0b10000;
+    const DOWN: u8 = 0b01000;
+    const LEFT: u8 = 0b00100;
     const RIGHT: u8 = 0b00010;
-    const FIRE:  u8 = 0b00001;
+    const FIRE: u8 = 0b00001;
 
     fn new(up: bool, down: bool, left: bool, right: bool, fire: bool) -> Self {
         let mut b = 0;
@@ -323,7 +323,9 @@ fn main() -> ! {
         .pd3
         .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
     // Audio PWM output
-    let _audio_pin = porte.pe4.into_af_push_pull::<tm4c123x_hal::gpio::AF4>(&mut porte.control);
+    let _audio_pin = porte
+        .pe4
+        .into_af_push_pull::<tm4c123x_hal::gpio::AF4>(&mut porte.control);
 
     // Configure PWM peripheral. We use M0PWM4 on PE4. That's pwmA on the third
     // pair (the pairs are 0/1, 2/3, 4/5 and 6/7) of the first PWM peripheral.
@@ -379,7 +381,7 @@ fn main() -> ! {
             left: portd.pd6.into_pull_up_input(),
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
-        }
+        },
     };
 
     unsafe {
@@ -590,7 +592,8 @@ fn timer1a() {
     // Run the audio routine
     let sample = unsafe { G_SYNTH.next() };
     let sample: u8 = sample.into();
-    pwm._2_cmpa.write(|w| unsafe { w.compa().bits(sample as u16) });
+    pwm._2_cmpa
+        .write(|w| unsafe { w.compa().bits(sample as u16) });
     // Clear timer A interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
