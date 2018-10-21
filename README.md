@@ -255,9 +255,25 @@ use 'exit' to return to the previous menu.
 ## Loading apps
 
 Applications can be compiled and loaded into RAM for exection. They must be
-linked to run from address `0x2000_0DF4`. The first four bytes of the image
-must be the address of the start function, with prototype `fn start(const
-struct callbacks_t* callbacks) -> int32`. The callback structure is:
+linked to run from address `0x2000_2000` and take less than 24 KiB for all
+code and data combined. See the table below:
+
+| Address     | Length  | Description  |
+|-------------|---------|--------------|
+| 0x0000_0000 | 256 KiB | OS Code      |
+| 0x2000_0000 | 8 KiB   | OS Data      |
+| 0x2000_2000 | 24 KiB  | Application  |
+
+The first four bytes of the image must be the address of the start function,
+with prototype `fn start(const struct callbacks_t* callbacks) -> int32`. Apart
+from that, applications are free to apportion the remaining 24,572 bytes as
+they see fit.
+
+*Note:* The application does not need to provide a stack region - the Monotron
+ROM will handle that.
+
+The callback structure supplied to the application's entry function is defined
+in `api.rs`, but in C looks like:
 
 ```C
 struct callbacks_t {
@@ -277,8 +293,9 @@ The C functions exported to the apps are:
 * `puts` - print an 8-bit string (certain escape sequences are understood)
 * `putchar` - print an 8-bit character
 * `readc` - blocking wait for keyboard/serial input
-* `wfvbi` - wait for next Vertical Blanking Interval
-* `kbhit` - return 1 if a key has been pressed (and so `readc` won't block)
+* `wfvbi` - Wait For next Vertical Blanking Interval
+* `kbhit` - return 1 if a key has been pressed (and so `readc` won't block),
+  else return 0
 * `move_cursor` - move the cursor to change where the next print goes
 * `play` - play a note on one of the synthesizer channels
 
@@ -291,6 +308,7 @@ using the callbacks as simple as using a normal C library.
 
 ## Changelog
 
+* Version 0.7.0 - Move application RAM to 0x2000_2000.
 * Version 0.6.3 - Fixed Joystick support.
 * Version 0.6.2 - Add Joystick support.
 * Version 0.6.1 - Add Teletext font and support for font-switching in apps.
