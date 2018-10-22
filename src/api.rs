@@ -23,6 +23,7 @@ pub(crate) struct Table {
     play: extern "C" fn(*mut Context, u32, u8, u8, u8) -> i32,
     change_font: extern "C" fn(*mut Context, u32, *const u8),
     get_joystick: extern "C" fn(*mut Context) -> u8,
+    set_cursor_visible: extern "C" fn(*mut Context, u8),
 }
 
 pub(crate) static CALLBACK_TABLE: Table = Table {
@@ -35,6 +36,7 @@ pub(crate) static CALLBACK_TABLE: Table = Table {
     play,
     change_font,
     get_joystick,
+    set_cursor_visible,
 };
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
@@ -221,4 +223,11 @@ pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: 
 pub(crate) extern "C" fn get_joystick(raw_ctx: *mut Context) -> u8 {
     let ctx = unsafe { &mut *raw_ctx };
     ctx.joystick.get_state().as_u8()
+}
+
+/// Change whether the cursor is visible
+pub(crate) extern "C" fn set_cursor_visible(_raw_ctx: *mut Context, visible: u8) {
+    unsafe {
+        FRAMEBUFFER.set_cursor_visible(visible != 0);
+    }
 }
