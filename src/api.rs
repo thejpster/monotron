@@ -3,7 +3,6 @@ use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row, TEXT_MAX_COL, TEX
 use crate::{Context, Input, FRAMEBUFFER};
 
 /// struct callbacks_t {
-///    void* p_context;
 ///    int32_t (*putchar)(void* p_context, char ch);
 ///    int32_t (*puts)(void* p_context, const char*);
 ///    int32_t (*readc)(void* p_context);
@@ -15,7 +14,6 @@ use crate::{Context, Input, FRAMEBUFFER};
 /// };
 #[repr(C)]
 pub(crate) struct Table {
-    context: *mut Context,
     putchar: extern "C" fn(*mut Context, u8) -> i32,
     puts: extern "C" fn(*mut Context, *const u8) -> i32,
     readc: extern "C" fn(*mut Context) -> i32,
@@ -27,20 +25,17 @@ pub(crate) struct Table {
     get_joystick: extern "C" fn(*mut Context) -> u8,
 }
 
-pub(crate) fn get_table(context: &mut Context) -> Table {
-    Table {
-        context: context as *mut Context,
-        putchar: putchar,
-        puts: puts,
-        readc: readc,
-        wfvbi: wfvbi,
-        kbhit: kbhit,
-        move_cursor: move_cursor,
-        play: play,
-        change_font: change_font,
-        get_joystick: get_joystick,
-    }
-}
+pub(crate) static CALLBACK_TABLE: Table = Table {
+    putchar,
+    puts,
+    readc,
+    wfvbi,
+    kbhit,
+    move_cursor,
+    play,
+    change_font,
+    get_joystick,
+};
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
 /// Escape sequences are handled by the `vga-framebuffer` crate, but they include:

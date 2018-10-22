@@ -261,11 +261,10 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut 
         | ((application_ram[1] as u32) << 8)
         | ((application_ram[0] as u32) << 0);
     writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
-    let t = api::get_table(context);
     let ptr = addr as *const ();
     let result = unsafe {
-        let code: extern "C" fn(*const api::Table) -> u32 = ::core::mem::transmute(ptr);
-        code(&t)
+        let code: extern "C" fn(*const api::Table, *mut Context) -> u32 = ::core::mem::transmute(ptr);
+        code(&api::CALLBACK_TABLE, context as *mut Context)
     };
     writeln!(context, "Result: {}", result);
 }
