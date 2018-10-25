@@ -3,5 +3,6 @@
 Cargo.lock
 target/
 *.sublime-workspace
+env/
 
 

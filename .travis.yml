@@ -6,7 +6,4 @@ install:
   - rustup component add rust-src
   - rustup target add thumbv7em-none-eabihf
   - popd
-  - curl https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2 | tar -C /home/travis -x -j
-before_script:
-  - export PATH=$PATH:/home/travis/gcc-arm-none-eabi-6-2017-q2-update/bin
 script: cargo build --release
