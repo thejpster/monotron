@@ -574,6 +574,9 @@ impl fb::Hardware for VideoHardware {
 interrupt!(TIMER1A, timer1a);
 fn timer1a() {
     let pwm = unsafe { &*tm4c123x_hal::tm4c123x::PWM0::ptr() };
+    static mut NEXT_SAMPLE: u8 = 128;
+    pwm._2_cmpa
+        .write(|w| unsafe { w.compa().bits(NEXT_SAMPLE as u16) });
     let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
     let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
     let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
@@ -588,10 +591,9 @@ fn timer1a() {
     // Run the draw routine
     unsafe { FRAMEBUFFER.isr_sol() };
     // Run the audio routine
-    let sample = unsafe { G_SYNTH.next() };
-    let sample: u8 = sample.into();
-    pwm._2_cmpa
-        .write(|w| unsafe { w.compa().bits(sample as u16) });
+    unsafe {
+        NEXT_SAMPLE =  G_SYNTH.next().into();
+    }
     // Clear timer A interrupt
     let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
