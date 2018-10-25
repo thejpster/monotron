@@ -11,6 +11,8 @@ use crate::{Context, Input, FRAMEBUFFER};
 ///    void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
 ///    int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
 ///    void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
+///    uint8_t (*get_joystick)(void* p_context) -> uint8_t;
+///    void (*set_cursor_visible)(void* p_context, uint8_t visible);
 /// };
 #[repr(C)]
 pub(crate) struct Table {

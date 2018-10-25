@@ -277,20 +277,24 @@ in `api.rs`, but in C looks like:
 
 ```C
 struct callbacks_t {
-    void* p_context;
-    int32_t(*putchar)(void* p_context, char ch);
-    int32_t(*puts)(void* p_context, const char*);
-    int32_t(*readc)(void* p_context);
-    void(*wfvbi)(void* p_context);
-    int32_t(*kbhit)(void* p_context);
+    int32_t (*putchar)(void* p_context, char ch);
+    int32_t (*puts)(void* p_context, const char*);
+    int32_t (*readc)(void* p_context);
+    void (*wfvbi)(void* p_context);
+    int32_t (*kbhit)(void* p_context);
     void (*move_cursor)(void* p_context, unsigned char row, unsigned char col);
     int32_t (*play)(void* p_context, uint32_t frequency, uint8_t channel, uint8_t waveform, uint8_t volume);
+    void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
+    uint8_t (*get_joystick)(void* p_context) -> uint8_t;
+    void (*set_cursor_visible)(void* p_context, uint8_t visible);
 };
 ```
 
 The C functions exported to the apps are:
 
-* `puts` - print an 8-bit string (certain escape sequences are understood)
+* `puts` - print an 8-bit string (certain escape sequences are understood).
+  Note that unlike the C routine of the same name, this function does not
+  append a newline automatically. It is more like `fputs(s, stdout)`.
 * `putchar` - print an 8-bit character
 * `readc` - blocking wait for keyboard/serial input
 * `wfvbi` - Wait For next Vertical Blanking Interval
@@ -298,6 +302,11 @@ The C functions exported to the apps are:
   else return 0
 * `move_cursor` - move the cursor to change where the next print goes
 * `play` - play a note on one of the synthesizer channels
+* `change_font` - changes the font used on screen to the normal CodePage 850,
+  the Teletext font, or a custom font supplied by the application.
+* `get_joystick` - returns the current state of the joystick input. Bits 0-4
+  correspond to Fire, Right, Left, Down and Up respectively.
+* `set_cursor_visible` - Pass 0 to disable the `_` cursor, or non-zero to enable it.
 
 You can use the `upload` Python script in this repo to upload binary images
 into RAM.
@@ -306,18 +315,25 @@ See [monotron-apps](https://github.com/thejpster/monotron-apps) for example
 apps which will run from Monotron's RAM, along with a wrapper which makes
 using the callbacks as simple as using a normal C library.
 
+## Unreleased changes (will be 0.8.0)
+
+* Added cursor support to ABI.
+
 ## Changelog
 
-* Version 0.7.0 - Move application RAM to 0x2000_2000.
+* Version 0.7.0 - Move application RAM to 0x2000_2000. Added cursor support.
+  Moved callback pointer.
 * Version 0.6.3 - Fixed Joystick support.
 * Version 0.6.2 - Add Joystick support.
 * Version 0.6.1 - Add Teletext font and support for font-switching in apps.
-* Version 0.6.0 - Added sound and support for apps running from RAM. Removed PS/2 keyboard support.
+* Version 0.6.0 - Added sound and support for apps running from RAM. Removed
+  PS/2 keyboard support.
 * Version 0.5.0 - Added 1bpp graphics mode.
 * Version 0.4.0 - Added PS/2 keyboard support.
 * Version 0.3.0 - Backspace works.
 * Version 0.2.0 - Switch to a text buffer to save RAM. Basic animations work.
-* Version 0.1.0 - First release. VGA output works but menu is full of dummy commands and there's no keyboard input.
+* Version 0.1.0 - First release. VGA output works but menu is full of dummy
+  commands and there's no keyboard input.
 
 ## License
 

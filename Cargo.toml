@@ -21,7 +21,7 @@ codegen-units = 1
 opt-level = "s"
 
 [dependencies.tm4c123x-hal]
-version = "0.5.0"
+version = "0.6.0"
 features = ["rt"]
 # path = "../tm4c123x-hal"
 

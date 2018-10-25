@@ -52,13 +52,16 @@ extern crate panic_halt;
 
 use core::fmt::Write;
 use cortex_m_rt::{entry, exception};
-use monotron_synth::*;
-use tm4c123x_hal::bb;
-use tm4c123x_hal::interrupt;
-use tm4c123x_hal::prelude::*;
-use tm4c123x_hal::serial::{NewlineMode, Serial};
-use tm4c123x_hal::sysctl;
+use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
+use monotron_synth::*;
+
+use self::hal::tm4c123x as cpu;
+use self::hal::bb;
+use self::hal::prelude::*;
+use self::hal::serial::{NewlineMode, Serial};
+use self::hal::sysctl;
+use self::cpu::{interrupt, Interrupt};
 
 const ISR_LATENCY: u32 = 94;
 const TOTAL_RAM_LEN: usize = 32768;
@@ -72,34 +75,34 @@ static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 struct VideoHardware {
-    h_timer: tm4c123x_hal::tm4c123x::TIMER1,
-    red_ch: tm4c123x_hal::tm4c123x::SSI1,
-    green_ch: tm4c123x_hal::tm4c123x::SSI2,
-    blue_ch: tm4c123x_hal::tm4c123x::SSI3,
+    h_timer: cpu::TIMER1,
+    red_ch: cpu::SSI1,
+    green_ch: cpu::SSI2,
+    blue_ch: cpu::SSI3,
 }
 
 struct Joystick {
-    up: tm4c123x_hal::gpio::gpioc::PC6<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
-    down: tm4c123x_hal::gpio::gpioc::PC7<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
-    left: tm4c123x_hal::gpio::gpiod::PD6<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
-    right: tm4c123x_hal::gpio::gpiod::PD7<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
-    fire: tm4c123x_hal::gpio::gpiof::PF4<tm4c123x_hal::gpio::Input<tm4c123x_hal::gpio::PullUp>>,
+    up: hal::gpio::gpioc::PC6<hal::gpio::Input<hal::gpio::PullUp>>,
+    down: hal::gpio::gpioc::PC7<hal::gpio::Input<hal::gpio::PullUp>>,
+    left: hal::gpio::gpiod::PD6<hal::gpio::Input<hal::gpio::PullUp>>,
+    right: hal::gpio::gpiod::PD7<hal::gpio::Input<hal::gpio::PullUp>>,
+    fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
 }
 
 struct Context {
     pub value: u32,
-    uart: tm4c123x_hal::serial::Serial<
-        tm4c123x_hal::serial::UART0,
-        tm4c123x_hal::gpio::gpioa::PA1<
-            tm4c123x_hal::gpio::AlternateFunction<
-                tm4c123x_hal::gpio::AF1,
-                tm4c123x_hal::gpio::PushPull,
+    uart: hal::serial::Serial<
+        hal::serial::UART0,
+        hal::gpio::gpioa::PA1<
+            hal::gpio::AlternateFunction<
+                hal::gpio::AF1,
+                hal::gpio::PushPull,
             >,
         >,
-        tm4c123x_hal::gpio::gpioa::PA0<
-            tm4c123x_hal::gpio::AlternateFunction<
-                tm4c123x_hal::gpio::AF1,
-                tm4c123x_hal::gpio::PushPull,
+        hal::gpio::gpioa::PA0<
+            hal::gpio::AlternateFunction<
+                hal::gpio::AF1,
+                hal::gpio::PushPull,
             >,
         >,
         (),
@@ -253,7 +256,7 @@ impl core::fmt::Write for Context {
     }
 }
 
-fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
+fn enable(p: sysctl::Domain, sc: &mut hal::sysctl::PowerControl) {
     sysctl::control_power(sc, p, sysctl::RunMode::Run, sysctl::PowerState::On);
     sysctl::control_power(sc, p, sysctl::RunMode::Sleep, sysctl::PowerState::On);
     sysctl::reset(sc, p);
@@ -261,8 +264,8 @@ fn enable(p: sysctl::Domain, sc: &mut tm4c123x_hal::sysctl::PowerControl) {
 
 #[entry]
 fn main() -> ! {
-    let p = tm4c123x_hal::Peripherals::take().unwrap();
-    let cp = tm4c123x_hal::CorePeripherals::take().unwrap();
+    let p = hal::Peripherals::take().unwrap();
+    let cp = hal::CorePeripherals::take().unwrap();
 
     let mut sc = p.SYSCTL.constrain();
     sc.clock_setup.oscillator = sysctl::Oscillator::Main(
@@ -272,9 +275,9 @@ fn main() -> ! {
     let clocks = sc.clock_setup.freeze();
 
     let mut nvic = cp.NVIC;
-    nvic.enable(tm4c123x_hal::Interrupt::TIMER1A);
-    nvic.enable(tm4c123x_hal::Interrupt::TIMER1B);
-    // nvic.enable(tm4c123x_hal::Interrupt::GPIOD);
+    nvic.enable(Interrupt::TIMER1A);
+    nvic.enable(Interrupt::TIMER1B);
+    // nvic.enable(Interrupt::GPIOD);
     // Make Timer1A (start of line) lower priority than Timer1B (clocking out
     // data) so that it can be interrupted.
     // Make GPIOD (the keyboard) between the two. We might corrupt
@@ -283,9 +286,9 @@ fn main() -> ! {
     // Priorities go from 0*16 (most urgent) to 15*16 (least urgent)
     // EEE trying with keyboard higher than video
     unsafe {
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1A, 8 * 16);
-        nvic.set_priority(tm4c123x_hal::Interrupt::TIMER1B, 4 * 16);
-        // nvic.set_priority(tm4c123x_hal::Interrupt::GPIOD, 3*16);
+        nvic.set_priority(Interrupt::TIMER1A, 8 * 16);
+        nvic.set_priority(Interrupt::TIMER1B, 4 * 16);
+        // nvic.set_priority(Interrupt::GPIOD, 3*16);
     }
 
     enable(sysctl::Domain::Timer1, &mut sc.power_control);
@@ -305,25 +308,25 @@ fn main() -> ! {
     // T0CCP0
     let _h_sync = portb
         .pb4
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF7>(&mut portb.control);
+        .into_af_push_pull::<hal::gpio::AF7>(&mut portb.control);
     // GPIO controlled V-Sync
     let _v_sync = portb.pb5.into_push_pull_output();
     // Ssi1Tx
     let _red_data = portf
         .pf1
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portf.control);
+        .into_af_push_pull::<hal::gpio::AF2>(&mut portf.control);
     // Ssi2Tx
     let _green_data = portb
         .pb7
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF2>(&mut portb.control);
+        .into_af_push_pull::<hal::gpio::AF2>(&mut portb.control);
     // Ssi3Tx
     let _blue_data = portd
         .pd3
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut portd.control);
+        .into_af_push_pull::<hal::gpio::AF1>(&mut portd.control);
     // Audio PWM output
     let _audio_pin = porte
         .pe4
-        .into_af_push_pull::<tm4c123x_hal::gpio::AF4>(&mut porte.control);
+        .into_af_push_pull::<hal::gpio::AF4>(&mut porte.control);
 
     // Configure PWM peripheral. We use M0PWM4 on PE4. That's pwmA on the third
     // pair (the pairs are 0/1, 2/3, 4/5 and 6/7) of the first PWM peripheral.
@@ -355,10 +358,10 @@ fn main() -> ! {
         p.UART0,
         porta
             .pa1
-            .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
+            .into_af_push_pull::<hal::gpio::AF1>(&mut porta.control),
         porta
             .pa0
-            .into_af_push_pull::<tm4c123x_hal::gpio::AF1>(&mut porta.control),
+            .into_af_push_pull::<hal::gpio::AF1>(&mut porta.control),
         (),
         (),
         115200_u32.bps(),
@@ -548,21 +551,21 @@ impl fb::Hardware for VideoHardware {
 
     /// Called when V-Sync needs to be high.
     fn vsync_on(&mut self) {
-        let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTB::ptr() };
+        let gpio = unsafe { &*cpu::GPIO_PORTB::ptr() };
         unsafe { bb::change_bit(&gpio.data, 5, true) };
     }
 
     /// Called when V-Sync needs to be low.
     fn vsync_off(&mut self) {
-        let gpio = unsafe { &*tm4c123x_hal::tm4c123x::GPIO_PORTB::ptr() };
+        let gpio = unsafe { &*cpu::GPIO_PORTB::ptr() };
         unsafe { bb::change_bit(&gpio.data, 5, false) };
     }
 
     /// Write pixels straight to FIFOs
     fn write_pixels(&mut self, red: u32, green: u32, blue: u32) {
-        let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
-        let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-        let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
+        let ssi_r = unsafe { &*cpu::SSI1::ptr() };
+        let ssi_g = unsafe { &*cpu::SSI2::ptr() };
+        let ssi_b = unsafe { &*cpu::SSI3::ptr() };
         while (ssi_r.sr.read().bits() & 0x02) == 0 {}
         ssi_r.dr.write(|w| unsafe { w.bits(red) });
         ssi_g.dr.write(|w| unsafe { w.bits(green) });
@@ -573,13 +576,13 @@ impl fb::Hardware for VideoHardware {
 /// Called on start of sync pulse (end of front porch)
 interrupt!(TIMER1A, timer1a);
 fn timer1a() {
-    let pwm = unsafe { &*tm4c123x_hal::tm4c123x::PWM0::ptr() };
+    let pwm = unsafe { &*cpu::PWM0::ptr() };
     static mut NEXT_SAMPLE: u8 = 128;
     pwm._2_cmpa
         .write(|w| unsafe { w.compa().bits(NEXT_SAMPLE as u16) });
-    let ssi_r = unsafe { &*tm4c123x_hal::tm4c123x::SSI1::ptr() };
-    let ssi_g = unsafe { &*tm4c123x_hal::tm4c123x::SSI2::ptr() };
-    let ssi_b = unsafe { &*tm4c123x_hal::tm4c123x::SSI3::ptr() };
+    let ssi_r = unsafe { &*cpu::SSI1::ptr() };
+    let ssi_g = unsafe { &*cpu::SSI2::ptr() };
+    let ssi_b = unsafe { &*cpu::SSI3::ptr() };
     // Disable the SPIs as we don't want pixels yet
     ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
     ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
@@ -595,7 +598,7 @@ fn timer1a() {
         NEXT_SAMPLE =  G_SYNTH.next().into();
     }
     // Clear timer A interrupt
-    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
+    let timer = unsafe { &*cpu::TIMER1::ptr() };
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
@@ -682,7 +685,7 @@ fn timer1b() {
             : "volatile");
     }
     // Clear timer B interrupt
-    let timer = unsafe { &*tm4c123x_hal::tm4c123x::TIMER1::ptr() };
+    let timer = unsafe { &*cpu::TIMER1::ptr() };
     timer.icr.write(|w| w.cbecint().set_bit());
 }
 
