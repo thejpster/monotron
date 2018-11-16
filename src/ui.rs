@@ -241,7 +241,7 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
         i = i + 1;
     }
     let digest = crc::crc32::checksum_ieee(&application_ram[0..i]);
-    writeln!(context, "Loaded {} bytes, CRC32 0x{:08x}", i, digest);
+    writeln!(context, "Loaded {} bytes, CRC32 0x{:08x}", i, digest).unwrap();
 }
 
 /// Print some debug info.
@@ -249,7 +249,7 @@ fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut C
     let fb_addr = unsafe { &FRAMEBUFFER as *const _ } as usize;
     writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
     writeln!(context, "Application: 0x{:08p}", APPLICATION_START_ADDR).unwrap();
-    writeln!(context, "Chip: {:?}", tm4c123x_hal::sysctl::chip_id::get());
+    writeln!(context, "Chip: {:?}", tm4c123x_hal::sysctl::chip_id::get()).unwrap();
 }
 
 /// Runs a program from application RAM, then returns.
@@ -266,7 +266,7 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut 
         let code: extern "C" fn(*const api::Table, *mut Context) -> u32 = ::core::mem::transmute(ptr);
         code(&api::CALLBACK_TABLE, context as *mut Context)
     };
-    writeln!(context, "Result: {}", result);
+    writeln!(context, "Result: {}", result).unwrap();
 }
 
 /// Makes a short beep.
@@ -285,7 +285,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         Some("sawtooth") => Waveform::Sawtooth,
         Some("noise") => Waveform::Noise,
         e => {
-            writeln!(context, "Unknown wave argument {:?}", e);
+            writeln!(context, "Unknown wave argument {:?}", e).unwrap();
             return;
         }
     };
@@ -293,7 +293,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         match u16::from_str_radix(arg, 10) {
             Ok(f) => f,
             Err(e) => {
-                writeln!(context, "Bad frequency argument {:?}", e);
+                writeln!(context, "Bad frequency argument {:?}", e).unwrap();
                 return;
             }
         }
@@ -304,7 +304,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         match usize::from_str_radix(arg, 10) {
             Ok(f) => f,
             Err(e) => {
-                writeln!(context, "Bad duration argument {:?}", e);
+                writeln!(context, "Bad duration argument {:?}", e).unwrap();
                 return;
             }
         }
@@ -316,7 +316,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         Some("1") => CHANNEL_1,
         Some("2") => CHANNEL_2,
         e => {
-            writeln!(context, "Unknown duration argument {:?}", e);
+            writeln!(context, "Unknown duration argument {:?}", e).unwrap();
             return;
         }
     };
