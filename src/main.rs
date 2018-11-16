@@ -34,10 +34,11 @@
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PB5 is V-Sync
 //! * M0PWM4 for Audio on PE4 / 1.05.
+//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
+//! * SSI0 (PA2/PA3/PA4/PA5) for an SD/MMC Interface
 //!
 //! Reserved for future use:
 //! * SSI0, for interfacing with an SD/MMC card.
-//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
 //! * PB0/PB1/PC4/PC5 for a 5-wire 3.3v UART.
 //! * PB2/PE0 for PS/2 +CLK and +DATA.
 
@@ -343,6 +344,14 @@ fn main() -> ! {
     pwm._2_cmpa.write(|w| unsafe { w.compa().bits(64) });
     pwm.enable.write(|w| w.pwm4en().set_bit());
 
+    // SSI0 for SD/MMC access
+    let sdmmc_clk = porta.pa2.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_cs = porta.pa3.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_miso = porta.pa4.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_mosi = porta.pa5.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    // Use the HAL driver for SPI
+    let sdmmc_spi = hal::spi::Spi::spi0(p.SSI0, (sdmmc_clk, sdmmc_miso, sdmmc_mosi), embedded_hal::spi::MODE_0, 1_000_000.hz(), &clocks, &sc.power_control);
+
     unsafe {
         let hw = VideoHardware {
             h_timer: p.TIMER1,
@@ -409,7 +418,7 @@ fn main() -> ! {
         let total = ebss - start;
         8192 - total
     };
-    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, 24 * 1024).unwrap();
+    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, APPLICATION_LEN).unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
