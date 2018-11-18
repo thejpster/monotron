@@ -346,11 +346,11 @@ fn main() -> ! {
 
     // SSI0 for SD/MMC access
     let sdmmc_clk = porta.pa2.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
-    let sdmmc_cs = porta.pa3.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_cs = porta.pa3.into_push_pull_output();
     let sdmmc_miso = porta.pa4.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
     let sdmmc_mosi = porta.pa5.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
     // Use the HAL driver for SPI
-    let sdmmc_spi = hal::spi::Spi::spi0(p.SSI0, (sdmmc_clk, sdmmc_miso, sdmmc_mosi), embedded_hal::spi::MODE_0, 1_000_000.hz(), &clocks, &sc.power_control);
+    let sdmmc_spi = hal::spi::Spi::spi0(p.SSI0, (sdmmc_clk, sdmmc_miso, sdmmc_mosi), embedded_hal::spi::MODE_0, 100_000.hz(), &clocks, &sc.power_control);
 
     unsafe {
         let hw = VideoHardware {
@@ -363,7 +363,7 @@ fn main() -> ! {
     }
 
     // Activate UART
-    let uart = Serial::uart0(
+    let mut uart = Serial::uart0(
         p.UART0,
         porta
             .pa1
@@ -380,6 +380,18 @@ fn main() -> ! {
     );
 
     let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
+
+    let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
+    match cont.device().init() {
+        Ok(_) => writeln!(uart, "Card init OK").unwrap(),
+        Err(_e) => writeln!(uart, "Card init error!").unwrap(),
+    }
+
+    match cont.device().card_size_bytes() {
+        Ok(size) => writeln!(uart, "Card size: {} bytes", size).unwrap(),
+        Err(_e) => writeln!(uart, "Card size error!").unwrap(),
+    }
+
     let mut c = Context {
         value: 0,
         uart,

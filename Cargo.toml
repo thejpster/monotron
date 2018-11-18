@@ -37,7 +37,7 @@ version = "0.7.4"
 features = ["const_fn"]
 
 [dependencies.embedded-hal]
-version = "0.1.1"
+version = "0.2.1"
 features = ["unproven"]
 
 [dependencies.cortex-m]
@@ -57,6 +57,10 @@ version = "0.1.1"
 # path = "../monotron-synth"
 # git = "https://github.com/thejpster/monotron-synth"
 version = "0.2"
+
+[dependencies.embedded-sdmmc]
+# version = "0.1"
+path = "../embedded-sdmmc"
 
 [dependencies.crc]
 version = "1.8.1"
