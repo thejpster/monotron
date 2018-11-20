@@ -434,17 +434,28 @@ fn main() -> ! {
     // writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     // writeln!(c, "Copyright © theJPster 2018").unwrap();
 
+
     let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(logging_spi, sdmmc_cs));
     // let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
 
     loop {
+        writeln!(cont.device().spi().uart, "Press 'x' to start").unwrap();
+        if let Ok(b'x') = cont.device().spi().uart.read() {
+            break;
+        }
+    }
+
+    loop {
         writeln!(cont.device().spi().uart, "Init SD card...").unwrap();
-        cont.device().init();
-        writeln!(cont.device().spi().uart, "Init SD card...OK!").unwrap();
-        if let Ok(size) = cont.device().card_size_bytes() {
-            writeln!(cont.device().spi().uart, "Card size: {}", size).unwrap();
+        if let Ok(_) = cont.device().init() {
+            writeln!(cont.device().spi().uart, "Init SD card...OK!").unwrap();
+            if let Ok(size) = cont.device().card_size_bytes() {
+                writeln!(cont.device().spi().uart, "Card size: {}", size).unwrap();
+            } else {
+                writeln!(cont.device().spi().uart, "SD card not found!").unwrap();
+            }
         } else {
-            writeln!(cont.device().spi().uart, "SD card not found!").unwrap();
+            writeln!(cont.device().spi().uart, "Init SD card...Error!").unwrap();
         }
 
         for _ in 0 .. 20_000_000 {
