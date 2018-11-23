@@ -345,10 +345,10 @@ fn main() -> ! {
     pwm.enable.write(|w| w.pwm4en().set_bit());
 
     // SSI0 for SD/MMC access
-    let sdmmc_clk = porta.pa2.into_af_open_drain::<hal::gpio::AF2, hal::gpio::PullUp>(&mut porta.control);
+    let sdmmc_clk = porta.pa2.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
     let sdmmc_cs = porta.pa3.into_push_pull_output();
-    let sdmmc_miso = porta.pa4.into_af_open_drain::<hal::gpio::AF2, hal::gpio::PullUp>(&mut porta.control);
-    let sdmmc_mosi = porta.pa5.into_af_open_drain::<hal::gpio::AF2, hal::gpio::PullUp>(&mut porta.control);
+    let sdmmc_miso = porta.pa4.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_mosi = porta.pa5.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
     // Use the HAL driver for SPI
     let sdmmc_spi = hal::spi::Spi::spi0(p.SSI0, (sdmmc_clk, sdmmc_miso, sdmmc_mosi), embedded_hal::spi::MODE_0, 250_000.hz(), &clocks, &sc.power_control);
 
@@ -379,128 +379,113 @@ fn main() -> ! {
         &sc.power_control,
     );
 
-    struct LoggingSpi<T, U> where T: embedded_hal::spi::FullDuplex<u8>, U: core::fmt::Write {
-        spi: T,
-        uart: U,
-    }
-
-    let logging_spi = LoggingSpi { spi: sdmmc_spi, uart: uart };
-
-    use nb;
-    impl<T, U> embedded_hal::spi::FullDuplex<u8> for LoggingSpi<T, U> where T: embedded_hal::spi::FullDuplex<u8>, U: core::fmt::Write {
-        type Error = T::Error;
-
-        fn read(&mut self) -> nb::Result<u8, T::Error> {
-            let b = self.spi.read();
-            if let Ok(data) = b {
-                writeln!(self.uart, "RX 0x{:02x}", data).unwrap();
-            }
-            b
-        }
-
-        fn send(&mut self, byte: u8) -> nb::Result<(), T::Error> {
-            write!(self.uart, "TX 0x{:02x} ", byte).unwrap();
-            self.spi.send(byte)
-        }
-    }
-
-    // let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
-
-    // let mut c = Context {
-    //     value: 0,
-    //     uart,
-    //     keyboard,
-    //     buffered_char: None,
-    //     joystick: Joystick {
-    //         up: portc.pc6.into_pull_up_input(),
-    //         down: portc.pc7.into_pull_up_input(),
-    //         left: portd.pd6.into_pull_up_input(),
-    //         right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
-    //         fire: portf.pf4.into_pull_up_input(),
-    //     },
-    // };
-
-    // unsafe {
-    //     FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
-    //     FRAMEBUFFER.clear();
+    // struct LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
+    //     spi: T,
     // }
 
-    // write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
-    // write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
-    // write!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
-    // write!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
-    // write!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
-    // write!(c, "╚══════════════════════════════════════════════╝").unwrap();
-    // writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
-    // writeln!(c, "Copyright © theJPster 2018").unwrap();
+    // use nb;
+    // impl<T> embedded_hal::spi::FullDuplex<u8> for LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
+    //     type Error = T::Error;
 
-
-    let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(logging_spi, sdmmc_cs));
-    // let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
-
-    loop {
-        writeln!(cont.device().spi().uart, "Press 'x' to start").unwrap();
-        if let Ok(b'x') = cont.device().spi().uart.read() {
-            break;
-        }
-    }
-
-    loop {
-        writeln!(cont.device().spi().uart, "Init SD card...").unwrap();
-        if let Ok(_) = cont.device().init() {
-            writeln!(cont.device().spi().uart, "Init SD card...OK!").unwrap();
-            if let Ok(size) = cont.device().card_size_bytes() {
-                writeln!(cont.device().spi().uart, "Card size: {}", size).unwrap();
-            } else {
-                writeln!(cont.device().spi().uart, "SD card not found!").unwrap();
-            }
-        } else {
-            writeln!(cont.device().spi().uart, "Init SD card...Error!").unwrap();
-        }
-
-        for _ in 0 .. 20_000_000 {
-            cortex_m::asm::nop();
-        }
-    }
-
-
-    // let stack_space = unsafe {
-    //     extern "C" {
-    //         static __ebss: u32;
-    //         static __sdata: u32;
+    //     fn read(&mut self) -> nb::Result<u8, T::Error> {
+    //         let b = self.spi.read();
+    //         if let Ok(data) = b {
+    //             unsafe { writeln!(FRAMEBUFFER, "RX 0x{:02x}", data).unwrap() };
+    //         }
+    //         b
     //     }
-    //     let ebss = &__ebss as *const u32 as usize;
-    //     let start = &__sdata as *const u32 as usize;
-    //     let total = ebss - start;
-    //     8192 - total
-    // };
-    // writeln!(c, "{} bytes stack, {} bytes free.", stack_space, APPLICATION_LEN).unwrap();
 
-    // let mut buffer = [0u8; 64];
-    // let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
-
-    // loop {
-    //     api::wfvbi(r.context);
-    //     // Wait for new UTF-8 input
-    //     match r.context.read() {
-    //         Some(Input::Unicode(ch)) => {
-    //             let mut char_as_bytes: [u8; 4] = [0u8; 4];
-    //             // Our menu takes UTF-8 chars for serial compatibility,
-    //             // so convert our Unicode to UTF8 bytes
-    //             for octet in ch.encode_utf8(&mut char_as_bytes).bytes() {
-    //                 r.input_byte(octet);
-    //             }
-    //         }
-    //         Some(Input::Utf8(octet)) => {
-    //             r.input_byte(octet);
-    //         }
-    //         Some(Input::Special(code)) => {
-    //             // Can't handle special chars yet
-    //             writeln!(r.context, "Special char {:?}", code).unwrap();
-    //         }
-    //         None => {}
+    //     fn send(&mut self, byte: u8) -> nb::Result<(), T::Error> {
+    //         unsafe { write!(FRAMEBUFFER, "TX 0x{:02x} ", byte).unwrap() };
+    //         self.spi.send(byte)
     //     }
     // }
+
+    // let sdmmc_spi = LoggingSpi { spi: sdmmc_spi };
+
+    let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
+
+    let mut c = Context {
+        value: 0,
+        uart,
+        keyboard,
+        buffered_char: None,
+        joystick: Joystick {
+            up: portc.pc6.into_pull_up_input(),
+            down: portc.pc7.into_pull_up_input(),
+            left: portd.pd6.into_pull_up_input(),
+            right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
+            fire: portf.pf4.into_pull_up_input(),
+        },
+    };
+
+    unsafe {
+        FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
+        FRAMEBUFFER.clear();
+    }
+
+    write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
+    write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
+    write!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
+    write!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
+    write!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
+    write!(c, "╚══════════════════════════════════════════════╝").unwrap();
+    writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
+    writeln!(c, "Copyright © theJPster 2018").unwrap();
+
+
+    // let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(logging_spi, sdmmc_cs));
+    let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
+
+    write!(c, "Init SD card...").unwrap();
+    match cont.device().init() {
+        Ok(_) => {
+            writeln!(c, "OK!").unwrap();
+            match cont.device().card_size_bytes() {
+                Ok(size) => writeln!(c, "Card size: {}", size).unwrap(),
+                Err(e) => writeln!(c, "SD card not found! Err: {:?}", e).unwrap(),
+            }
+        }
+        Err(e) => writeln!(c, "{:?}!", e).unwrap(),
+    }
+
+    let stack_space = unsafe {
+        extern "C" {
+            static __ebss: u32;
+            static __sdata: u32;
+        }
+        let ebss = &__ebss as *const u32 as usize;
+        let start = &__sdata as *const u32 as usize;
+        let total = ebss - start;
+        8192 - total
+    };
+    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, APPLICATION_LEN).unwrap();
+
+    let mut buffer = [0u8; 64];
+    let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
+
+    loop {
+        api::wfvbi(r.context);
+        // Wait for new UTF-8 input
+        match r.context.read() {
+            Some(Input::Unicode(ch)) => {
+                let mut char_as_bytes: [u8; 4] = [0u8; 4];
+                // Our menu takes UTF-8 chars for serial compatibility,
+                // so convert our Unicode to UTF8 bytes
+                for octet in ch.encode_utf8(&mut char_as_bytes).bytes() {
+                    r.input_byte(octet);
+                }
+            }
+            Some(Input::Utf8(octet)) => {
+                r.input_byte(octet);
+            }
+            Some(Input::Special(code)) => {
+                // Can't handle special chars yet
+                writeln!(r.context, "Special char {:?}", code).unwrap();
+            }
+            None => {}
+        }
+    }
 }
 
 impl fb::Hardware for VideoHardware {
