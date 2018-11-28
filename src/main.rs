@@ -90,6 +90,21 @@ struct Joystick {
     fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
 }
 
+struct DummyTimeSource;
+
+impl embedded_sdmmc::TimeSource for DummyTimeSource {
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        embedded_sdmmc::Timestamp {
+            year_since_1970: 0,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
+
 struct Context {
     pub value: u32,
     uart: hal::serial::Serial<
@@ -112,6 +127,37 @@ struct Context {
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
     buffered_char: Option<Input>,
     joystick: Joystick,
+    cont: embedded_sdmmc::Controller<
+        embedded_sdmmc::SdMmcSpi<
+            hal::spi::Spi<
+                cpu::SSI0,
+                (hal::gpio::gpioa::PA2<
+                    hal::gpio::AlternateFunction<
+                        hal::gpio::AF2,
+                        hal::gpio::PushPull
+                    >
+                >,
+                hal::gpio::gpioa::PA4<
+                    hal::gpio::AlternateFunction<
+                        hal::gpio::AF2,
+                        hal::gpio::PushPull
+                    >
+                >,
+                hal::gpio::gpioa::PA5<
+                    hal::gpio::AlternateFunction<
+                        hal::gpio::AF2,
+                        hal::gpio::PushPull
+                    >
+                >)
+            >,
+            hal::gpio::gpioa::PA3<
+                hal::gpio::Output<
+                    hal::gpio::PushPull
+                >
+            >
+        >,
+        DummyTimeSource
+    >,
 }
 
 enum Input {
@@ -363,7 +409,7 @@ fn main() -> ! {
     }
 
     // Activate UART
-    let mut uart = Serial::uart0(
+    let uart = Serial::uart0(
         p.UART0,
         porta
             .pa1
@@ -417,7 +463,12 @@ fn main() -> ! {
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
         },
+        cont: embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs), DummyTimeSource)
     };
+
+    while c.uart.read().is_ok() {
+        // Try again and empty the buffer
+    }
 
     unsafe {
         FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
@@ -432,22 +483,6 @@ fn main() -> ! {
     write!(c, "╚══════════════════════════════════════════════╝").unwrap();
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     writeln!(c, "Copyright © theJPster 2018").unwrap();
-
-
-    // let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(logging_spi, sdmmc_cs));
-    let mut cont = embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs));
-
-    write!(c, "Init SD card...").unwrap();
-    match cont.device().init() {
-        Ok(_) => {
-            writeln!(c, "OK!").unwrap();
-            match cont.device().card_size_bytes() {
-                Ok(size) => writeln!(c, "Card size: {}", size).unwrap(),
-                Err(e) => writeln!(c, "SD card not found! Err: {:?}", e).unwrap(),
-            }
-        }
-        Err(e) => writeln!(c, "{:?}!", e).unwrap(),
-    }
 
     let stack_space = unsafe {
         extern "C" {

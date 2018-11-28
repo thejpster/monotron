@@ -55,6 +55,18 @@ static ITEM_BEEP: Item = Item {
     help: Some("Make a beep."),
 };
 
+static ITEM_SDINIT: Item = Item {
+    item_type: menu::ItemType::Callback(item_sdinit),
+    command: "sdinit",
+    help: Some("Scan the SD/MMC card and report the card details")
+};
+
+static ITEM_DIR: Item = Item {
+    item_type: menu::ItemType::Callback(item_dir),
+    command: "dir",
+    help: Some("List the root directory")
+};
+
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -66,6 +78,8 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_RUN,
         &ITEM_DEBUG,
         &ITEM_BEEP,
+        &ITEM_SDINIT,
+        &ITEM_DIR,
     ],
     entry: None,
     exit: None,
@@ -342,6 +356,50 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 
     unsafe {
         crate::G_SYNTH.play(channel, Frequency::from_hertz(frequency), 0, waveform);
+    }
+}
+
+/// Init the card and dump some details
+fn item_sdinit<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
+        write!(c, "Init SD card...").unwrap();
+        c.cont.device().init()?;
+        write!(c, "OK!\nCard size...").unwrap();
+        let size = c.cont.device().card_size_bytes()?;
+        writeln!(c, "{}", size).unwrap();
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
+/// List the root directory
+fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+        write!(c, "Volume 0...").unwrap();
+        let v = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        writeln!(c, "{:?}", v).unwrap();
+        let dir = c.cont.open_root_dir(&v)?;
+        c.cont.iterate_dir(&v, &dir, |x| {
+            if !x.attributes.is_hidden() && !x.attributes.is_volume() {
+                if x.attributes.is_directory() {
+                    unsafe {
+                        writeln!(FRAMEBUFFER, "{:13} {} <DIR>", x.name, x.mtime).unwrap();
+                    }
+                } else {
+                    unsafe {
+                        writeln!(FRAMEBUFFER, "{:13} {} {} bytes", x.name, x.mtime, x.size).unwrap();
+                    }
+                }
+            }
+        })?;
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
     }
 }
 
