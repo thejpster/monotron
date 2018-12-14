@@ -67,6 +67,12 @@ static ITEM_DIR: Item = Item {
     help: Some("List the root directory")
 };
 
+static ITEM_DLOAD: Item = Item {
+    item_type: menu::ItemType::Callback(item_dload),
+    command: "dload",
+    help: Some("Load file from the SD-Card into Application RAM")
+};
+
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -80,6 +86,7 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_BEEP,
         &ITEM_SDINIT,
         &ITEM_DIR,
+        &ITEM_DLOAD,
     ],
     entry: None,
     exit: None,
@@ -395,6 +402,7 @@ fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
                 }
             }
         })?;
+        c.cont.close_dir(&v, dir);
         Ok(())
     };
     match f(c) {
@@ -402,5 +410,34 @@ fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
         _ => (),
     }
 }
+
+/// Load a file from the SD card
+fn item_dload<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+        let mut parts = input.split_whitespace();
+        parts.next(); // skip command itself
+        let file = parts.next().unwrap();
+        write!(c, "Loading {:?}...", file).unwrap();
+        let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        let dir = c.cont.open_root_dir(&volume)?;
+        let mut f = c.cont.open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let application_ram: &'static mut [u8] =
+            unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
+        for b in application_ram.iter_mut() {
+            *b = 0x00;
+        }
+        c.cont.read(&volume, &mut f, application_ram)?;
+        let digest = crc::crc32::checksum_ieee(&application_ram[0..f.length() as usize]);
+        writeln!(c, "Loaded {} bytes, CRC32 0x{:08x}", f.length(), digest).unwrap();
+        c.cont.close_file(&volume, f)?;
+        c.cont.close_dir(&volume, dir);
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
 
 // End of file
