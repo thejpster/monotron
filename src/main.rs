@@ -158,6 +158,7 @@ struct Context {
         >,
         DummyTimeSource
     >,
+    clocks: hal::sysctl::Clocks
 }
 
 enum Input {
@@ -463,7 +464,8 @@ fn main() -> ! {
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
         },
-        cont: embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs), DummyTimeSource)
+        cont: embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs), DummyTimeSource),
+        clocks
     };
 
     while c.uart.read().is_ok() {

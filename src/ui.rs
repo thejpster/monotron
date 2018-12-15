@@ -2,6 +2,7 @@ use core::fmt::Write;
 use crate::fb::{self, BaseConsole};
 use crate::{api, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
 use embedded_hal::prelude::*;
+use crate::hal::prelude::*;
 use menu;
 
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
@@ -371,6 +372,7 @@ fn item_sdinit<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
         write!(c, "Init SD card...").unwrap();
         c.cont.device().init()?;
+        c.cont.device().spi().reclock(10u32.mhz(), &c.clocks);
         write!(c, "OK!\nCard size...").unwrap();
         let size = c.cont.device().card_size_bytes()?;
         writeln!(c, "{}", size).unwrap();

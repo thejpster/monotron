@@ -21,9 +21,10 @@ codegen-units = 1
 opt-level = "s"
 
 [dependencies.tm4c123x-hal]
-version = "0.7"
+# version = "0.7"
+# path = "../tm4c-hal/tm4c123x-hal"
+git = "https://github.com/thejpster/tm4c-hal"
 features = ["rt"]
-# path = "../tm4c123x-hal"
 
 [dependencies.menu]
 version = "0.2.1"
