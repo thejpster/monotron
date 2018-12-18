@@ -61,7 +61,7 @@ version = "0.2"
 
 [dependencies.embedded-sdmmc]
 # version = "0.1"
-# path = "../embedded-sdmmc"
+# path = "../embedded-sdmmc-rs"
 git = "https://github.com/thejpster/embedded-sdmmc-rs"
 
 [dependencies.nb]

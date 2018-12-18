@@ -56,10 +56,16 @@ static ITEM_BEEP: Item = Item {
     help: Some("Make a beep."),
 };
 
-static ITEM_SDINIT: Item = Item {
-    item_type: menu::ItemType::Callback(item_sdinit),
+static ITEM_MOUNT: Item = Item {
+    item_type: menu::ItemType::Callback(item_mount),
     command: "sdinit",
-    help: Some("Scan the SD/MMC card and report the card details")
+    help: Some("Scan a new SD/MMC card and make it available for use.")
+};
+
+static ITEM_UNMOUNT: Item = Item {
+    item_type: menu::ItemType::Callback(item_unmount),
+    command: "sdinit",
+    help: Some("Stop using an SD/MMC card.")
 };
 
 static ITEM_DIR: Item = Item {
@@ -85,7 +91,8 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_RUN,
         &ITEM_DEBUG,
         &ITEM_BEEP,
-        &ITEM_SDINIT,
+        &ITEM_MOUNT,
+        &ITEM_UNMOUNT,
         &ITEM_DIR,
         &ITEM_DLOAD,
     ],
@@ -368,9 +375,26 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 }
 
 /// Init the card and dump some details
-fn item_sdinit<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+fn item_mount<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
         write!(c, "Init SD card...").unwrap();
+        c.cont.device().init()?;
+        c.cont.device().spi().reclock(10u32.mhz(), &c.clocks);
+        write!(c, "OK!\nCard size...").unwrap();
+        let size = c.cont.device().card_size_bytes()?;
+        writeln!(c, "{}", size).unwrap();
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
+/// De-init the card so it can't be used.
+fn item_unmount<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
+        write!(c, "De-init SD card...").unwrap();
         c.cont.device().init()?;
         c.cont.device().spi().reclock(10u32.mhz(), &c.clocks);
         write!(c, "OK!\nCard size...").unwrap();
