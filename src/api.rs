@@ -1,6 +1,6 @@
-use cortex_m::asm;
 use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row, TEXT_MAX_COL, TEXT_MAX_ROW};
 use crate::{Context, Input, FRAMEBUFFER};
+use cortex_m::asm;
 
 /// struct callbacks_t {
 ///    int32_t (*putchar)(void* p_context, char ch);

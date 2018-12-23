@@ -53,16 +53,16 @@ extern crate panic_halt;
 
 use core::fmt::Write;
 use cortex_m_rt::{entry, exception};
+use monotron_synth::*;
 use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
-use monotron_synth::*;
 
-use self::hal::tm4c123x as cpu;
+use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
 use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
-use self::cpu::{interrupt, Interrupt};
+use self::hal::tm4c123x as cpu;
 
 const ISR_LATENCY: u32 = 94;
 const TOTAL_RAM_LEN: usize = 32768;
@@ -109,18 +109,8 @@ struct Context {
     pub value: u32,
     uart: hal::serial::Serial<
         hal::serial::UART0,
-        hal::gpio::gpioa::PA1<
-            hal::gpio::AlternateFunction<
-                hal::gpio::AF1,
-                hal::gpio::PushPull,
-            >,
-        >,
-        hal::gpio::gpioa::PA0<
-            hal::gpio::AlternateFunction<
-                hal::gpio::AF1,
-                hal::gpio::PushPull,
-            >,
-        >,
+        hal::gpio::gpioa::PA1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioa::PA0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
         (),
         (),
     >,
@@ -131,34 +121,23 @@ struct Context {
         embedded_sdmmc::SdMmcSpi<
             hal::spi::Spi<
                 cpu::SSI0,
-                (hal::gpio::gpioa::PA2<
-                    hal::gpio::AlternateFunction<
-                        hal::gpio::AF2,
-                        hal::gpio::PushPull
-                    >
-                >,
-                hal::gpio::gpioa::PA4<
-                    hal::gpio::AlternateFunction<
-                        hal::gpio::AF2,
-                        hal::gpio::PushPull
-                    >
-                >,
-                hal::gpio::gpioa::PA5<
-                    hal::gpio::AlternateFunction<
-                        hal::gpio::AF2,
-                        hal::gpio::PushPull
-                    >
-                >)
+                (
+                    hal::gpio::gpioa::PA2<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                    hal::gpio::gpioa::PA4<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                    hal::gpio::gpioa::PA5<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                ),
             >,
-            hal::gpio::gpioa::PA3<
-                hal::gpio::Output<
-                    hal::gpio::PushPull
-                >
-            >
+            hal::gpio::gpioa::PA3<hal::gpio::Output<hal::gpio::PushPull>>,
         >,
-        DummyTimeSource
+        DummyTimeSource,
     >,
-    clocks: hal::sysctl::Clocks
+    clocks: hal::sysctl::Clocks,
 }
 
 enum Input {
@@ -392,12 +371,25 @@ fn main() -> ! {
     pwm.enable.write(|w| w.pwm4en().set_bit());
 
     // SSI0 for SD/MMC access
-    let sdmmc_clk = porta.pa2.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_clk = porta
+        .pa2
+        .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
     let sdmmc_cs = porta.pa3.into_push_pull_output();
-    let sdmmc_miso = porta.pa4.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
-    let sdmmc_mosi = porta.pa5.into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_miso = porta
+        .pa4
+        .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_mosi = porta
+        .pa5
+        .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
     // Use the HAL driver for SPI
-    let sdmmc_spi = hal::spi::Spi::spi0(p.SSI0, (sdmmc_clk, sdmmc_miso, sdmmc_mosi), embedded_hal::spi::MODE_0, 250_000.hz(), &clocks, &sc.power_control);
+    let sdmmc_spi = hal::spi::Spi::spi0(
+        p.SSI0,
+        (sdmmc_clk, sdmmc_miso, sdmmc_mosi),
+        embedded_hal::spi::MODE_0,
+        250_000.hz(),
+        &clocks,
+        &sc.power_control,
+    );
 
     unsafe {
         let hw = VideoHardware {
@@ -464,8 +456,11 @@ fn main() -> ! {
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
         },
-        cont: embedded_sdmmc::Controller::new(embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs), DummyTimeSource),
-        clocks
+        cont: embedded_sdmmc::Controller::new(
+            embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs),
+            DummyTimeSource,
+        ),
+        clocks,
     };
 
     while c.uart.read().is_ok() {
@@ -496,7 +491,12 @@ fn main() -> ! {
         let total = ebss - start;
         8192 - total
     };
-    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, APPLICATION_LEN).unwrap();
+    writeln!(
+        c,
+        "{} bytes stack, {} bytes free.",
+        stack_space, APPLICATION_LEN
+    )
+    .unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
@@ -682,7 +682,7 @@ fn timer1a() {
     unsafe { FRAMEBUFFER.isr_sol() };
     // Run the audio routine
     unsafe {
-        NEXT_SAMPLE =  G_SYNTH.next().into();
+        NEXT_SAMPLE = G_SYNTH.next().into();
     }
     // Clear timer A interrupt
     let timer = unsafe { &*cpu::TIMER1::ptr() };
