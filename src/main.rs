@@ -34,10 +34,11 @@
 //! * Timer1 Channel A PB4 is H-Sync
 //! * GPIO PB5 is V-Sync
 //! * M0PWM4 for Audio on PE4 / 1.05.
+//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
+//! * SSI0 (PA2/PA3/PA4/PA5) for an SD/MMC Interface
 //!
 //! Reserved for future use:
 //! * SSI0, for interfacing with an SD/MMC card.
-//! * PC6/PC7/PD6/PD7/PF4 for an Atari 9-pin Joystick.
 //! * PB0/PB1/PC4/PC5 for a 5-wire 3.3v UART.
 //! * PB2/PE0 for PS/2 +CLK and +DATA.
 
@@ -52,16 +53,16 @@ extern crate panic_halt;
 
 use core::fmt::Write;
 use cortex_m_rt::{entry, exception};
+use monotron_synth::*;
 use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
-use monotron_synth::*;
 
-use self::hal::tm4c123x as cpu;
+use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
 use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
-use self::cpu::{interrupt, Interrupt};
+use self::hal::tm4c123x as cpu;
 
 const ISR_LATENCY: u32 = 94;
 const TOTAL_RAM_LEN: usize = 32768;
@@ -89,28 +90,54 @@ struct Joystick {
     fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
 }
 
+struct DummyTimeSource;
+
+impl embedded_sdmmc::TimeSource for DummyTimeSource {
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        embedded_sdmmc::Timestamp {
+            year_since_1970: 0,
+            zero_indexed_month: 0,
+            zero_indexed_day: 0,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        }
+    }
+}
+
 struct Context {
     pub value: u32,
     uart: hal::serial::Serial<
         hal::serial::UART0,
-        hal::gpio::gpioa::PA1<
-            hal::gpio::AlternateFunction<
-                hal::gpio::AF1,
-                hal::gpio::PushPull,
-            >,
-        >,
-        hal::gpio::gpioa::PA0<
-            hal::gpio::AlternateFunction<
-                hal::gpio::AF1,
-                hal::gpio::PushPull,
-            >,
-        >,
+        hal::gpio::gpioa::PA1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioa::PA0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
         (),
         (),
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
     buffered_char: Option<Input>,
     joystick: Joystick,
+    cont: embedded_sdmmc::Controller<
+        embedded_sdmmc::SdMmcSpi<
+            hal::spi::Spi<
+                cpu::SSI0,
+                (
+                    hal::gpio::gpioa::PA2<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                    hal::gpio::gpioa::PA4<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                    hal::gpio::gpioa::PA5<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                ),
+            >,
+            hal::gpio::gpioa::PA3<hal::gpio::Output<hal::gpio::PushPull>>,
+        >,
+        DummyTimeSource,
+    >,
+    clocks: hal::sysctl::Clocks,
 }
 
 enum Input {
@@ -343,6 +370,27 @@ fn main() -> ! {
     pwm._2_cmpa.write(|w| unsafe { w.compa().bits(64) });
     pwm.enable.write(|w| w.pwm4en().set_bit());
 
+    // SSI0 for SD/MMC access
+    let sdmmc_clk = porta
+        .pa2
+        .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_cs = porta.pa3.into_push_pull_output();
+    let sdmmc_miso = porta
+        .pa4
+        .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    let sdmmc_mosi = porta
+        .pa5
+        .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
+    // Use the HAL driver for SPI
+    let sdmmc_spi = hal::spi::Spi::spi0(
+        p.SSI0,
+        (sdmmc_clk, sdmmc_miso, sdmmc_mosi),
+        embedded_hal::spi::MODE_0,
+        250_000.hz(),
+        &clocks,
+        &sc.power_control,
+    );
+
     unsafe {
         let hw = VideoHardware {
             h_timer: p.TIMER1,
@@ -370,7 +418,32 @@ fn main() -> ! {
         &sc.power_control,
     );
 
+    // struct LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
+    //     spi: T,
+    // }
+
+    // use nb;
+    // impl<T> embedded_hal::spi::FullDuplex<u8> for LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
+    //     type Error = T::Error;
+
+    //     fn read(&mut self) -> nb::Result<u8, T::Error> {
+    //         let b = self.spi.read();
+    //         if let Ok(data) = b {
+    //             unsafe { writeln!(FRAMEBUFFER, "RX 0x{:02x}", data).unwrap() };
+    //         }
+    //         b
+    //     }
+
+    //     fn send(&mut self, byte: u8) -> nb::Result<(), T::Error> {
+    //         unsafe { write!(FRAMEBUFFER, "TX 0x{:02x} ", byte).unwrap() };
+    //         self.spi.send(byte)
+    //     }
+    // }
+
+    // let sdmmc_spi = LoggingSpi { spi: sdmmc_spi };
+
     let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
+
     let mut c = Context {
         value: 0,
         uart,
@@ -383,7 +456,16 @@ fn main() -> ! {
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
         },
+        cont: embedded_sdmmc::Controller::new(
+            embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs),
+            DummyTimeSource,
+        ),
+        clocks,
     };
+
+    while c.uart.read().is_ok() {
+        // Try again and empty the buffer
+    }
 
     unsafe {
         FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
@@ -409,7 +491,12 @@ fn main() -> ! {
         let total = ebss - start;
         8192 - total
     };
-    writeln!(c, "{} bytes stack, {} bytes free.", stack_space, 24 * 1024).unwrap();
+    writeln!(
+        c,
+        "{} bytes stack, {} bytes free.",
+        stack_space, APPLICATION_LEN
+    )
+    .unwrap();
 
     let mut buffer = [0u8; 64];
     let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
@@ -595,7 +682,7 @@ fn timer1a() {
     unsafe { FRAMEBUFFER.isr_sol() };
     // Run the audio routine
     unsafe {
-        NEXT_SAMPLE =  G_SYNTH.next().into();
+        NEXT_SAMPLE = G_SYNTH.next().into();
     }
     // Clear timer A interrupt
     let timer = unsafe { &*cpu::TIMER1::ptr() };

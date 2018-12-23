@@ -1,6 +1,7 @@
-use core::fmt::Write;
-use crate::fb::{self, BaseConsole};
+use crate::fb::{self, AsciiConsole, BaseConsole};
+use crate::hal::prelude::*;
 use crate::{api, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
+use core::fmt::Write;
 use embedded_hal::prelude::*;
 use menu;
 
@@ -10,7 +11,7 @@ pub(crate) type Item<'a> = menu::Item<'a, Context>;
 static ITEM_CLEAR: Item = Item {
     item_type: menu::ItemType::Callback(item_clear),
     command: "clear",
-    help: Some("Resets the display."),
+    help: Some("Reset the display."),
 };
 
 static ITEM_PEEK: Item = Item {
@@ -34,7 +35,7 @@ static ITEM_DUMP: Item = Item {
 static ITEM_LOAD: Item = Item {
     item_type: menu::ItemType::Callback(item_load_file),
     command: "load",
-    help: Some("<len> - Load program from UART."),
+    help: Some("Load program from UART."),
 };
 
 static ITEM_DEBUG: Item = Item {
@@ -55,6 +56,42 @@ static ITEM_BEEP: Item = Item {
     help: Some("Make a beep."),
 };
 
+static ITEM_MOUNT: Item = Item {
+    item_type: menu::ItemType::Callback(item_mount),
+    command: "mount",
+    help: Some("Mount a new SD/MMC card."),
+};
+
+static ITEM_UNMOUNT: Item = Item {
+    item_type: menu::ItemType::Callback(item_unmount),
+    command: "unmount",
+    help: Some("Unmount an SD/MMC card."),
+};
+
+static ITEM_DIR: Item = Item {
+    item_type: menu::ItemType::Callback(item_dir),
+    command: "dir",
+    help: Some("List the root directory"),
+};
+
+static ITEM_DLOAD: Item = Item {
+    item_type: menu::ItemType::Callback(item_dload),
+    command: "dload",
+    help: Some("Load file from the SD-Card"),
+};
+
+static ITEM_DDUMP: Item = Item {
+    item_type: menu::ItemType::Callback(item_ddump),
+    command: "ddump",
+    help: Some("Load and display a binary file"),
+};
+
+static ITEM_DPAGE: Item = Item {
+    item_type: menu::ItemType::Callback(item_dpage),
+    command: "dpage",
+    help: Some("Load and display a text file"),
+};
+
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -66,6 +103,12 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_RUN,
         &ITEM_DEBUG,
         &ITEM_BEEP,
+        &ITEM_MOUNT,
+        &ITEM_UNMOUNT,
+        &ITEM_DIR,
+        &ITEM_DLOAD,
+        &ITEM_DDUMP,
+        &ITEM_DPAGE,
     ],
     entry: None,
     exit: None,
@@ -93,7 +136,8 @@ fn item_peek<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
             context,
             "Bad address {:?}. Enter hex, without the 0x prefix..",
             input
-        ).unwrap();
+        )
+        .unwrap();
     }
 }
 
@@ -135,7 +179,8 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
                 context,
                 "Dumping 0x{:08x} bytes from 0x{:08x}...",
                 count, addr
-            ).unwrap();
+            )
+            .unwrap();
             for i in 0..count {
                 let data = unsafe { ::core::ptr::read_volatile(addr as *const u8) };
                 write!(context, "{:02x}", data).unwrap();
@@ -241,15 +286,22 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
         i = i + 1;
     }
     let digest = crc::crc32::checksum_ieee(&application_ram[0..i]);
-    writeln!(context, "Loaded {} bytes, CRC32 0x{:08x}", i, digest);
+    writeln!(context, "Loaded {} bytes, CRC32 0x{:08x}", i, digest).unwrap();
 }
 
 /// Print some debug info.
 fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    let fb_addr = unsafe { &FRAMEBUFFER as *const _ } as usize;
-    writeln!(context, "Framebuffer: 0x{:08x}", fb_addr).unwrap();
-    writeln!(context, "Application: 0x{:08p}", APPLICATION_START_ADDR).unwrap();
-    writeln!(context, "Chip: {:?}", tm4c123x_hal::sysctl::chip_id::get());
+    writeln!(context, "Framebuffer: {:08p}", unsafe {
+        &FRAMEBUFFER as *const _
+    })
+    .unwrap();
+    writeln!(context, "Application: {:08p}", APPLICATION_START_ADDR).unwrap();
+    writeln!(
+        context,
+        "Chip:\n{:#?}",
+        tm4c123x_hal::sysctl::chip_id::get()
+    )
+    .unwrap();
 }
 
 /// Runs a program from application RAM, then returns.
@@ -263,10 +315,11 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut 
     writeln!(context, "Executing from 0x{:08x}", addr).unwrap();
     let ptr = addr as *const ();
     let result = unsafe {
-        let code: extern "C" fn(*const api::Table, *mut Context) -> u32 = ::core::mem::transmute(ptr);
+        let code: extern "C" fn(*const api::Table, *mut Context) -> u32 =
+            ::core::mem::transmute(ptr);
         code(&api::CALLBACK_TABLE, context as *mut Context)
     };
-    writeln!(context, "Result: {}", result);
+    writeln!(context, "Result: {}", result).unwrap();
 }
 
 /// Makes a short beep.
@@ -285,7 +338,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         Some("sawtooth") => Waveform::Sawtooth,
         Some("noise") => Waveform::Noise,
         e => {
-            writeln!(context, "Unknown wave argument {:?}", e);
+            writeln!(context, "Unknown wave argument {:?}", e).unwrap();
             return;
         }
     };
@@ -293,7 +346,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         match u16::from_str_radix(arg, 10) {
             Ok(f) => f,
             Err(e) => {
-                writeln!(context, "Bad frequency argument {:?}", e);
+                writeln!(context, "Bad frequency argument {:?}", e).unwrap();
                 return;
             }
         }
@@ -304,7 +357,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         match usize::from_str_radix(arg, 10) {
             Ok(f) => f,
             Err(e) => {
-                writeln!(context, "Bad duration argument {:?}", e);
+                writeln!(context, "Bad duration argument {:?}", e).unwrap();
                 return;
             }
         }
@@ -316,7 +369,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         Some("1") => CHANNEL_1,
         Some("2") => CHANNEL_2,
         e => {
-            writeln!(context, "Unknown duration argument {:?}", e);
+            writeln!(context, "Unknown duration argument {:?}", e).unwrap();
             return;
         }
     };
@@ -325,7 +378,8 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
         context,
         "Playing...\r\nWaveform: {:?}\r\nFreq: {} Hz\r\nDuration: {} frames",
         waveform, frequency, duration
-    ).unwrap();
+    )
+    .unwrap();
 
     unsafe {
         crate::G_SYNTH.play(
@@ -342,6 +396,204 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context)
 
     unsafe {
         crate::G_SYNTH.play(channel, Frequency::from_hertz(frequency), 0, waveform);
+    }
+}
+
+/// Init the card and dump some details
+fn item_mount<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
+        write!(c, "Init SD card...").unwrap();
+        c.cont.device().init()?;
+        c.cont.device().spi().reclock(10u32.mhz(), &c.clocks);
+        write!(c, "OK!\nCard size...").unwrap();
+        let size = c.cont.device().card_size_bytes()?;
+        writeln!(c, "{}", size).unwrap();
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
+/// De-init the card so it can't be used.
+fn item_unmount<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    write!(c, "De-init SD card...").unwrap();
+    c.cont.device().deinit();
+    writeln!(c, "OK!").unwrap();
+}
+
+/// List the root directory
+fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+        write!(c, "Volume 0...").unwrap();
+        let v = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        writeln!(c, "{:?}", v).unwrap();
+        let dir = c.cont.open_root_dir(&v)?;
+        c.cont.iterate_dir(&v, &dir, |x| {
+            if !x.attributes.is_hidden() && !x.attributes.is_volume() {
+                if x.attributes.is_directory() {
+                    unsafe {
+                        writeln!(FRAMEBUFFER, "{:13} {} <DIR>", x.name, x.mtime).unwrap();
+                    }
+                } else {
+                    unsafe {
+                        writeln!(FRAMEBUFFER, "{:13} {} {} bytes", x.name, x.mtime, x.size)
+                            .unwrap();
+                    }
+                }
+            }
+        })?;
+        c.cont.close_dir(&v, dir);
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
+/// Load a file from the SD card.
+/// TODO work out how to release the directory handle and file handle when the
+/// function aborts (e.g. with file not found).
+fn item_dload<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+        let mut parts = input.split_whitespace();
+        parts.next(); // skip command itself
+        let file = parts.next().unwrap();
+        write!(c, "Loading {:?}...", file).unwrap();
+        let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        let dir = c.cont.open_root_dir(&volume)?;
+        let mut f = c
+            .cont
+            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let application_ram: &'static mut [u8] =
+            unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
+        for b in application_ram.iter_mut() {
+            *b = 0x00;
+        }
+        c.cont.read(&volume, &mut f, application_ram)?;
+        let digest = crc::crc32::checksum_ieee(&application_ram[0..f.length() as usize]);
+        writeln!(c, "Loaded {} bytes, CRC32 0x{:08x}", f.length(), digest).unwrap();
+        c.cont.close_file(&volume, f)?;
+        c.cont.close_dir(&volume, dir);
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
+/// Do a hex-dump of a file on disk
+/// TODO work out how to release the directory handle and file handle when the
+/// function aborts (e.g. with file not found).
+fn item_ddump<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+        let mut parts = input.split_whitespace();
+        parts.next(); // skip command itself
+        let file = parts.next().unwrap();
+        write!(c, "Dumping {:?}...", file).unwrap();
+        let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        let dir = c.cont.open_root_dir(&volume)?;
+        let mut f = c
+            .cont
+            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let application_ram: &'static mut [u8] =
+            unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
+        c.cont.read(&volume, &mut f, application_ram)?;
+        let digest = crc::crc32::checksum_ieee(&application_ram[0..f.length() as usize]);
+        writeln!(c, "Loaded {} bytes, CRC32 0x{:08x}", f.length(), digest).unwrap();
+        const CHUNK_SIZE: usize = 16;
+        let mut lines_printed = 0;
+        const MAX_LINES: usize = 35;
+        for (idx, line) in application_ram[0..f.length() as usize]
+            .chunks(CHUNK_SIZE)
+            .enumerate()
+        {
+            write!(c, "{:06x}:", idx * CHUNK_SIZE).unwrap();
+            for (idx, b) in line.iter().enumerate() {
+                if (idx % 4) == 0 {
+                    write!(c, " ").unwrap();
+                }
+                write!(c, "{:02x}", b).unwrap();
+            }
+            writeln!(c, "").unwrap();
+            lines_printed += 1;
+            if lines_printed == MAX_LINES {
+                lines_printed = 0;
+                write!(c, "Press a key...").unwrap();
+                loop {
+                    crate::api::wfvbi(c);
+                    // Wait for new input
+                    match c.read() {
+                        None => {}
+                        _ => break,
+                    }
+                }
+                write!(c, "\r                \r").unwrap();
+            }
+        }
+        c.cont.close_file(&volume, f)?;
+        c.cont.close_dir(&volume, dir);
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
+    }
+}
+
+/// Display a text file on disk a page at a time
+/// TODO work out how to release the directory handle and file handle when the
+/// function aborts (e.g. with file not found).
+fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+        let mut parts = input.split_whitespace();
+        parts.next(); // skip command itself
+        let file = parts.next().unwrap();
+        writeln!(c, "Displaying {:?}...", file).unwrap();
+        let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        let dir = c.cont.open_root_dir(&volume)?;
+        let mut f = c
+            .cont
+            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let application_ram: &'static mut [u8] =
+            unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
+        c.cont.read(&volume, &mut f, application_ram)?;
+        let mut lines_printed = 0;
+        let mut line_length = 0;
+        const MAX_LINES: usize = 35;
+        for &b in application_ram[0..f.length() as usize].iter() {
+            unsafe {
+                let _ = FRAMEBUFFER.write_character(b);
+            }
+            line_length += 1;
+            if (b == b'\n') || (line_length == 48) {
+                lines_printed += 1;
+                line_length = 0;
+                if lines_printed == MAX_LINES {
+                    lines_printed = 0;
+                    write!(c, "Press a key...").unwrap();
+                    loop {
+                        crate::api::wfvbi(c);
+                        // Wait for new input
+                        match c.read() {
+                            None => {}
+                            _ => break,
+                        }
+                    }
+                    write!(c, "\r                \r").unwrap();
+                }
+            }
+        }
+        c.cont.close_file(&volume, f)?;
+        c.cont.close_dir(&volume, dir);
+        Ok(())
+    };
+    match f(c) {
+        Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
+        _ => (),
     }
 }
 

@@ -21,9 +21,10 @@ codegen-units = 1
 opt-level = "s"
 
 [dependencies.tm4c123x-hal]
-version = "0.6.0"
+# version = "0.7"
+# path = "../tm4c-hal/tm4c123x-hal"
+git = "https://github.com/thejpster/tm4c-hal"
 features = ["rt"]
-# path = "../tm4c123x-hal"
 
 [dependencies.menu]
 version = "0.2.1"
@@ -37,7 +38,7 @@ version = "0.7.4"
 features = ["const_fn"]
 
 [dependencies.embedded-hal]
-version = "0.1.1"
+version = "0.2.1"
 features = ["unproven"]
 
 [dependencies.cortex-m]
@@ -57,6 +58,15 @@ version = "0.1.1"
 # path = "../monotron-synth"
 # git = "https://github.com/thejpster/monotron-synth"
 version = "0.2"
+
+[dependencies.embedded-sdmmc]
+# version = "0.1"
+# path = "../embedded-sdmmc-rs"
+git = "https://github.com/thejpster/embedded-sdmmc-rs"
+
+[dependencies.nb]
+# version = "0.1"
+version = "*"
 
 [dependencies.crc]
 version = "1.8.1"
