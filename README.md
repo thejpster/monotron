@@ -329,12 +329,14 @@ See [monotron-apps](https://github.com/thejpster/monotron-apps) for example
 apps which will run from Monotron's RAM, along with a wrapper which makes
 using the callbacks as simple as using a normal C library.
 
-## Unreleased changes (will be 0.8.0)
+## Unreleased changes (will be 0.9.0)
 
-* Added cursor support to ABI.
+* No changes
 
 ## Changelog
 
+* Version 0.8.0 - Added cursor support to ABI. Added basic SD/MMC support
+  (read-only).
 * Version 0.7.0 - Move application RAM to 0x2000_2000. Added cursor support.
   Moved callback pointer.
 * Version 0.6.3 - Fixed Joystick support.
