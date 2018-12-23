@@ -237,7 +237,21 @@ robust interface circuitry.
 
 ### SD/MMC
 
-One day I might add SD Card support for programing loading/saving.
+You can load programs and data from an SD card, from the first Primary MBR
+(standard old-style MS-DOS) partition, formatted as either FAT16 or FAT32. Use
+a standard SD/MMC breakout adaptor, connected up as follows:
+
+* CLK: PA2
+* CS: PA3
+* MISO: PA4
+* MOSI: PA5
+* Ground: GND
+* Vcc: 3.3V
+
+SD cards operate at 3.3v so no level shifters are required. Use the `mount`
+command to scan the disk, then `dir` to show the root directory contents, and
+the `dload`, `ddump` and `dpage` commands to load, hex-dump and print files to
+the screen.
 
 ### I2C
 
@@ -270,7 +284,7 @@ from that, applications are free to apportion the remaining 24,572 bytes as
 they see fit.
 
 *Note:* The application does not need to provide a stack region - the Monotron
-ROM will handle that.
+ROM will handle that using the system stack.
 
 The callback structure supplied to the application's entry function is defined
 in `api.rs`, but in C looks like:
