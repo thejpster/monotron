@@ -1,0 +1,266 @@
+EESchema Schematic File Version 4
+EELAYER 26 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 2 2
+Title "Monotron 32K RS-232 Interface"
+Date "2018-12-29"
+Rev "0.0.1"
+Comp "https://github.com/thejpster/monotron"
+Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2018"
+Comment2 "CC BY-SA 4.0"
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L Interface_UART:MAX3232 U3
+U 1 1 5C52663D
+P 4200 3200
+F 0 "U3" H 4400 4400 50  0000 C CNN
+F 1 "MAX3232" H 4500 4300 50  0000 C CNN
+F 2 "" H 4250 2150 50  0001 L CNN
+F 3 "https://datasheets.maximintegrated.com/en/ds/MAX3222-MAX3241.pdf" H 4200 3300 50  0001 C CNN
+	1    4200 3200
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:DB9_Male J9
+U 1 1 5C526711
+P 6950 3650
+F 0 "J9" H 7130 3696 50  0000 L CNN
+F 1 "DB9_Male" H 7130 3605 50  0000 L CNN
+F 2 "" H 6950 3650 50  0001 C CNN
+F 3 " ~" H 6950 3650 50  0001 C CNN
+	1    6950 3650
+	1    0    0    -1  
+$EndComp
+Text HLabel 3050 3700 0    50   Output ~ 0
+DTE_RX
+Text HLabel 3050 3300 0    50   Input ~ 0
+DTE_TX
+Text HLabel 3050 3500 0    50   Input ~ 0
+DTE_RTS
+Text HLabel 3050 3900 0    50   Output ~ 0
+DTE_CTS
+Wire Wire Line
+	4200 1950 4200 2000
+Wire Wire Line
+	3050 3500 3400 3500
+Wire Wire Line
+	3050 3300 3400 3300
+Wire Wire Line
+	3050 3700 3400 3700
+Wire Wire Line
+	3050 3900 3400 3900
+$Comp
+L power:GND #PWR021
+U 1 1 5C54CA78
+P 4200 4550
+F 0 "#PWR021" H 4200 4300 50  0001 C CNN
+F 1 "GND" H 4205 4377 50  0000 C CNN
+F 2 "" H 4200 4550 50  0001 C CNN
+F 3 "" H 4200 4550 50  0001 C CNN
+	1    4200 4550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4200 4400 4200 4550
+$Comp
+L Device:C C18
+U 1 1 5C54CBB8
+P 3200 2450
+F 0 "C18" H 3315 2496 50  0000 L CNN
+F 1 "100n" H 3315 2405 50  0000 L CNN
+F 2 "" H 3238 2300 50  0001 C CNN
+F 3 "~" H 3200 2450 50  0001 C CNN
+	1    3200 2450
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C19
+U 1 1 5C54CBF3
+P 5200 2450
+F 0 "C19" H 5315 2496 50  0000 L CNN
+F 1 "470n" H 5315 2405 50  0000 L CNN
+F 2 "" H 5238 2300 50  0001 C CNN
+F 3 "~" H 5200 2450 50  0001 C CNN
+	1    5200 2450
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C20
+U 1 1 5C54CC2D
+P 5350 2800
+F 0 "C20" V 5300 2700 50  0000 C CNN
+F 1 "470n" V 5300 2950 50  0000 C CNN
+F 2 "" H 5388 2650 50  0001 C CNN
+F 3 "~" H 5350 2800 50  0001 C CNN
+	1    5350 2800
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:C C21
+U 1 1 5C54CCB8
+P 5350 3100
+F 0 "C21" V 5300 3000 50  0000 C CNN
+F 1 "470n" V 5300 3250 50  0000 C CNN
+F 2 "" H 5388 2950 50  0001 C CNN
+F 3 "~" H 5350 3100 50  0001 C CNN
+	1    5350 3100
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	5000 3100 5200 3100
+Wire Wire Line
+	5000 2800 5200 2800
+Wire Wire Line
+	5000 2600 5200 2600
+Wire Wire Line
+	5000 2300 5200 2300
+Wire Wire Line
+	3200 2300 3400 2300
+Wire Wire Line
+	3200 2600 3400 2600
+$Comp
+L power:GND #PWR023
+U 1 1 5C54D3EE
+P 5650 3200
+F 0 "#PWR023" H 5650 2950 50  0001 C CNN
+F 1 "GND" H 5655 3027 50  0000 C CNN
+F 2 "" H 5650 3200 50  0001 C CNN
+F 3 "" H 5650 3200 50  0001 C CNN
+	1    5650 3200
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:VCC #PWR022
+U 1 1 5C54D461
+P 5650 2750
+F 0 "#PWR022" H 5650 2600 50  0001 C CNN
+F 1 "VCC" H 5667 2923 50  0000 C CNN
+F 2 "" H 5650 2750 50  0001 C CNN
+F 3 "" H 5650 2750 50  0001 C CNN
+	1    5650 2750
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5500 2800 5650 2800
+Wire Wire Line
+	5650 2800 5650 2750
+Wire Wire Line
+	5500 3100 5650 3100
+Wire Wire Line
+	5650 3100 5650 3200
+$Comp
+L power:GND #PWR024
+U 1 1 5C54F305
+P 6050 3350
+F 0 "#PWR024" H 6050 3100 50  0001 C CNN
+F 1 "GND" H 6055 3177 50  0000 C CNN
+F 2 "" H 6050 3350 50  0001 C CNN
+F 3 "" H 6050 3350 50  0001 C CNN
+	1    6050 3350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6050 3250 6050 3350
+Wire Wire Line
+	6050 3250 6650 3250
+Text Label 6300 3350 0    50   ~ 0
+RI
+Wire Wire Line
+	6300 3350 6650 3350
+Wire Wire Line
+	6300 3450 6650 3450
+Wire Wire Line
+	6300 3550 6650 3550
+Wire Wire Line
+	6300 3650 6650 3650
+Wire Wire Line
+	6300 3750 6650 3750
+Wire Wire Line
+	6300 3850 6650 3850
+Wire Wire Line
+	6300 3950 6650 3950
+Wire Wire Line
+	6300 4050 6650 4050
+Text Label 6300 3450 0    50   ~ 0
+DTR
+Text Label 6300 3550 0    50   ~ 0
+CTS
+Text Label 6300 3650 0    50   ~ 0
+TX
+Text Label 6300 3750 0    50   ~ 0
+RTS
+Text Label 6300 3850 0    50   ~ 0
+RX
+Text Label 6300 3950 0    50   ~ 0
+DSR
+Text Label 6300 4050 0    50   ~ 0
+DCD
+Wire Wire Line
+	5000 3300 5400 3300
+Wire Wire Line
+	5000 3500 5400 3500
+Wire Wire Line
+	5000 3700 5400 3700
+Wire Wire Line
+	5000 3900 5400 3900
+Text Label 5050 3300 0    50   ~ 0
+TX
+Text Label 5050 3500 0    50   ~ 0
+RTS
+Text Label 5050 3700 0    50   ~ 0
+RX
+Text Label 5050 3900 0    50   ~ 0
+CTS
+$Comp
+L power:VCC #PWR020
+U 1 1 5C553FD8
+P 4200 1950
+F 0 "#PWR020" H 4200 1800 50  0001 C CNN
+F 1 "VCC" H 4217 2123 50  0000 C CNN
+F 2 "" H 4200 1950 50  0001 C CNN
+F 3 "" H 4200 1950 50  0001 C CNN
+	1    4200 1950
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C22
+U 1 1 5C555922
+P 6300 2550
+F 0 "C22" H 6415 2596 50  0000 L CNN
+F 1 "100n" H 6415 2505 50  0000 L CNN
+F 2 "" H 6338 2400 50  0001 C CNN
+F 3 "~" H 6300 2550 50  0001 C CNN
+	1    6300 2550
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:VCC #PWR025
+U 1 1 5C5559B1
+P 6300 2400
+F 0 "#PWR025" H 6300 2250 50  0001 C CNN
+F 1 "VCC" H 6317 2573 50  0000 C CNN
+F 2 "" H 6300 2400 50  0001 C CNN
+F 3 "" H 6300 2400 50  0001 C CNN
+	1    6300 2400
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR026
+U 1 1 5C5559CA
+P 6300 2700
+F 0 "#PWR026" H 6300 2450 50  0001 C CNN
+F 1 "GND" H 6305 2527 50  0000 C CNN
+F 2 "" H 6300 2700 50  0001 C CNN
+F 3 "" H 6300 2700 50  0001 C CNN
+	1    6300 2700
+	1    0    0    -1  
+$EndComp
+NoConn ~ 6300 3350
+NoConn ~ 6300 3450
+NoConn ~ 6300 3950
+NoConn ~ 6300 4050
+$EndSCHEMATC
