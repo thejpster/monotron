@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name MCU_Texas)(type Legacy)(uri ${KIPRJMOD}/MCU_Texas.lib)(options "")(descr ""))
+  (lib (name Connector_Generic)(type Legacy)(uri ${KIPRJMOD}/Connector_Generic.lib)(options "")(descr ""))
+)
