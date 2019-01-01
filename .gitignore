@@ -1,6 +1,6 @@
 **/*.rs.bk
 **/*.bck
-**/*.bak
+**/*.*bak
 .gdb_history
 Cargo.lock
 target/
