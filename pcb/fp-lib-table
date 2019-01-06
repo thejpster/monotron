@@ -1,3 +1,3 @@
 (fp_lib_table
-  (lib (name Launchpad)(type KiCad)(uri ${KIPRJMOD}/Launchpad.pretty)(options "")(descr ""))
+  (lib (name Monotron)(type KiCad)(uri ${KIPRJMOD}/Launchpad.pretty)(options "")(descr ""))
 )
