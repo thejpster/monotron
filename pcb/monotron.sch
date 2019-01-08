@@ -54,15 +54,13 @@ L Connector:DB9_Male J5
 U 1 1 5C348A1D
 P 1850 6900
 F 0 "J5" H 2030 6946 50  0000 L CNN
-F 1 "DB9_Male" H 2030 6855 50  0000 L CNN
+F 1 "DE9 Joystick" H 2030 6855 50  0000 L CNN
 F 2 "Connector_Dsub:DSUB-9_Male_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm" H 1850 6900 50  0001 C CNN
 F 3 " http://portal.fciconnect.com/Comergent//fci/drawing/c-dd-0024.pdf" H 1850 6900 50  0001 C CNN
 F 4 "609-5918-ND" H 1850 6900 50  0001 C CNN "Digikey"
 	1    1850 6900
 	1    0    0    -1  
 $EndComp
-Text Notes 1400 6200 0    50   ~ 0
-Atari Joystick
 Text Label 1050 7300 0    50   ~ 0
 PE2_JS_UP
 Text Label 1050 7200 0    50   ~ 0
@@ -180,7 +178,7 @@ L Connector:DB15_Female_HighDensity_MountingHoles J7
 U 1 1 5CA569BB
 P 4350 6700
 F 0 "J7" H 4600 7300 50  0000 C CNN
-F 1 "DB15_Female_HighDensity_MountingHoles" H 5300 6150 50  0000 C CNN
+F 1 "DE15HD VGA" H 4950 7300 50  0000 C CNN
 F 2 "Connector_Dsub:DSUB-15-HD_Female_Horizontal_P2.29x1.98mm_EdgePinOffset8.35mm_Housed_MountingHolesOffset10.89mm" H 3400 7100 50  0001 C CNN
 F 3 "https://www.amphenol-icc.com/media/wysiwyg/files/drawing/c-cd-0012.pdf" H 3400 7100 50  0001 C CNN
 F 4 "609-5181-ND" H 4350 6700 50  0001 C CNN "Digikey"
@@ -468,6 +466,7 @@ F 0 "J4" H 1080 1275 50  0000 C CNN
 F 1 "AudioJack3" H 1080 1184 50  0000 C CNN
 F 2 "Connector_Audio:Jack_3.5mm_CUI_SJ1-3533NG_Horizontal" H 1100 950 50  0001 C CNN
 F 3 "~" H 1100 950 50  0001 C CNN
+F 4 "CP1-3533NG-ND‎" H 1100 950 50  0001 C CNN "Digikey"
 	1    1100 950 
 	1    0    0    -1  
 $EndComp
@@ -882,7 +881,7 @@ P 10550 5750
 AR Path="/5C526519/5C4BB195" Ref="J?"  Part="1" 
 AR Path="/5C4BB195" Ref="J12"  Part="1" 
 F 0 "J12" H 10730 5796 50  0000 L CNN
-F 1 "DB9_Male" H 10730 5705 50  0000 L CNN
+F 1 "DE9 RS232" H 10730 5705 50  0000 L CNN
 F 2 "Connector_Dsub:DSUB-9_Male_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm" H 10550 5750 50  0001 C CNN
 F 3 "http://portal.fciconnect.com/Comergent//fci/drawing/c-dd-0024.pdf" H 10550 5750 50  0001 C CNN
 F 4 "609-5918-ND" H 10550 5750 50  0001 C CNN "Digikey"
@@ -1145,10 +1144,6 @@ Text Label 3900 1800 0    50   ~ 0
 PE5_AUDIO_R
 Text Notes 5700 4450 0    50   ~ 0
 Remove jumpers and attach\n3.3V FTDI cable.\nNot 5V-tolerant!
-Text Notes 4050 5700 0    50   ~ 0
-VGA Video Output
-Text Notes 10250 5150 0    50   ~ 0
-RS-232 UART
 Text Label 3900 2800 0    50   ~ 0
 PD2_SPARE
 Text Label 3900 3100 0    50   ~ 0
@@ -1186,9 +1181,9 @@ L Connector:DIN-5_180degree J9
 U 1 1 5C38FFBB
 P 7850 1100
 F 0 "J9" H 7850 826 50  0000 C CNN
-F 1 "DIN-5_180degree" H 7850 735 50  0000 C CNN
-F 2 "" H 7850 1100 50  0001 C CNN
-F 3 "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf" H 7850 1100 50  0001 C CNN
+F 1 "DIN5 MIDI Out" H 7850 735 50  0000 C CNN
+F 2 "Launchpad:5P180 DIN Socket" H 7850 1100 50  0001 C CNN
+F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 7850 1100 50  0001 C CNN
 	1    7850 1100
 	1    0    0    -1  
 $EndComp
@@ -1197,29 +1192,23 @@ L Connector:DIN-5_180degree J11
 U 1 1 5C39003F
 P 9100 1750
 F 0 "J11" H 9100 1500 50  0000 C CNN
-F 1 "DIN-5_180degree" H 9100 1385 50  0000 C CNN
-F 2 "" H 9100 1750 50  0001 C CNN
-F 3 "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf" H 9100 1750 50  0001 C CNN
+F 1 "DIN5 MIDI In" H 9100 1385 50  0000 C CNN
+F 2 "Launchpad:5P180 DIN Socket" H 9100 1750 50  0001 C CNN
+F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 9100 1750 50  0001 C CNN
 	1    9100 1750
 	1    0    0    -1  
 $EndComp
-Text Notes 8100 1250 0    50   ~ 0
-MIDI Out
-Text Notes 8550 1950 0    50   ~ 0
-MIDI In
 $Comp
 L Connector:DIN-5_180degree J10
 U 1 1 5C39012B
 P 7850 2900
 F 0 "J10" H 7850 2626 50  0000 C CNN
-F 1 "DIN-5_180degree" H 7850 2535 50  0000 C CNN
-F 2 "" H 7850 2900 50  0001 C CNN
-F 3 "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf" H 7850 2900 50  0001 C CNN
+F 1 "DIN5 MIDI Thru" H 7850 2535 50  0000 C CNN
+F 2 "Launchpad:5P180 DIN Socket" H 7850 2900 50  0001 C CNN
+F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 7850 2900 50  0001 C CNN
 	1    7850 2900
 	1    0    0    -1  
 $EndComp
-Text Notes 8100 3150 0    50   ~ 0
-MIDI Through
 NoConn ~ 7550 2900
 NoConn ~ 8150 2900
 NoConn ~ 8800 1750
@@ -1233,7 +1222,7 @@ U 1 1 5C3E140D
 P 7200 2600
 F 0 "R11" H 7270 2646 50  0000 L CNN
 F 1 "220" H 7270 2555 50  0000 L CNN
-F 2 "" V 7130 2600 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 7130 2600 50  0001 C CNN
 F 3 "~" H 7200 2600 50  0001 C CNN
 	1    7200 2600
 	1    0    0    -1  
@@ -1259,7 +1248,7 @@ U 1 1 5C40A997
 P 7200 800
 F 0 "R10" H 7270 846 50  0000 L CNN
 F 1 "220" H 7270 755 50  0000 L CNN
-F 2 "" V 7130 800 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 7130 800 50  0001 C CNN
 F 3 "~" H 7200 800 50  0001 C CNN
 	1    7200 800 
 	1    0    0    -1  
@@ -1274,7 +1263,7 @@ U 1 1 5C48D136
 P 10300 1800
 F 0 "U4" H 10300 2150 50  0000 C CNN
 F 1 "6N138" H 10300 1450 50  0000 C CNN
-F 2 "" H 10590 1500 50  0001 C CNN
+F 2 "Package_DIP:DIP-8_W7.62mm" H 10590 1500 50  0001 C CNN
 F 3 "http://www.onsemi.com/pub/Collateral/HCPL2731-D.pdf" H 10590 1500 50  0001 C CNN
 	1    10300 1800
 	1    0    0    -1  
@@ -1285,7 +1274,7 @@ U 1 1 5C4980D6
 P 9600 1350
 F 0 "R14" V 9500 1250 50  0000 C CNN
 F 1 "220" V 9500 1500 50  0000 C CNN
-F 2 "" V 9530 1350 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 9530 1350 50  0001 C CNN
 F 3 "~" H 9600 1350 50  0001 C CNN
 	1    9600 1350
 	0    1    1    0   
@@ -1296,7 +1285,7 @@ U 1 1 5C4984F8
 P 9800 1800
 F 0 "D1" V 9800 1650 50  0000 L CNN
 F 1 "1N4148" V 10050 1700 50  0000 L CNN
-F 2 "" H 9800 1800 50  0001 C CNN
+F 2 "Diode_THT:D_A-405_P12.70mm_Horizontal" H 9800 1800 50  0001 C CNN
 F 3 "~" H 9800 1800 50  0001 C CNN
 	1    9800 1800
 	0    1    1    0   
@@ -1323,7 +1312,7 @@ U 1 1 5C4DCB89
 P 10750 2200
 F 0 "R15" H 10820 2246 50  0000 L CNN
 F 1 "10K" H 10820 2155 50  0000 L CNN
-F 2 "" V 10680 2200 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 10680 2200 50  0001 C CNN
 F 3 "~" H 10750 2200 50  0001 C CNN
 	1    10750 2200
 	1    0    0    -1  
@@ -1334,7 +1323,7 @@ U 1 1 5C4DCC13
 P 10950 1700
 F 0 "R16" H 11020 1746 50  0000 L CNN
 F 1 "470" H 11020 1655 50  0000 L CNN
-F 2 "" V 10880 1700 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 10880 1700 50  0001 C CNN
 F 3 "~" H 10950 1700 50  0001 C CNN
 	1    10950 1700
 	1    0    0    -1  
@@ -1382,8 +1371,9 @@ U 1 1 5C52561F
 P 9850 2800
 F 0 "U3" H 9850 2483 50  0000 C CNN
 F 1 "74LS14" H 9850 2574 50  0000 C CNN
-F 2 "" H 9850 2800 50  0001 C CNN
+F 2 "Package_DIP:DIP-14_W7.62mm" H 9850 2800 50  0001 C CNN
 F 3 "http://www.ti.com/lit/gpn/sn74LS14" H 9850 2800 50  0001 C CNN
+F 4 "296-1643-5-ND" H 9850 2800 50  0001 C CNN "Digikey"
 	1    9850 2800
 	-1   0    0    1   
 $EndComp
@@ -1393,7 +1383,7 @@ U 2 1 5C5257E7
 P 9100 2800
 F 0 "U3" H 9100 2483 50  0000 C CNN
 F 1 "74LS14" H 9100 2574 50  0000 C CNN
-F 2 "" H 9100 2800 50  0001 C CNN
+F 2 "Package_DIP:DIP-14_W7.62mm" H 9100 2800 50  0001 C CNN
 F 3 "http://www.ti.com/lit/gpn/sn74LS14" H 9100 2800 50  0001 C CNN
 	2    9100 2800
 	-1   0    0    1   
@@ -1404,7 +1394,7 @@ U 1 1 5C52593F
 P 8550 2800
 F 0 "R12" V 8450 2800 50  0000 C CNN
 F 1 "220" V 8550 2800 50  0000 C CNN
-F 2 "" V 8480 2800 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 8480 2800 50  0001 C CNN
 F 3 "~" H 8550 2800 50  0001 C CNN
 	1    8550 2800
 	0    1    1    0   
@@ -1457,7 +1447,7 @@ U 7 1 5C58C4A9
 P 10700 3900
 F 0 "U3" H 10800 4250 50  0000 L CNN
 F 1 "74LS14" H 10800 3500 50  0000 L CNN
-F 2 "" H 10700 3900 50  0001 C CNN
+F 2 "Package_DIP:DIP-14_W7.62mm" H 10700 3900 50  0001 C CNN
 F 3 "http://www.ti.com/lit/gpn/sn74LS14" H 10700 3900 50  0001 C CNN
 	7    10700 3900
 	1    0    0    -1  
@@ -1531,7 +1521,7 @@ U 1 1 5C637547
 P 8650 1000
 F 0 "R13" V 8750 1050 50  0000 L CNN
 F 1 "220" V 8750 850 50  0000 L CNN
-F 2 "" V 8580 1000 50  0001 C CNN
+F 2 "Resistor_THT:R_Axial_DIN0411_L9.9mm_D3.6mm_P12.70mm_Horizontal" V 8580 1000 50  0001 C CNN
 F 3 "~" H 8650 1000 50  0001 C CNN
 	1    8650 1000
 	0    -1   -1   0   
@@ -1553,7 +1543,7 @@ U 3 1 5C68F823
 P 9100 1000
 F 0 "U3" H 9100 683 50  0000 C CNN
 F 1 "74LS14" H 9100 774 50  0000 C CNN
-F 2 "" H 9100 1000 50  0001 C CNN
+F 2 "Package_DIP:DIP-14_W7.62mm" H 9100 1000 50  0001 C CNN
 F 3 "http://www.ti.com/lit/gpn/sn74LS14" H 9100 1000 50  0001 C CNN
 	3    9100 1000
 	-1   0    0    1   
@@ -1564,7 +1554,7 @@ U 4 1 5C68F988
 P 9700 1000
 F 0 "U3" H 9700 683 50  0000 C CNN
 F 1 "74LS14" H 9700 774 50  0000 C CNN
-F 2 "" H 9700 1000 50  0001 C CNN
+F 2 "Package_DIP:DIP-14_W7.62mm" H 9700 1000 50  0001 C CNN
 F 3 "http://www.ti.com/lit/gpn/sn74LS14" H 9700 1000 50  0001 C CNN
 	4    9700 1000
 	-1   0    0    1   
