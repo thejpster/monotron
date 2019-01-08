@@ -451,15 +451,15 @@ BUSY
 Text Label 4600 3950 0    50   ~ 0
 PE
 Text Label 4600 4050 0    50   ~ 0
-SEL
+ERROR
 Text Label 4600 4150 0    50   ~ 0
 STROBE
 Text Label 4600 4250 0    50   ~ 0
 AUTOF
 Text Label 4600 3150 0    50   ~ 0
-ERROR
-Text Label 4600 3250 0    50   ~ 0
 INIT
+Text Label 4600 3250 0    50   ~ 0
+SEL
 Wire Wire Line
 	4500 3350 5100 3350
 Text Label 4600 3350 0    50   ~ 0
