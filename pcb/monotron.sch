@@ -54,7 +54,7 @@ L Connector:DB9_Male J5
 U 1 1 5C348A1D
 P 1850 6900
 F 0 "J5" H 2030 6946 50  0000 L CNN
-F 1 "DE9 Joystick" H 2030 6855 50  0000 L CNN
+F 1 "DE9F" H 2030 6855 50  0000 L CNN
 F 2 "Connector_Dsub:DSUB-9_Male_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm" H 1850 6900 50  0001 C CNN
 F 3 " http://portal.fciconnect.com/Comergent//fci/drawing/c-dd-0024.pdf" H 1850 6900 50  0001 C CNN
 F 4 "609-5918-ND" H 1850 6900 50  0001 C CNN "Digikey"
@@ -178,7 +178,7 @@ L Connector:DB15_Female_HighDensity_MountingHoles J7
 U 1 1 5CA569BB
 P 4350 6700
 F 0 "J7" H 4600 7300 50  0000 C CNN
-F 1 "DE15HD VGA" H 4950 7300 50  0000 C CNN
+F 1 "DE15HD" H 4850 7300 50  0000 C CNN
 F 2 "Connector_Dsub:DSUB-15-HD_Female_Horizontal_P2.29x1.98mm_EdgePinOffset8.35mm_Housed_MountingHolesOffset10.89mm" H 3400 7100 50  0001 C CNN
 F 3 "https://www.amphenol-icc.com/media/wysiwyg/files/drawing/c-cd-0012.pdf" H 3400 7100 50  0001 C CNN
 F 4 "609-5181-ND" H 4350 6700 50  0001 C CNN "Digikey"
@@ -286,7 +286,7 @@ L Connector_Generic:Conn_02x06_Odd_Even J8
 U 1 1 5CE8C75D
 P 5900 4950
 F 0 "J8" H 5950 5367 50  0000 C CNN
-F 1 "2x6 UART Bridge" H 5950 5276 50  0000 C CNN
+F 1 "2x6 Header" H 5950 5276 50  0000 C CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_2x06_P2.54mm_Vertical" H 5900 4950 50  0001 C CNN
 F 3 "~" H 5900 4950 50  0001 C CNN
 F 4 "609-3263-ND‎" H 5900 4950 50  0001 C CNN "Digikey"
@@ -770,7 +770,7 @@ L Connector:Conn_01x04_Male J6
 U 1 1 5C381DB1
 P 3600 5250
 F 0 "J6" H 3573 5130 50  0000 R CNN
-F 1 "1x4 I2C Expansion Connector" H 3573 5221 50  0000 R CNN
+F 1 "1x4 Header" H 3573 5221 50  0000 R CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" H 3600 5250 50  0001 C CNN
 F 3 "~" H 3600 5250 50  0001 C CNN
 	1    3600 5250
@@ -819,7 +819,7 @@ L Connector_Generic:Conn_01x07 J3
 U 1 1 5C4130C5
 P 1050 4800
 F 0 "J3" H 970 4275 50  0000 C CNN
-F 1 "01x07 SD Interface" H 970 4366 50  0000 C CNN
+F 1 "1x7 Header" H 970 4366 50  0000 C CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x07_P2.54mm_Vertical" H 1050 4800 50  0001 C CNN
 F 3 "~" H 1050 4800 50  0001 C CNN
 	1    1050 4800
@@ -881,7 +881,7 @@ P 10550 5750
 AR Path="/5C526519/5C4BB195" Ref="J?"  Part="1" 
 AR Path="/5C4BB195" Ref="J12"  Part="1" 
 F 0 "J12" H 10730 5796 50  0000 L CNN
-F 1 "DE9 RS232" H 10730 5705 50  0000 L CNN
+F 1 "DE9M" H 10730 5705 50  0000 L CNN
 F 2 "Connector_Dsub:DSUB-9_Male_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm" H 10550 5750 50  0001 C CNN
 F 3 "http://portal.fciconnect.com/Comergent//fci/drawing/c-dd-0024.pdf" H 10550 5750 50  0001 C CNN
 F 4 "609-5918-ND" H 10550 5750 50  0001 C CNN "Digikey"
@@ -1181,7 +1181,7 @@ L Connector:DIN-5_180degree J9
 U 1 1 5C38FFBB
 P 7850 1100
 F 0 "J9" H 7850 826 50  0000 C CNN
-F 1 "DIN5 MIDI Out" H 7850 735 50  0000 C CNN
+F 1 "DIN5-180" H 7850 735 50  0000 C CNN
 F 2 "Launchpad:5P180 DIN Socket" H 7850 1100 50  0001 C CNN
 F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 7850 1100 50  0001 C CNN
 	1    7850 1100
@@ -1192,7 +1192,7 @@ L Connector:DIN-5_180degree J11
 U 1 1 5C39003F
 P 9100 1750
 F 0 "J11" H 9100 1500 50  0000 C CNN
-F 1 "DIN5 MIDI In" H 9100 1385 50  0000 C CNN
+F 1 "DIN5-180" H 9100 1385 50  0000 C CNN
 F 2 "Launchpad:5P180 DIN Socket" H 9100 1750 50  0001 C CNN
 F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 9100 1750 50  0001 C CNN
 	1    9100 1750
@@ -1203,7 +1203,7 @@ L Connector:DIN-5_180degree J10
 U 1 1 5C39012B
 P 7850 2900
 F 0 "J10" H 7850 2626 50  0000 C CNN
-F 1 "DIN5 MIDI Thru" H 7850 2535 50  0000 C CNN
+F 1 "DIN5-180" H 7850 2535 50  0000 C CNN
 F 2 "Launchpad:5P180 DIN Socket" H 7850 2900 50  0001 C CNN
 F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 7850 2900 50  0001 C CNN
 	1    7850 2900
