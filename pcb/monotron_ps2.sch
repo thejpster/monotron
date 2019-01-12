@@ -7,7 +7,7 @@ encoding utf-8
 Sheet 2 2
 Title "Monotron 32K"
 Date "2019-01-06"
-Rev "0.1.0"
+Rev "0.5.0"
 Comp "https://github.com/thejpster/monotron"
 Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2018"
 Comment2 "CC BY-SA 4.0"

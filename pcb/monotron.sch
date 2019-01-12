@@ -7,7 +7,7 @@ encoding utf-8
 Sheet 1 2
 Title "Monotron 32K Schematic"
 Date "2019-01-10"
-Rev "0.1.0"
+Rev "0.5.0"
 Comp "https://github.com/thejpster/monotron"
 Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2019"
 Comment2 "CC BY-SA 4.0"
@@ -1619,4 +1619,10 @@ Wire Wire Line
 	3100 1600 2950 1600
 Wire Wire Line
 	3100 1700 4500 1700
+Text Notes 8050 1300 0    50   ~ 0
+MIDI Out
+Text Notes 8650 1950 0    50   ~ 0
+MIDI In
+Text Notes 7150 3050 0    50   ~ 0
+MIDI Through
 $EndSCHEMATC
