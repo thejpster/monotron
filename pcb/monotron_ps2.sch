@@ -22,7 +22,7 @@ U 1 1 5C86652F
 P 9000 2750
 F 0 "J14" H 9000 3117 50  0000 C CNN
 F 1 "Mini-DIN-6" H 9000 3026 50  0000 C CNN
-F 2 "Launchpad:mini-DIN 6" H 9000 2750 50  0001 C CNN
+F 2 "Monotron:mini-DIN 6" H 9000 2750 50  0001 C CNN
 F 3 "https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=5749180&DocType=Customer+Drawing&DocLang=English" H 9000 2750 50  0001 C CNN
 F 4 "5749180-1-ND" H 9000 2750 50  0001 C CNN "Digikey"
 	1    9000 2750
@@ -34,7 +34,7 @@ U 1 1 5C866618
 P 9000 3900
 F 0 "J15" H 9000 4267 50  0000 C CNN
 F 1 "Mini-DIN-6" H 9000 4176 50  0000 C CNN
-F 2 "Launchpad:mini-DIN 6" H 9000 3900 50  0001 C CNN
+F 2 "Monotron:mini-DIN 6" H 9000 3900 50  0001 C CNN
 F 3 "https://www.te.com/commerce/DocumentDelivery/DDEController?Action=srchrtrv&DocNm=5749180&DocType=Customer+Drawing&DocLang=English" H 9000 3900 50  0001 C CNN
 F 4 "5749180-1-ND" H 9000 3900 50  0001 C CNN "Digikey"
 	1    9000 3900

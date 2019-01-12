@@ -5,11 +5,11 @@ EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 2
-Title "Monotron 32K"
-Date "2019-01-06"
+Title "Monotron 32K Schematic"
+Date "2019-01-10"
 Rev "0.1.0"
 Comp "https://github.com/thejpster/monotron"
-Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2018"
+Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2019"
 Comment2 "CC BY-SA 4.0"
 Comment3 ""
 Comment4 ""
@@ -284,14 +284,14 @@ NoConn ~ 1550 6600
 $Comp
 L Connector_Generic:Conn_02x06_Odd_Even J8
 U 1 1 5CE8C75D
-P 5900 4950
-F 0 "J8" H 5950 5367 50  0000 C CNN
-F 1 "2x6 Header" H 5950 5276 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_2x06_P2.54mm_Vertical" H 5900 4950 50  0001 C CNN
-F 3 "~" H 5900 4950 50  0001 C CNN
-F 4 "609-3263-ND‎" H 5900 4950 50  0001 C CNN "Digikey"
-	1    5900 4950
-	1    0    0    -1  
+P 6000 5050
+F 0 "J8" H 6050 5400 50  0000 C CNN
+F 1 "2x6 Header" H 6050 4600 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_2x06_P2.54mm_Vertical" H 6000 5050 50  0001 C CNN
+F 3 "~" H 6000 5050 50  0001 C CNN
+F 4 "609-3263-ND‎" H 6000 5050 50  0001 C CNN "Digikey"
+	1    6000 5050
+	-1   0    0    1   
 $EndComp
 $Comp
 L tm4c123g_launchpad:TM4C123G_Launchpad U1
@@ -1182,7 +1182,7 @@ U 1 1 5C38FFBB
 P 7850 1100
 F 0 "J9" H 7850 826 50  0000 C CNN
 F 1 "DIN5-180" H 7850 735 50  0000 C CNN
-F 2 "Launchpad:5P180 DIN Socket" H 7850 1100 50  0001 C CNN
+F 2 "Monotron:5P180 DIN Socket" H 7850 1100 50  0001 C CNN
 F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 7850 1100 50  0001 C CNN
 	1    7850 1100
 	1    0    0    -1  
@@ -1193,7 +1193,7 @@ U 1 1 5C39003F
 P 9100 1750
 F 0 "J11" H 9100 1500 50  0000 C CNN
 F 1 "DIN5-180" H 9100 1385 50  0000 C CNN
-F 2 "Launchpad:5P180 DIN Socket" H 9100 1750 50  0001 C CNN
+F 2 "Monotron:5P180 DIN Socket" H 9100 1750 50  0001 C CNN
 F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 9100 1750 50  0001 C CNN
 	1    9100 1750
 	1    0    0    -1  
@@ -1204,7 +1204,7 @@ U 1 1 5C39012B
 P 7850 2900
 F 0 "J10" H 7850 2626 50  0000 C CNN
 F 1 "DIN5-180" H 7850 2535 50  0000 C CNN
-F 2 "Launchpad:5P180 DIN Socket" H 7850 2900 50  0001 C CNN
+F 2 "Monotron:5P180 DIN Socket" H 7850 2900 50  0001 C CNN
 F 3 "https://uk.rs-online.com/web/p/din-connectors/0491087/" H 7850 2900 50  0001 C CNN
 	1    7850 2900
 	1    0    0    -1  
