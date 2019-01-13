@@ -4,12 +4,12 @@ EELAYER 26 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
-Sheet 2 2
-Title "Monotron 32K"
-Date "2019-01-06"
-Rev "0.5.0"
+Sheet 2 3
+Title "Monotron 32K Schematic"
+Date "2019-01-13"
+Rev "0.6.0"
 Comp "https://github.com/thejpster/monotron"
-Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2018"
+Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2019"
 Comment2 "CC BY-SA 4.0"
 Comment3 ""
 Comment4 ""
