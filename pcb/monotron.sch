@@ -6,7 +6,7 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 3
 Title "Monotron 32K Schematic"
-Date "2019-01-13"
+Date "2019-01-14"
 Rev "0.6.0"
 Comp "https://github.com/thejpster/monotron"
 Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2019"
@@ -1202,8 +1202,8 @@ L Timer:MCP7940N-xP U6
 U 1 1 5C454F47
 P 9400 1900
 F 0 "U6" H 9650 2250 50  0000 C CNN
-F 1 "MCP7940N-xP" H 8950 2250 50  0000 C CNN
-F 2 "" H 9400 1900 50  0001 C CNN
+F 1 "MCP7940N-xP" H 9700 1550 50  0000 C CNN
+F 2 "Package_DIP:DIP-8_W7.62mm" H 9400 1900 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/20005010F.pdf" H 9400 1900 50  0001 C CNN
 	1    9400 1900
 	1    0    0    -1  
@@ -1214,8 +1214,8 @@ U 1 1 5C495EB3
 P 10150 1200
 F 0 "BT1" H 10268 1296 50  0000 L CNN
 F 1 "Battery" H 10268 1205 50  0000 L CNN
-F 2 "" V 10150 1260 50  0001 C CNN
-F 3 "~" V 10150 1260 50  0001 C CNN
+F 2 "Battery:BatteryHolder_Keystone_103_1x20mm" V 10150 1260 50  0001 C CNN
+F 3 "https://www.digikey.co.uk/product-detail/en/103/36-103-ND/331620/?itemSeq=281686946" V 10150 1260 50  0001 C CNN
 	1    10150 1200
 	1    0    0    -1  
 $EndComp
@@ -1223,12 +1223,12 @@ $Comp
 L Device:Crystal Y1
 U 1 1 5C4960B3
 P 10150 1900
-F 0 "Y1" V 10196 1769 50  0000 R CNN
-F 1 "32,768 kHz" V 10105 1769 50  0000 R CNN
-F 2 "" H 10150 1900 50  0001 C CNN
+F 0 "Y1" V 10104 2031 50  0000 L CNN
+F 1 "32,768 kHz" V 10195 2031 50  0000 L CNN
+F 2 "Crystal:Crystal_DS26_D2.0mm_L6.0mm_Horizontal" H 10150 1900 50  0001 C CNN
 F 3 "~" H 10150 1900 50  0001 C CNN
 	1    10150 1900
-	0    -1   -1   0   
+	0    1    1    0   
 $EndComp
 $Comp
 L Device:C C15
@@ -1236,7 +1236,7 @@ U 1 1 5C4964A4
 P 10550 1700
 F 0 "C15" V 10400 1600 50  0000 C CNN
 F 1 "12p" V 10400 1850 50  0000 C CNN
-F 2 "" H 10588 1550 50  0001 C CNN
+F 2 "Capacitor_THT:C_Disc_D4.7mm_W2.5mm_P5.00mm" H 10588 1550 50  0001 C CNN
 F 3 "~" H 10550 1700 50  0001 C CNN
 	1    10550 1700
 	0    1    1    0   
@@ -1247,7 +1247,7 @@ U 1 1 5C496571
 P 10550 2100
 F 0 "C16" V 10700 2000 50  0000 C CNN
 F 1 "12p" V 10700 2250 50  0000 C CNN
-F 2 "" H 10588 1950 50  0001 C CNN
+F 2 "Capacitor_THT:C_Disc_D4.7mm_W2.5mm_P5.00mm" H 10588 1950 50  0001 C CNN
 F 3 "~" H 10550 2100 50  0001 C CNN
 	1    10550 2100
 	0    1    1    0   
@@ -1384,4 +1384,37 @@ I2C Expansion
 Wire Wire Line
 	9400 2300 9400 2450
 NoConn ~ 9000 2000
+$Comp
+L Device:C C?
+U 1 1 5C5E2136
+P 8700 1250
+AR Path="/5C526519/5C5E2136" Ref="C?"  Part="1" 
+AR Path="/5C5E2136" Ref="C17"  Part="1" 
+F 0 "C17" H 8815 1296 50  0000 L CNN
+F 1 "100n" H 8815 1205 50  0000 L CNN
+F 2 "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm" H 8738 1100 50  0001 C CNN
+F 3 "~" H 8700 1250 50  0001 C CNN
+	1    8700 1250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9300 1300 9100 1300
+Wire Wire Line
+	9100 1300 9100 900 
+Wire Wire Line
+	9100 900  8700 900 
+Wire Wire Line
+	8700 900  8700 1100
+Connection ~ 9300 1300
+$Comp
+L power:GND #PWR028
+U 1 1 5C5EFB17
+P 8700 1400
+F 0 "#PWR028" H 8700 1150 50  0001 C CNN
+F 1 "GND" H 8705 1227 50  0000 C CNN
+F 2 "" H 8700 1400 50  0001 C CNN
+F 3 "" H 8700 1400 50  0001 C CNN
+	1    8700 1400
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC

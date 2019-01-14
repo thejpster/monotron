@@ -1,5 +1,5 @@
 Drill report for /home/jonathan/Documents/programming/monotron/pcb/monotron.kicad_pcb
-Created on Sat 12 Jan 2019 23:53:22 GMT
+Created on Mon 14 Jan 2019 22:09:32 GMT
 
 Copper Layer Stackup:
     =============================================================
@@ -10,20 +10,21 @@ Copper Layer Stackup:
 Drill file 'monotron-PTH.drl' contains
     plated through holes:
     =============================================================
-    T1  0.40mm  0.016"  (39 holes)
-    T2  0.60mm  0.024"  (6 holes)
+    T1  0.50mm  0.020"  (2 holes)
+    T2  0.60mm  0.024"  (30 holes)
     T3  0.76mm  0.030"  (40 holes)
-    T4  0.80mm  0.031"  (88 holes)
+    T4  0.80mm  0.031"  (110 holes)
     T5  0.89mm  0.035"  (12 holes)
     T6  0.90mm  0.035"  (2 holes)
     T7  1.00mm  0.039"  (87 holes)  (with 3 slots)
-    T8  1.20mm  0.047"  (32 holes)
+    T8  1.20mm  0.047"  (24 holes)
     T9  1.40mm  0.055"  (21 holes)
-    T10  1.60mm  0.063"  (3 holes)
-    T11  2.29mm  0.090"  (6 holes)
-    T12  3.20mm  0.126"  (8 holes)
+    T10  1.50mm  0.059"  (2 holes)
+    T11  1.60mm  0.063"  (3 holes)
+    T12  2.29mm  0.090"  (6 holes)
+    T13  3.20mm  0.126"  (8 holes)
 
-    Total plated holes count 344
+    Total plated holes count 347
 
 
 Drill file 'monotron-NPTH.drl' contains
