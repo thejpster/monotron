@@ -6,8 +6,8 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 3
 Title "Monotron 32K Schematic"
-Date "2019-01-14"
-Rev "0.6.0"
+Date "2019-01-15"
+Rev "0.7.0"
 Comp "https://github.com/thejpster/monotron"
 Comment1 "Copyright (c) Jonathan 'theJPster' Pallant 2019"
 Comment2 "CC BY-SA 4.0"
