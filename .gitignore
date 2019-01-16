@@ -1,8 +1,8 @@
 **/*.rs.bk
+**/*.bck
+**/*.*bak
 .gdb_history
 Cargo.lock
 target/
 *.sublime-workspace
 env/
-
-
