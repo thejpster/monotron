@@ -17,10 +17,10 @@ bits, no parity, 1 stop bit).
 This firmware builds with `avr-gcc` and `meson`.
 
 ```shell
-$ meson --cross-file=./avr_kb/avr-cross.txt ./target/avr
-$ cd target/avr
-$ ninja
-$ avr-size -x ./image
+$ meson --cross-file=./avr-cross.txt ./build
+$ cd ./build
+$ ninja # Builds a debug ELF and .hex file
+$ ninja size # Tells you how big it is
 ```
 
 ## Protocol

@@ -10,7 +10,7 @@ project('io_controller', 'c', default_options : ['buildtype=minsize', 'b_lto=tru
 
 objcopy = find_program('avr-objcopy')
 
-elf = executable('image', 'avr_kb/src/main.c')
+elf = executable('image', 'src/main.c')
 
 custom_target('image.hex',
   input : elf,
