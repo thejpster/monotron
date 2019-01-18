@@ -12,6 +12,17 @@ Atmega48, and it controls the:
 It talks to the main Monotron MCU over a serial link at 115,200 bps (8-data
 bits, no parity, 1 stop bit).
 
+## Compilation
+
+This firmware builds with `avr-gcc` and `meson`.
+
+```shell
+$ meson --cross-file=./avr_kb/avr-cross.txt ./target/avr
+$ cd target/avr
+$ ninja
+$ avr-size -x ./image
+```
+
 ## Protocol
 
 The protocol between the I/O controller and the main MCU is pretty simple. As

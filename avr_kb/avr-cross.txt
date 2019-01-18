@@ -1,0 +1,29 @@
+[binaries]
+c = '/usr/bin/avr-gcc'
+cpp = '/usr/bin/avr-g++'
+ar = '/usr/bin/avr-ar'
+strip = '/usr/bin/avr-strip'
+
+[properties]
+sizeof_int = 2
+sizeof_wchar_t = 4
+sizeof_void* = 2
+
+alignment_char = 1
+alignment_void* = 2
+alignment_double = 4
+
+has_function_printf = true
+
+c_args = [
+  '-ffunction-sections',
+  '-fdata-sections',
+  '-mmcu=atmega48p',
+  '-DF_CPU=8000000L']
+c_link_args = ['-Wl,--gc-sections', '-mmcu=atmega48p']
+
+[host_machine]
+system = 'bare'
+cpu_family = 'atmega'
+cpu = 'atmega48P'
+endian = 'none'
