@@ -1,0 +1,38 @@
+/** @file protocol.h
+ *
+ * Protocol definitions for the MCU to IO protocol.
+ *
+ * @author Jonathan Pallant <github@thejpster.org.uk>
+ * @copyright 2019 Jonathan Pallant
+ * @licence MIT or Apache 2.0 at your option.
+ */
+
+#define PROTOCOL_RESET_REQ 0x80
+#define PROTOCOL_PS2_DATA_REQ 0x81
+#define PROTOCOL_PS2_LED_REQ 0x88
+#define PROTOCOL_LPT_DATA_REQ 0x82
+#define PROTOCOL_LPT_READ_REQ 0x83
+#define PROTOCOL_LPT_CTRL_REQ 0x84
+#define PROTOCOL_LPT_BUFFERED_DATA_REQ 0x85
+#define PROTOCOL_LPT_READ_PEND_REQ 0x86
+#define PROTOCOL_LPT_SET_MODE_REQ 0x87
+#define PROTOCOL_PING_REQ 0x89
+#define PROTOCOL_BOOTLOADER_REQ 0x8A
+
+#define PROTOCOL_RESET_CFM 0x80
+#define PROTOCOL_PS2_DATA_CFM 0x81
+#define PROTOCOL_PS2_LED_CFM 0x88
+#define PROTOCOL_LPT_DATA_CFM 0x82
+#define PROTOCOL_LPT_READ_CFM 0x83
+#define PROTOCOL_LPT_CTRL_CFM 0x84
+#define PROTOCOL_LPT_BUFFERED_DATA_CFM 0x85
+#define PROTOCOL_LPT_READ_PEND_CFM 0x86
+#define PROTOCOL_LPT_SET_MODE_CFM 0x87
+#define PROTOCOL_PING_CFM 0x89
+#define PROTOCOL_BOOTLOADER_CFM 0x8A
+
+#define PROTOCOL_BOOTED_IND 0xF0
+#define PROTOCOL_PS2_DATA_IND 0xF1
+#define PROTOCOL_LPT_BUFFER_EMPTY_IND 0xF2
+#define PROTOCOL_LPT_READ_PEND_IND 0xF3
+#define PROTOCOL_BAD_COMMAND_IND 0xF4
