@@ -41,13 +41,17 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#ifdef __AVR__
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <avr/wdt.h>
-
 #include <avr-uart/uart.h>
-
+#else
+#include <stdio.h>
+#include <stdlib.h>
+#include "fake_uart.h"
+#endif
 #include "keypress.h"
 #include "protocol.h"
 
@@ -102,12 +106,16 @@
 
 #define VERSION 0
 
+#ifdef __AVR__
 #define soft_reset()           \
     do {                       \
         wdt_enable(WDTO_15MS); \
         for (;;) {             \
         }                      \
     } while (0)
+#else
+#define soft_reset() exit(0)
+#endif
 
 /**************************************************
 * Data Types
@@ -127,7 +135,7 @@ static void send_ps2_led_cfm(void);
 static void send_lpt_data_cfm(void);
 static void send_lpt_read_cfm(void);
 static void send_lpt_ctrl_cfm(void);
-static void send_lpt_buffered_data_cfm(void);
+static void send_lpt_buffered_data_cfm(uint8_t status);
 static void send_lpt_read_pend_cfm(void);
 static void send_lpt_set_mode_cfm(void);
 static void send_ping_cfm(void);
@@ -138,7 +146,9 @@ static void send_lpt_buffer_empty_ind(void);
 static void send_lpt_read_pend_ind(uint8_t pins);
 static void send_bad_command_ind(void);
 
+#ifdef __AVR__
 void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
+#endif
 
 /**************************************************
 * Public Data
@@ -218,9 +228,10 @@ int main(void)
     // Wait for commands. We handle keyboard, mouse and LPT ack under
     // interrupt.
     for (;;) {
+#ifdef __AVR__
         sleep_mode();
-
-        uint16_t status = uart0_getc();
+#endif
+        uint16_t status = uart_getc();
         uint8_t data = status & 0x00FF;
         status >>= 8;
         switch (status) {
@@ -250,17 +261,19 @@ int main(void)
  */
 void setup_io(void)
 {
+#ifdef __AVR__
     DDRB = 0x00; // No inputs
     DDRC = KB_CLK | MS_CLK | KB_DATA | MS_DATA | LPT_nINIT | LPT_nSELPRIN;
     DDRD = LPT_nACK | LPT_BUSY | LPT_nPE | LPT_nERROR;
     PORTB = 0x00; // Outputs low by default
     PORTC = LPT_nINIT | LPT_nSELPRIN;
     PORTD = LPT_nACK | LPT_nPE | LPT_nERROR;
+#endif
 
     // Configure interrupts here.
     // We need to interrupt on LPT_nACK and UART.
 
-    uart0_init(UART_BAUD_SELECT(OUR_UART_BAUD, F_CPU));
+    uart_init(UART_BAUD_SELECT(OUR_UART_BAUD, F_CPU));
 }
 
 /**
@@ -406,9 +419,10 @@ static void send_lpt_ctrl_cfm(void)
 /**
  * Send a LPT_BUFFERED_DATA_CFM to the MCU.
  */
-static void send_lpt_buffered_data_cfm(void)
+static void send_lpt_buffered_data_cfm(uint8_t status)
 {
     uart_putc(PROTOCOL_LPT_BUFFERED_DATA_CFM);
+    uart_putc(status);
 }
 
 /**
@@ -493,11 +507,13 @@ static void send_bad_command_ind(void)
 /**
  * Disable watchdog on boot.
  */
+#ifdef __AVR__
 void wdt_init(void)
 {
     MCUSR = 0;
     wdt_disable();
 }
+#endif
 
 /**************************************************
 * End of file

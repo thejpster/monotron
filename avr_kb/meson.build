@@ -15,14 +15,21 @@ objcopy = find_program('avr-objcopy')
 
 third_party_inc = include_directories('third_party')
 
+if meson.is_cross_build()
+uart_lib = files('third_party/avr-uart/uart.c')
+else
+uart_lib = files('src/fake_uart.c')
+endif
 
-elf = executable('image', 'src/main.c', 'third_party/avr-uart/uart.c', include_directories: third_party_inc)
+elf = executable('image', 'src/main.c', uart_lib, include_directories: third_party_inc)
 
+if meson.is_cross_build()
 custom_target('image.hex',
   input : elf,
   output : 'image.hex',
   build_by_default: true,
   command : [objcopy, '-O', 'ihex', '-R', '.eeprom', '@INPUT@', '@OUTPUT@', ],
 )
-
 run_target('size', command : ['avr-size', '-x', elf])
+endif
+
