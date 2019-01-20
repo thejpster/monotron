@@ -23,13 +23,43 @@ $ ninja # Builds a debug ELF and .hex file
 $ ninja size # Tells you how big it is
 ```
 
+## Pinout
+
+| Port   | Pin |  Direction     | Name          | Routed to  | Description              |
+|--------|-----|----------------|------------- -|------------|--------------------------|
+| B      | 0   | Output         | LPT_D0        | J13 pin 2  | LPT Output bit 0         |
+| B      | 1   | Output         | LPT_D1        | J13 pin 3  | LPT Output bit 1         |
+| B      | 2   | Output         | LPT_D2        | J13 pin 4  | LPT Output bit 2         |
+| B      | 3   | Output         | LPT_D3        | J13 pin 5  | LPT Output bit 3         |
+| B      | 4   | Output         | LPT_D4        | J13 pin 6  | LPT Output bit 4         |
+| B      | 5   | Output         | LPT_D5        | J13 pin 7  | LPT Output bit 5         |
+| B      | 6   | Output         | LPT_D6        | J13 pin 8  | LPT Output bit 6         |
+| B      | 7   | Output         | LPT_D7        | J13 pin 9  | LPT Output bit 7         |
+| C      | 0   | I/O Open-drain | KB_CLK        | J14 pin 5  | PS/2 Keyboard clock      |
+| C      | 1   | I/O Open-drain | MS_CLK        | J15 pin 5  | PS/2 Mouse clock         |
+| C      | 2   | I/O Open-drain | KB_DATA       | J14 pin 1  | PS/2 Keyboard data       |
+| C      | 3   | I/O Open-drain | MS_DATA       | J15 pin 1  | PS/2 Mouse data          |
+| C      | 4   | Output         | LPT_nINIT     | J13 pin 16 | Initialise Printer       |
+| C      | 5   | Input          | LPT_SEL       | J13 pin 13 | Select (from printer)    |
+| C      | 6   | Output         | LPT_nSELPRIN  | J13 pin 17 | Select (to printer)      |
+| D      | 0   | Input          | UART_RX       | U1 PE1     | UART receive from MCU    |
+| D      | 1   | Output         | UART_TX       | U1 PE0     | UART transmit to MCU     |
+| D      | 2   | Input          | LPT_nACK      | J13 pin 10 | Acknowledge from Printer |
+| D      | 3   | Input          | LPT_BUSY      | J13 pin 11 | Printer is Busy          |
+| D      | 4   | Input          | LPT_nPE       | J13 pin 12 | Printer found Paper End  |
+| D      | 5   | Input          | LPT_nERROR    | J13 pin 15 | Printer Error            |
+| D      | 6   | Output         | LPT_nAUTOFEED | J13 pin 14 | Enable Auto Feed         |
+| D      | 7   | Output         | LPT_nSTROBE   | J13 pin 1  | Latch data               |
+
+Refer to [the schematic](../pcb/schematic.pdf) for more details.
+
 ## Protocol
 
 The protocol between the I/O controller and the main MCU is pretty simple. As
 the MCU is pretty busy drawing the screen, and there's only a 16-byte UART
-FIFO on the MCU, we keep the I/O controller quiet until commanded to send a
-packet of data. This will normally occur once per screen refesh (so, 60 Hz),
-which should be plenty for reading the keyboard and mouse.
+FIFO on the MCU, we keep the I/O controller mostly quiet until commanded to
+send a packet of data. This will normally occur once per screen refesh (so, 60
+Hz), which should be plenty for reading the keyboard and mouse.
 
 ### Requests
 
@@ -95,11 +125,16 @@ These messages can be sent asynchronously by the I/O controller to the MCU.
   gives the keyboard and mouse status.
     * Bit 0 - 1 = Keyboard present, 0 = Keyboard missing
     * Bit 1 - 1 = Mouse present, 0 = Mouse missing
+    * Bit 2:5 - 4-bit firmware version (v0..v15)
+    * Bit 6 - Reserved (MCU should ignore)
+    * Bit 7 - Always 1
 * PS2_DATA_IND (0xF1) - Indicates that data is waiting to be read. Only sent
   once, until a PS2_DATA_REQ is seen.
 * LPT_BUFFER_EMPTY_IND (0xF2) - Indicates that the LPT buffer is now empty and
   more bytes can be sent.
 * LPT_READ_PEND_IND (0xF3) <pins> - The input pins matched the given levels.
+* BAD_COMMAND_IND (0xF4) - Send when a bad request is received. That request
+  will not receive a Confirmation.
 
 ### Keyboard Data Format
 
@@ -219,11 +254,11 @@ Monotron.
 * NextTrack: 0x6B
 * Mute: 0x6C
 * Calculator: 0x6D
-* Play: 0x70F
-* Stop: 0x71
-* VolumeDown: 0x72
-* VolumeUp: 0x73
-* WWWHome: 0x74
+* Play: 0x6E
+* Stop: 0x6F
+* VolumeDown: 0x70
+* VolumeUp: 0x71
+* WWWHome: 0x72
 
 
 ### Mouse Data Format
@@ -241,3 +276,23 @@ This is as per the PS/2 specification, except that mutiple mouse packets (sent a
     * Bit 0 - Left Button
 * X: Distance moved in the X direction since the last reading, in the range 0..255 (plus the sign bit above, so -255 to +255)
 * Y: Distance moved in the Y direction since the last reading. Values are per `X` above.
+
+## Licence
+
+The code is Copyright (c) Jonathan 'theJPster' Pallant 2019. It is available under the Apache 2.0 or MIT licences, at your option.
+
+The code in the `third_party/avr_uart` folder is under the following licence:
+
+```
+Copyright (C) 2012 Andy Gock
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+```
