@@ -113,8 +113,11 @@
         for (;;) {             \
         }                      \
     } while (0)
+#define run() 1
 #else
-#define soft_reset() exit(0)
+static uint8_t should_run = 1;
+#define soft_reset() do { should_run = 0; } while(0)
+#define run() should_run
 #endif
 
 /**************************************************
@@ -214,7 +217,7 @@ volatile static uint8_t lpt_buffer_num_bytes = 0;
 /**
  * Entry point to our program.
  *
- * @return Never
+ * @return Never returns on AVR. Return on RESET_REQ on Linux.
  */
 int main(void)
 {
@@ -227,14 +230,13 @@ int main(void)
     uart_flush();
     // Wait for commands. We handle keyboard, mouse and LPT ack under
     // interrupt.
-    for (;;) {
+    while(run()) {
 #ifdef __AVR__
         sleep_mode();
 #endif
         uint16_t status = uart_getc();
         uint8_t data = status & 0x00FF;
-        status >>= 8;
-        switch (status) {
+        switch (status & 0xFF00) {
         case UART_NO_DATA:
             break;
         case 0:
@@ -245,8 +247,10 @@ int main(void)
         case UART_OVERRUN_ERROR:
         case UART_FRAME_ERROR:
             // Uh-oh. Better reboot.
+            soft_reset();
             break;
         default:
+            soft_reset();
             break;
         }
     }
