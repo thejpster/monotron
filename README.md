@@ -204,8 +204,8 @@ You can connect these inputs to a standard Atari 9-pin Joystick as follows:
 
 | Launchpad Pin | Tiva-C Pin | Joystick Pin | Function |
 |---------------|------------|--------------|----------|
-| J4.6          | PC6        | 1            | Up       |
-| J4.7          | PC7        | 2            | Down     |
+| J3.8          | PE2        | 1            | Up       |
+| J3.9          | PE3        | 2            | Down     |
 | J4.8          | PD6        | 3            | Left     |
 | J4.9          | PD7        | 4            | Right    |
 | J4.10         | PF4        | 6            | Fire     |
