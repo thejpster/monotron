@@ -33,7 +33,7 @@ can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 * Watch this space!
 
 
- _* Requires additional hardware, included on the [Monotron PCB]_
+ _* Requires additional hardware, included on the [Monotron PCB](#monotron-pcb)_
 
 ## Video
 
