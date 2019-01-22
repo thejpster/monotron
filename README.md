@@ -93,8 +93,7 @@ text-mode plus an additional `384x288 / 8 = 13,824` bytes of SRAM.
 ## Compiling
 
 You will need to build using Rust Nightly, as we need various experimental
-features for Embedded development that are not yet available in Stable. I am
-aiming to support Stable Rust by the Rust 2018 release.
+features for Embedded development that are not yet available in Stable.
 
 ```
 $ rustup toolchain install nightly
@@ -215,6 +214,15 @@ AtMega48 which is used as an I/O expander. This microcontroller drives two
 PS/2 ports (one for keyboard, one for the mouse) as well as a full IBM
 PC-style 25-pin parallel printer port.
 
+| Launchpad Pin | Tiva-C Pin | External Pin | Function (from Monotron's point of view) |
+|---------------|------------|--------------|---------------|
+| N/A           | PA0        | N/A            | USB Serial Rx |
+| N/A           | PA1        | 2            | USB Serial Tx |
+| J4.8          | PD6        | 3            | RS-232 Tx     |
+| J4.9          | PD7        | 4            | RS-232 Rx     |
+| J4.10         | PF4        | 6            | RS-232 RTS    |
+| J3.2          | GND        | 8            | RS-232 CTS    |
+
 ### Audio
 
 Monotron can generate 8-bit audio output using PWM on pin PE4. I use the
@@ -224,6 +232,15 @@ waves, sine waves, sawtooth waves and generate white noise.
 
 You'll need to run the pin through a low-pass filter to remove the noise, and
 connect it to an amplifier as the GPIO pin won't really supply much current.
+
+| Launchpad Pin | Tiva-C Pin | TRS          | Function  |
+|---------------|------------|--------------|-----------|
+| J1.5          | PE4        | Ring         |Audio Left |
+| J1.6          | PE5        | Sleeve       |Audio Right|
+
+Currently audio only comes out on PE4 (Left). If this is a problem for your
+amplifier, jumper J1 on the PCB allows you to route Audio Left to Sleeve as
+well as Tip.
 
 ### Joystick
 
@@ -257,12 +274,12 @@ You can load programs and data from an SD card, from the first Primary MBR
 (standard old-style MS-DOS) partition, formatted as either FAT16 or FAT32. Use
 a standard SD Card SPI breakout adaptor, connected up as follows:
 
-* CLK: PA2
-* CS: PA3
-* MISO/DO: PA4
-* MOSI/DI: PA5
-* Ground: GND
-* Vcc: 3.3V
+| Launchpad Pin | Tiva-C Pin | Function     |
+|---------------|------------|--------------|
+| J2.10         | PA2        | Clock        |
+| J2.9          | PA3        | Chip Select  |
+| J2.8          | PA4        | MISO/Data Out|
+| J1.8          | PA5        | MOSI/Data In |
 
 SD cards operate at 3.3v so no level shifters are required, but many cards
 will require a 47k pull-up to 3.3v on all four data pins. If you don't use
@@ -285,6 +302,11 @@ real time clock chip. Driver support for this chip is TBC.
 
 The PCB pulls-up the I2C bus to 5V, but the TM4C123 is 5V tolerant and runs
 the I2C pins in open-drain mode.
+
+| Launchpad Pin | Tiva-C Pin | Function     |
+|---------------|------------|--------------|
+| J1.9          | PA6        | SCL          |
+| J1.10         | PA7        | SDA          |
 
 ## Monotron PCB
 
