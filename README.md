@@ -18,13 +18,22 @@ can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 * 800x600 8-colour VGA output
 * 32 KiB SRAM (24 KiB usable for applications)
 * 256 KiB Flash ROM
-* Choice of low-memory text display mode or full bitmap graphics mode
-* 8-bit mono audio output
+* Choice of low-memory 48x36 text display mode or full 384x288 bitmap graphics mode
+* 8-bit mono audio output with 3 channel, 4 waveform synthesiser
 * USB Serial I/O
 * Atari 9-pin joystick interface
 * Simple command-line interface
+* I2C expansion interface
 * Loadable apps
+* Battery backed real-time clock*
+* 25-pin IBM PC style parallel printer port*
+* MIDI In, Out and Through*
+* PS/2 Keyboard and Mouse*
+* RS-232 Serial port*
 * Watch this space!
+
+
+ _* Requires additional hardware, included on the [Monotron PCB]_
 
 ## Video
 
@@ -121,6 +130,12 @@ times, as it seems it can get a bit stuck.
 
 ## Connecting
 
+You have two options when running a Monotron.
+
+1. You can take a bare Tiva-C Launchpad and wire up various connectors using
+   the pin-outs in the following sections.
+2. You can skip all that make yourself a [Monotron PCB](#monotron-pcb)!
+
 ### VGA
 
 Your VGA connector requires five wires:
@@ -179,13 +194,26 @@ monitor.
 
 ### UART
 
-Monotron uses UART0 on the Tiva-C Launchpad, which is converted to USB
-Serial by the on-board companion chip. Connect with your favourite Serial
-terminal at 115,200bps. Send UTF-8 and it'll get converted to MS-DOS Code Page
-850 inside the Monotron.
+Monotron primarily uses UART0, which is converted to USB Serial by the
+on-board companion chip on the Tiva-C Launchpad. Connect with your favourite
+Serial terminal at 115,200bps, then send UTF-8 characters and they'll get
+converted to virtual keyboard input, allowing you to drive the Monotron.
 
-I hope to add support for a second UART (UART 1) on an FTDI-compatible 6-pin
-connector (3.3v signalling).
+There's also a second UART (UART1), which has RTS/CTS hardware handshaking
+lines connected (but not DSR, DTR or RI). On the Monotron PCB these are
+brought out to pin header J8. By fitting six jumpers on this header, the
+on-board MAX3232 level shifter is activated, driving RS-232 signals on the
+DE9M connector, J12. Note, the Joystick connector looks the same - don't mix
+them up!
+
+On the Monotron PCB, a third UART (UART3) is routed through various
+opto-isolators to the MIDI In and MIDI Out ports. The MIDI Through port just
+repeats everything received on the MIDI In port.
+
+Finally, also on the Monotron PCB, a fourth UART (UART7) connects to a 5V
+AtMega48 which is used as an I/O expander. This microcontroller drives two
+PS/2 ports (one for keyboard, one for the mouse) as well as a full IBM
+PC-style 25-pin parallel printer port.
 
 ### Audio
 
@@ -213,50 +241,77 @@ You can connect these inputs to a standard Atari 9-pin Joystick as follows:
 
 ### PS/2 Keyboard
 
-PS/2 keyboard support sort of worked, but wasn't reliable so it's currently
-missing. When complete, it will use the
-[pc-keyboard](https://github.com/thejpster/pc-keyboard) crate. Any UK 102-key
-or 105-key keyboard should work - support for other layouts welcome as a PR!
+The initial PS/2 keyboard support sort of worked, but wasn't reliable so took
+it out again. The fundamental problem was that it's really hard to sample a 10
+to 15 kHz incoming synchronous signal without using SPI slave peripheral
+(they're all in use) and while bit-bashing timing-critical video signals at 20
+MHz.
 
-The pinout will probably be:
+On the [Monotron PCB](#monotron-pcb) I work around this issue by adding an
+Atmel AtMega48 microcontroller as an I/O expander, connected to [UART](#uart)
+7. Look in the [`avr_kb`](./avr_kb) folder for more information.
 
-* +CLK: PB2
-* +DATA: PE0
-* Ground: GND
-* Vcc: 5V
-
-PS/2 keyboards have 5V I/O. It's specified as open-collector but keyboards
-sometimes contain internal pull-up resistors to 5V. All of the LM4F120/TM4C123
-I/O pins are 5V tolerant when in input mode (except PB0, PB1, PD4, PD5). You
-should probably add a 10k pull-up resistor to 5V on both +CLK and +DATA just
-in case your keyboard hasn't got one.
-
-Monotron currently doesn't support talking back to the keyboard (e.g. to turn
-the SCROLL, NUM and CAPS-LOCK lights on)- to do so would probably require more
-robust interface circuitry.
-
-### SD/MMC
+### SD Card
 
 You can load programs and data from an SD card, from the first Primary MBR
 (standard old-style MS-DOS) partition, formatted as either FAT16 or FAT32. Use
-a standard SD/MMC breakout adaptor, connected up as follows:
+a standard SD Card SPI breakout adaptor, connected up as follows:
 
 * CLK: PA2
 * CS: PA3
-* MISO: PA4
-* MOSI: PA5
+* MISO/DO: PA4
+* MOSI/DI: PA5
 * Ground: GND
 * Vcc: 3.3V
 
-SD cards operate at 3.3v so no level shifters are required. Use the `mount`
-command to scan the disk, then `dir` to show the root directory contents, and
-the `dload`, `ddump` and `dpage` commands to load, hex-dump and print files to
-the screen.
+SD cards operate at 3.3v so no level shifters are required, but many cards
+will require a 47k pull-up to 3.3v on all four data pins. If you don't use
+these pull-ups, the pins float while the Monotron is booting, and these
+fluctuations may upset the SD card, giving you random timeouts and other
+spurious effects. Some cards tolerate this better than others, so YMMV. If in
+doubt, just add the pull-ups (they're missing on rev 0.7.0 of the PCB, but
+will be on 0.8.0+).
+
+On the console you use the `mount` command to scan the disk, then `dir` to
+show the root directory contents. You can also `dload`, `ddump` and `dpage`
+commands to load, hex-dump and print files to the screen. A program loaded
+with `dload` can then be executed with the `run` command.
 
 ### I2C
 
-One day I might add I2C support for reading simple sensors or real-time
-clocks.
+The [Monotron PCB](#monotron-pcb) has an I2C expansion header connected to
+`I2C1`. The PCB can also optionally be fitted with an MCP7940N battery-backed
+real time clock chip. Driver support for this chip is TBC.
+
+The PCB pulls-up the I2C bus to 5V, but the TM4C123 is 5V tolerant and runs
+the I2C pins in open-drain mode.
+
+## Monotron PCB
+
+There's now a PCB! It features:
+
+* 2x20 pin headers, to mate with the TM4C123 Launchpad (other Launchpads like
+  the TM4C129 have not been tested and probably won't work)
+* 5V power jack (2.1mm barrel jack, centre +ve)
+* DE15HD VGA port
+* DE9M Atari joystick port
+* SD Card slot
+* 3.5mm stereo line out
+* DE9M RS-232 port
+* 2.54mm (100 mil) jumpers to disconnect the RS232 driver and allow you to
+  connect a 3.3v FTDI type TTL serial cable instead.
+* MIDI In, Out and Through ports with opto-isolation
+* 4-pin 2.54mm pitch (100 mil) I2C expansion header (GND, 5V, SDA, SCL)
+* Microchip MCP7940N I2C Real-Time Clock with battery back-up
+* AtMega48 microcontroller, controlling:
+  * DB25F IBM PC style parallel printer port
+  * PS/2 Keyboard port
+  * PS/2 Mouse port
+
+See the [pcb](./pcb) folder for Kicad files, Gerbers and PDF Schematics. If
+you want to buy a PCB (with or without a kit of parts) send a message to
+@therealjpster on Twitter, or via my Github e-mail. Rev 0.7.0 has some rough
+edges, but we're working on it.
 
 ## Running
 
@@ -331,11 +386,12 @@ using the callbacks as simple as using a normal C library.
 
 ## Unreleased changes (will be 0.9.0)
 
-* No changes
+* PCB design (Gerbers, schematic, etc).
+* Support for the extra features/interfaces on the PCB.
 
 ## Changelog
 
-* Version 0.8.0 - Added cursor support to ABI. Added basic SD/MMC support
+* Version 0.8.0 - Added cursor support to ABI. Added basic SD Card support
   (read-only).
 * Version 0.7.0 - Move application RAM to 0x2000_2000. Added cursor support.
   Moved callback pointer.
