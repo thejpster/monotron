@@ -83,8 +83,8 @@ struct VideoHardware {
 }
 
 struct Joystick {
-    up: hal::gpio::gpioc::PC6<hal::gpio::Input<hal::gpio::PullUp>>,
-    down: hal::gpio::gpioc::PC7<hal::gpio::Input<hal::gpio::PullUp>>,
+    up: hal::gpio::gpioe::PE2<hal::gpio::Input<hal::gpio::PullUp>>,
+    down: hal::gpio::gpioe::PE3<hal::gpio::Input<hal::gpio::PullUp>>,
     left: hal::gpio::gpiod::PD6<hal::gpio::Input<hal::gpio::PullUp>>,
     right: hal::gpio::gpiod::PD7<hal::gpio::Input<hal::gpio::PullUp>>,
     fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
@@ -450,8 +450,8 @@ fn main() -> ! {
         keyboard,
         buffered_char: None,
         joystick: Joystick {
-            up: portc.pc6.into_pull_up_input(),
-            down: portc.pc7.into_pull_up_input(),
+            up: porte.pe2.into_pull_up_input(),
+            down: porte.pe3.into_pull_up_input(),
             left: portd.pd6.into_pull_up_input(),
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
