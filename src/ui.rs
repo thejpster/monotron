@@ -209,14 +209,14 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
         *b = 0x00;
     }
     writeln!(context, "Reading hex...").unwrap();
-    context.uart.write_all(b"READY");
+    context.usb_uart.write_all(b"READY");
     let mut i = 0;
     let max_bytes = application_ram.len();
     const ACK_EVERY: usize = 4;
     let mut ack_count = 0;
     while i < max_bytes {
         let ch = loop {
-            match context.uart.read() {
+            match context.usb_uart.read() {
                 Ok(x) => break x,
                 _ => {}
             }
@@ -247,7 +247,7 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
             _ => break,
         };
         let ch = loop {
-            match context.uart.read() {
+            match context.usb_uart.read() {
                 Ok(x) => break x,
                 _ => {}
             }
@@ -280,7 +280,7 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
         application_ram[i] = byte;
         ack_count += 1;
         if ack_count >= ACK_EVERY {
-            let _ = context.uart.write(b'X');
+            let _ = context.usb_uart.write(b'X');
             ack_count = 0;
         }
         i = i + 1;
