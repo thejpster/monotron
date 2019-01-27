@@ -48,11 +48,13 @@
 #include <avr/wdt.h>
 #include <avr-uart/uart.h>
 #else
+#define _BV(bit) (1 << (bit))
 #include <stdio.h>
 #include <stdlib.h>
 #include "fake_uart.h"
 #endif
 #include "keypress.h"
+#include "keycodes.h"
 #include "protocol.h"
 
 /**************************************************
@@ -60,49 +62,65 @@
 ***************************************************/
 
 // Port B
-#define LPT_D0 (1 << 0)
-#define LPT_D1 (1 << 1)
-#define LPT_D2 (1 << 2)
-#define LPT_D3 (1 << 3)
-#define LPT_D4 (1 << 4)
-#define LPT_D5 (1 << 5)
-#define LPT_D6 (1 << 6)
-#define LPT_D7 (1 << 7)
+#define PB_LPT_D0 _BV(0)
+#define PB_LPT_D1 _BV(1)
+#define PB_LPT_D2 _BV(2)
+#define PB_LPT_D3 _BV(3)
+#define PB_LPT_D4 _BV(4)
+#define PB_LPT_D5 _BV(5)
+#define PB_LPT_D6 _BV(6)
+#define PB_LPT_D7 _BV(7)
 
 // Port C
-#define KB_CLK (1 << 0)
-#define MS_CLK (1 << 1)
-#define KB_DATA (1 << 2)
-#define MS_DATA (1 << 3)
-#define LPT_nINIT (1 << 4)
-#define LPT_SEL (1 << 5)
-#define LPT_nSELPRIN (1 << 6)
+#define PC_KB_CLK _BV(0)
+#define PC_MS_CLK _BV(1)
+#define PC_KB_DATA _BV(2)
+#define PC_MS_DATA _BV(3)
+#define PC_LPT_nINIT _BV(4)
+#define PC_LPT_SEL _BV(5)
+/**
+ * This clashes with Reset. On some chips the RSTDISBL fuse isn't set and so
+ * this pin won't function as a GPIO - the printer side should therefore be
+ * tied low in hardware so the printer is always selected. Where RSTDISBL is
+ * set, this pin can be connected to the printer, but you can re-program the
+ * chip with an ISP.
+*/
+#define PC_LPT_nSELPRIN _BV(6)
 
 // Port D
-#define UART_RX (1 << 0)
-#define UART_TX (1 << 1)
-#define LPT_nACK (1 << 2)
-#define LPT_BUSY (1 << 3)
-#define LPT_nPE (1 << 4)
-#define LPT_nERROR (1 << 5)
-#define LPT_nAUTOFEED (1 << 6)
-#define LPT_nSTROBE (1 << 7)
+#define PD_UART_RX _BV(0)
+#define PD_UART_TX _BV(1)
+#define PD_LPT_nACK _BV(2)
+#define PD_LPT_BUSY _BV(3)
+#define PD_LPT_nPE _BV(4)
+#define PD_LPT_nERROR _BV(5)
+#define PD_LPT_nAUTOFEED _BV(6)
+#define PD_LPT_nSTROBE _BV(7)
 
 #define OUR_UART_BAUD 115200UL
 
-#define SHIFT_REGISTER_INIT_WORD (1 << 0)
-#define SHIFT_REGISTER_COMPLETE_MASK (1 << 13)
+#define SHIFT_REGISTER_INIT_WORD _BV(0)
+#define SHIFT_REGISTER_COMPLETE_MASK _BV(12)
 
-#define MOUSE_BITS_OVERFLOW_Y (1 << 7)
-#define MOUSE_BITS_OVERFLOW_X (1 << 6)
-#define MOUSE_BITS_SIGN_Y (1 << 5)
-#define MOUSE_BITS_SIGN_X (1 << 4)
-#define MOUSE_BITS_1_BIT (1 << 3)
-#define MOUSE_BITS_MIDDLE_BUTTON (1 << 2)
-#define MOUSE_BITS_RIGHT_BUTTON (1 << 1)
-#define MOUSE_BITS_LEFT_BUTTON (1 << 0)
+#define EXTENDED_KEY_CODE 0xE0
+#define RELEASE_KEY_CODE 0xF0
+
+#define MOUSE_BITS_OVERFLOW_Y _BV(7)
+#define MOUSE_BITS_OVERFLOW_X _BV(6)
+#define MOUSE_BITS_SIGN_Y _BV(5)
+#define MOUSE_BITS_SIGN_X _BV(4)
+#define MOUSE_BITS_1_BIT _BV(3)
+#define MOUSE_BITS_MIDDLE_BUTTON _BV(2)
+#define MOUSE_BITS_RIGHT_BUTTON _BV(1)
+#define MOUSE_BITS_LEFT_BUTTON _BV(0)
 
 #define LPT_BUFFER_SIZE 32
+
+/** Same as the TM4C123 */
+#define UART_RX_BUFFER_SIZE 16
+
+/** Same as the TM4C123 */
+#define UART_TX_BUFFER_SIZE 16
 
 #define VERSION 0
 
@@ -118,20 +136,48 @@
 static uint8_t should_run = 1;
 #define soft_reset() do { should_run = 0; } while(0)
 #define run() should_run
+#define sleep_mode() do { } while(0)
 #endif
 
 /**************************************************
 * Data Types
 **************************************************/
 
-/* None */
+typedef struct fifo_t {
+    volatile uint8_t* p_data;
+    uint8_t size;
+    volatile uint8_t head;
+    volatile uint8_t tail;
+    volatile uint8_t dropped_bytes;
+} fifo_t;
+
+typedef enum bit_state_t {
+    BIT_STATE_LOW,
+    BIT_STATE_HIGH,
+    BIT_STATE_WAITING
+} bit_state_t;
+
+typedef enum keyboard_state_t {
+    KEYBOARD_STATE_IDLE,
+    KEYBOARD_STATE_EXTENDED,
+    KEYBOARD_STATE_EXTENDED_RELEASE,
+    KEYBOARD_STATE_RELEASE
+} keyboard_state_t;
 
 /**************************************************
 * Function Prototypes
 **************************************************/
 
 static void setup_io(void);
+static bool process_port_serial(void);
+static bool process_port_keyboard(void);
+static bool process_port_mouse(void);
+static bool process_port_parallel(void);
 static void process_command(uint8_t byte);
+static bool decode_word(uint16_t word, uint8_t* p_output_byte);
+static void store_keyboard_byte(bool is_keydown, uint8_t byte);
+static void store_keyboard_extended_byte(bool is_keydown, uint8_t byte);
+static void store_keyevent(uint8_t byte);
 static void send_reset_cfm(void);
 static void send_ps2_data_cfm(uint8_t kb0, uint8_t kb1, uint8_t kb2, uint8_t mouse_status, uint8_t mouse_x, uint8_t mouse_y);
 static void send_ps2_led_cfm(void);
@@ -168,47 +214,71 @@ void wdt_init(void) __attribute__((naked)) __attribute__((section(".init3")));
  * with a 1 bit in the LSB. When this 1 bit has been shifted up to the 13-bit
  * we know we've clocked in a full word.
  */
-static volatile uint16_t keyboard_word = SHIFT_REGISTER_INIT_WORD;
+static uint16_t g_keyboard_word;
+
 /**
  * PS/2 data is clocked in as 13-bits into this 16-bit register. We default
  * with a 1 bit in the LSB. When this 1 bit has been shifted up to the 13-bit
  * we know we've clocked in a full word.
  */
-static volatile uint16_t mouse_word = SHIFT_REGISTER_INIT_WORD;
+static uint16_t g_mouse_word;
 
 /**
  * Records the number of units the mouse has moved in the X direction since we
  * were last asked for the mouse position.
  */
-static int16_t mouse_x = 0;
+static int16_t g_mouse_x = 0;
 
 /**
  * Records the number of units the mouse has moved in the Y direction since we
  * were last asked for the mouse position.
  */
-static int16_t mouse_y = 0;
+static int16_t g_mouse_y = 0;
 
 /**
  * Records the mouse button status and overflow bits. See the MOUSE_BITS_xxx
  * macros.
  */
-static uint8_t mouse_bits = 0;
+static uint8_t g_mouse_bits = 0;
 
 /**
- * Buffers up to three keyboard output bytes. A value of 0x00 means (no keypress).
+ * Buffers up to three keypress event bytes. A value of 0x00 means (no
+ * keypress).
  */
-static uint8_t keyboard_data[3] = { 0 };
+static uint8_t g_keyboard_data[3] = { 0 };
+
+/**
+ * Tracks the keyboard state.
+ */
+static keyboard_state_t g_keyboard_state = KEYBOARD_STATE_IDLE;
 
 /**
  * How many command bytes we're waiting for.
  */
-static uint8_t command_bytes = 0;
+static uint8_t g_command_bytes = 0;
 
 /**
  * A buffer of bytes for the LPT to emit autonomously.
  */
-volatile static uint8_t lpt_buffer[LPT_BUFFER_SIZE] = { 0 };
-volatile static uint8_t lpt_buffer_num_bytes = 0;
+volatile static uint8_t g_lpt_buffer[LPT_BUFFER_SIZE] = { 0 };
+static fifo_t g_lpt_fifo = { 0 };
+
+/**
+ * The previous value of the PS/2 pins in port C, so we
+ * can tell what changed when the interrupt fires.
+ */
+static volatile uint8_t g_pc_previous = 0;
+
+/**
+ * The last PS/2 mouse bit received.
+ */
+static volatile bit_state_t g_ms_bit = BIT_STATE_WAITING;
+
+/**
+ * The last PS/2 keyboard bit received.
+ */
+static volatile bit_state_t g_kb_bit = BIT_STATE_WAITING;
+
 
 /**************************************************
 * Public Functions
@@ -221,40 +291,73 @@ volatile static uint8_t lpt_buffer_num_bytes = 0;
  */
 int main(void)
 {
+    g_lpt_fifo.p_data = g_lpt_buffer;
+    g_lpt_fifo.size = sizeof(g_lpt_buffer);
+    g_keyboard_word = SHIFT_REGISTER_INIT_WORD;
+    g_mouse_word = SHIFT_REGISTER_INIT_WORD;
+
     setup_io();
-    // Scan for keyboard and mouse here
     bool mouse = false;
     bool keyboard = false;
+    // Scan for keyboard and mouse here
+    // TODO
     // Send booted ind
     send_booted_ind(keyboard, mouse, VERSION);
     uart_flush();
     // Wait for commands. We handle keyboard, mouse and LPT ack under
     // interrupt.
     while(run()) {
-#ifdef __AVR__
+        bool more_processing = false;
+        do {
+            more_processing |= process_port_keyboard();
+            more_processing |= process_port_mouse();
+            more_processing |= process_port_parallel();
+            more_processing |= process_port_serial();
+        } while(more_processing);
         sleep_mode();
-#endif
-        uint16_t status = uart_getc();
-        uint8_t data = status & 0x00FF;
-        switch (status & 0xFF00) {
-        case UART_NO_DATA:
-            break;
-        case 0:
-            // Process received data
-            process_command(data);
-            break;
-        case UART_BUFFER_OVERFLOW:
-        case UART_OVERRUN_ERROR:
-        case UART_FRAME_ERROR:
-            // Uh-oh. Better reboot.
-            soft_reset();
-            break;
-        default:
-            soft_reset();
-            break;
-        }
     }
 }
+
+/**
+ * Pin-change interrupt for Port C.
+ */
+ISR(PCINT1_vect)
+{
+    uint8_t pins = PINC & (PC_KB_CLK | PC_KB_DATA | PC_MS_CLK | PC_MS_DATA);
+    uint8_t changed = g_pc_previous ^ pins;
+    if ((changed & PC_KB_CLK) && ((pins & PC_KB_CLK) == 0)) {
+        // Falling edge on KB_CLK
+        g_kb_bit = (pins & PC_KB_DATA);
+    }
+    if ((changed & PC_MS_CLK) && ((pins & PC_MS_CLK) == 0)) {
+        // Falling edge on MS_CLK
+        g_ms_bit = (pins & PC_MS_DATA);
+    }
+    g_pc_previous = pins; // Save the previous state so you can tell what changed
+}
+
+// #ifdef __AVR__
+// /**
+//  * UART0 receive interrupt service routine. Copies byte from UART data
+//  * register to FIFO. If FIFO is full, byte is dropped.
+//  */
+// ISR( USART_RX_vect )
+// {
+//     uint8_t head = uart_rx_fifo.head;
+//     uint8_t tail = uart_rx_fifo.tail;
+//     head = head + 1;
+//     if (head == uart_rx_fifo.size) {
+//         head = 0;
+//     }
+//     if (head == tail) {
+//         // FIFO is full, so we drop the byte and increment a counter
+//         uart_rx_fifo.dropped_bytes++;
+//     } else {
+//         uart_rx_fifo.p_data[head] = UDR0;
+//         uart_rx_fifo.head = head;
+//     }
+// }
+// #endif
 
 /**************************************************
 * Private Functions
@@ -263,15 +366,15 @@ int main(void)
 /**
  * Configure the I/O pins correctly.
  */
-void setup_io(void)
+static void setup_io(void)
 {
 #ifdef __AVR__
     DDRB = 0x00; // No inputs
-    DDRC = KB_CLK | MS_CLK | KB_DATA | MS_DATA | LPT_nINIT | LPT_nSELPRIN;
-    DDRD = LPT_nACK | LPT_BUSY | LPT_nPE | LPT_nERROR;
+    DDRC = PC_KB_CLK | PC_MS_CLK | PC_KB_DATA | PC_MS_DATA | PC_LPT_nINIT | PC_LPT_nSELPRIN;
+    DDRD = PD_LPT_nACK | PD_LPT_BUSY | PD_LPT_nPE | PD_LPT_nERROR;
     PORTB = 0x00; // Outputs low by default
-    PORTC = LPT_nINIT | LPT_nSELPRIN;
-    PORTD = LPT_nACK | LPT_nPE | LPT_nERROR;
+    PORTC = PC_LPT_nINIT | PC_LPT_nSELPRIN;
+    PORTD = PD_LPT_nACK | PD_LPT_nPE | PD_LPT_nERROR;
 #endif
 
     // Configure interrupts here.
@@ -281,11 +384,125 @@ void setup_io(void)
 }
 
 /**
+ * Handle the Serial port.
+ * @return true if more processing required, false if safe to sleep.
+ */
+static bool process_port_serial(void)
+{
+    bool result = true;
+    uint16_t status = uart_getc();
+    uint8_t data = status & 0x00FF;
+    switch (status & 0xFF00) {
+    case UART_NO_DATA:
+        result = false;
+        break;
+    case 0:
+        // Process received data
+        process_command(data);
+        break;
+    case UART_BUFFER_OVERFLOW:
+    case UART_OVERRUN_ERROR:
+    case UART_FRAME_ERROR:
+        // Uh-oh. Better reboot.
+        soft_reset();
+        break;
+    default:
+        soft_reset();
+        break;
+    }
+    return result;
+}
+
+/**
+ * Handle the Keyboard port.
+ * @return true if more processing required, false if safe to sleep.
+ */
+static bool process_port_keyboard(void)
+{
+    bit_state_t state = g_kb_bit;
+    if (state != BIT_STATE_WAITING) {
+        uint16_t word = g_keyboard_word;
+        word <<= 1;
+        if (state == BIT_STATE_HIGH) {
+            word |= 1;
+        } else {
+            word <<= 1;
+        }
+        if (word & SHIFT_REGISTER_COMPLETE_MASK) {
+            uint8_t data = 0;
+            if (decode_word(word, &data)) {
+                word = SHIFT_REGISTER_INIT_WORD;
+                switch (g_keyboard_state) {
+                    case KEYBOARD_STATE_IDLE:
+                    {
+                        switch (data) {
+                            case EXTENDED_KEY_CODE:
+                                g_keyboard_state = KEYBOARD_STATE_EXTENDED;
+                                break;
+                            case RELEASE_KEY_CODE:
+                                g_keyboard_state = KEYBOARD_STATE_RELEASE;
+                                break;
+                            default:
+                                store_keyboard_byte(false, data);
+                                break;
+                        }
+                    }
+                    break;
+                    case KEYBOARD_STATE_EXTENDED:
+                    {
+                        store_keyboard_extended_byte(false, data);
+                    }
+                    break;
+                    case KEYBOARD_STATE_EXTENDED_RELEASE:
+                    {
+                        store_keyboard_extended_byte(true, data);
+                    }
+                    break;
+                    case KEYBOARD_STATE_RELEASE:
+                    {
+                        switch (data) {
+                            case EXTENDED_KEY_CODE:
+                                g_keyboard_state = KEYBOARD_STATE_EXTENDED;
+                                break;
+                            default:
+                                store_keyboard_byte(true, data);
+                                break;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        g_keyboard_word = word;
+    }
+    return false;
+}
+
+/**
+ * Handle the Mouse port.
+ * @return true if more processing required, false if safe to sleep.
+ */
+static bool process_port_mouse(void)
+{
+    return false;
+}
+
+/**
+ * Handle the Parallel port.
+ * @return true if more processing required, false if safe to sleep.
+ */
+static bool process_port_parallel(void)
+{
+    return false;
+}
+
+
+/**
  * Process a byte from the MCU.
  */
 static void process_command(uint8_t byte)
 {
-    if (command_bytes == 0) {
+    if (g_command_bytes == 0) {
         // It's a new command
         switch (byte) {
         case PROTOCOL_RESET_REQ:
@@ -294,26 +511,26 @@ static void process_command(uint8_t byte)
             soft_reset();
             break;
         case PROTOCOL_PS2_DATA_REQ: {
-            uint8_t kb0 = keyboard_data[0];
-            uint8_t kb1 = keyboard_data[1];
-            uint8_t kb2 = keyboard_data[2];
-            uint8_t st = mouse_bits;
+            uint8_t kb0 = g_keyboard_data[0];
+            uint8_t kb1 = g_keyboard_data[1];
+            uint8_t kb2 = g_keyboard_data[2];
+            uint8_t st = g_mouse_bits;
             uint8_t mx = 0;
             uint8_t my = 0;
-            if ((mouse_x > 255) || (mouse_x < -255)) {
+            if ((g_mouse_x > 255) || (g_mouse_x < -255)) {
                 st |= MOUSE_BITS_OVERFLOW_X;
                 mx = 255;
             } else {
-                mx = mouse_x > 0 ? mouse_x : -mouse_x;
+                mx = g_mouse_x > 0 ? g_mouse_x : -g_mouse_x;
             }
-            st |= mouse_x > 0 ? 0 : MOUSE_BITS_SIGN_X;
-            if ((mouse_y > 255) || (mouse_y < -255)) {
+            st |= g_mouse_x > 0 ? 0 : MOUSE_BITS_SIGN_X;
+            if ((g_mouse_y > 255) || (g_mouse_y < -255)) {
                 st |= MOUSE_BITS_OVERFLOW_Y;
                 my = 255;
             } else {
-                my = mouse_y > 0 ? mouse_y : -mouse_y;
+                my = g_mouse_y > 0 ? g_mouse_y : -g_mouse_y;
             }
-            st |= mouse_y > 0 ? 0 : MOUSE_BITS_SIGN_Y;
+            st |= g_mouse_y > 0 ? 0 : MOUSE_BITS_SIGN_Y;
             send_ps2_data_cfm(kb0, kb1, kb2, st, mx, my);
         } break;
         case PROTOCOL_PS2_LED_REQ:
@@ -363,6 +580,121 @@ static void process_command(uint8_t byte)
             send_bad_command_ind();
             break;
         }
+    }
+}
+
+/**
+ * Convert a 11-bit word (start, 8-data bits, parity, stop) to an 8-bit byte.
+ *
+ * @return true if word OK, false otherwise
+ */
+static bool decode_word(uint16_t word, uint8_t* p_output_byte) {
+    // Stop bit
+    if ((word & _BV(10)) == 0) {
+        return false;
+    }
+    // Start bit
+    if ((word & _BV(0)) != 0) {
+        return false;
+    }
+    // TODO check parity _BV(9) here!
+    *p_output_byte = (uint8_t) ((word >> 1) & 0xFF);
+    return true;
+}
+
+/**
+ * Handle a scan-code set 2 keyboard byte, storing it in the key event buffer.
+ */
+static void store_keyboard_byte(bool is_keydown, uint8_t byte) {
+    uint8_t up_down_bit = is_keydown ? KEYPRESS_KEYDOWN : KEYPRESS_KEYUP;
+    if (byte <= KEYCODE_SCS2_SCROLLLOCK) {
+        // As a short-cut, these scan-code 2 code map straight through
+        store_keyevent(byte | up_down_bit);
+    } else if (byte == KEYCODE_SCS2_F7) {
+        // This is the only one that doesn't
+        store_keyevent(KEYPRESS_F7 | up_down_bit);
+    }
+}
+
+/**
+ * Handle a extended scan-code set 2 keyboard byte, storing it in the key
+ * event buffer.
+ */
+static void store_keyboard_extended_byte(bool is_keydown, uint8_t byte) {
+    uint8_t up_down_bit = is_keydown ? KEYPRESS_KEYDOWN : KEYPRESS_KEYUP;
+    uint8_t data = 0;
+    switch (byte) {
+    case KEYCODE_SCS2_EXTENDED_ALTRIGHT:
+        data = KEYPRESS_ALTRIGHT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_CONTROLRIGHT:
+        data = KEYPRESS_CONTROLRIGHT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_WINDOWSLEFT:
+        data = KEYPRESS_WINDOWSLEFT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_WINDOWSRIGHT:
+        data = KEYPRESS_WINDOWSRIGHT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_MENUS:
+        data = KEYPRESS_MENUS;
+        break;
+    case KEYCODE_SCS2_EXTENDED_NUMPADSLASH:
+        data = KEYPRESS_NUMPADSLASH;
+        break;
+    case KEYCODE_SCS2_EXTENDED_NUMPADENTER:
+        data = KEYPRESS_NUMPADENTER;
+        break;
+    case KEYCODE_SCS2_EXTENDED_END:
+        data = KEYPRESS_END;
+        break;
+    case KEYCODE_SCS2_EXTENDED_ARROWLEFT:
+        data = KEYPRESS_ARROWLEFT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_HOME:
+        data = KEYPRESS_HOME;
+        break;
+    case KEYCODE_SCS2_EXTENDED_INSERT:
+        data = KEYPRESS_INSERT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_DELETE:
+        data = KEYPRESS_DELETE;
+        break;
+    case KEYCODE_SCS2_EXTENDED_ARROWDOWN:
+        data = KEYPRESS_ARROWDOWN;
+        break;
+    case KEYCODE_SCS2_EXTENDED_ARROWRIGHT:
+        data = KEYPRESS_ARROWRIGHT;
+        break;
+    case KEYCODE_SCS2_EXTENDED_ARROWUP:
+        data = KEYPRESS_ARROWUP;
+        break;
+    case KEYCODE_SCS2_EXTENDED_PAGEDOWN:
+        data = KEYPRESS_PAGEDOWN;
+        break;
+    case KEYCODE_SCS2_EXTENDED_PAGEUP:
+        data = KEYPRESS_PAGEUP;
+        break;
+    default:
+        break;
+    }
+    if (data != 0) {
+        store_keyevent(data | up_down_bit);
+    }
+}
+
+/**
+ * Buffer a key event for delivery.
+ */
+static void store_keyevent(uint8_t byte) {
+    if (g_keyboard_data[0] == 0) {
+        g_keyboard_data[0] = byte;
+    } else if (g_keyboard_data[1] == 0) {
+        g_keyboard_data[1] = byte;
+    } else if (g_keyboard_data[2] == 0) {
+        g_keyboard_data[2] = byte;
+    } else {
+        // We dropped a key event. Oops.
     }
 }
 
@@ -484,7 +816,8 @@ static void send_ps2_data_ind(void)
 }
 
 /**
- * Send LPT_BUFFER_EMPTY_IND (0xF2) - Indicates that the LPT buffer is now empty and   more bytes can be sent.
+ * Send LPT_BUFFER_EMPTY_IND (0xF2) - Indicates that the LPT buffer is now
+ * empty and more bytes can be sent.
  */
 static void send_lpt_buffer_empty_ind(void)
 {
@@ -501,7 +834,8 @@ static void send_lpt_read_pend_ind(uint8_t pins)
 }
 
 /**
- * Send BAD_COMMAND_IND (0xF4) - Send when a bad request is received. That request   will not receive a Confirmation.
+ * Send BAD_COMMAND_IND (0xF4) - Send when a bad request is received. That
+ * request   will not receive a Confirmation.
  */
 static void send_bad_command_ind(void)
 {

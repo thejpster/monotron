@@ -18,6 +18,7 @@ has_function_printf = true
 c_args = [
   '-ffunction-sections',
   '-fdata-sections',
+  '-fshort-enums',
   '-mmcu=atmega48p',
   '-DF_CPU=8000000L']
 c_link_args = ['-Wl,--gc-sections', '-mmcu=atmega48p']
