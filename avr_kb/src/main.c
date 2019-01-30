@@ -295,27 +295,38 @@ int main(void)
     g_lpt_fifo.size = sizeof(g_lpt_buffer);
     g_keyboard_word = SHIFT_REGISTER_INIT_WORD;
     g_mouse_word = SHIFT_REGISTER_INIT_WORD;
-
-    setup_io();
-    bool mouse = false;
-    bool keyboard = false;
-    // Scan for keyboard and mouse here
-    // TODO
-    // Send booted ind
-    send_booted_ind(keyboard, mouse, VERSION);
-    uart_flush();
-    // Wait for commands. We handle keyboard, mouse and LPT ack under
-    // interrupt.
-    while(run()) {
-        bool more_processing = false;
-        do {
-            more_processing |= process_port_keyboard();
-            more_processing |= process_port_mouse();
-            more_processing |= process_port_parallel();
-            more_processing |= process_port_serial();
-        } while(more_processing);
-        sleep_mode();
+    DDRB = 0xFF;
+    PORTB = 0xAA;
+    volatile uint8_t test = 0;
+    for(;;) {
+        test++;
     }
+
+    // setup_io();
+    // bool mouse = false;
+    // bool keyboard = false;
+    // // Scan for keyboard and mouse here
+    // // TODO
+    // // Send booted ind
+    // send_booted_ind(keyboard, mouse, VERSION);
+    // uart_flush();
+    // // Wait for commands. We handle keyboard, mouse and LPT ack under
+    // // interrupt.
+    // uint8_t leds = 0;
+    // uint16_t counter = 0;
+    // while(run()) {
+    //     if (counter++ == 0) {
+    //         PORTB = ++leds;
+    //     }
+    //     bool more_processing = false;
+    //     do {
+    //         more_processing |= process_port_keyboard();
+    //         more_processing |= process_port_mouse();
+    //         more_processing |= process_port_parallel();
+    //         more_processing |= process_port_serial();
+    //     } while(more_processing);
+    //     sleep_mode();
+    // }
 }
 
 /**
@@ -369,12 +380,13 @@ ISR(PCINT1_vect)
 static void setup_io(void)
 {
 #ifdef __AVR__
-    DDRB = 0x00; // No inputs
-    DDRC = PC_KB_CLK | PC_MS_CLK | PC_KB_DATA | PC_MS_DATA | PC_LPT_nINIT | PC_LPT_nSELPRIN;
-    DDRD = PD_LPT_nACK | PD_LPT_BUSY | PD_LPT_nPE | PD_LPT_nERROR;
-    PORTB = 0x00; // Outputs low by default
+    // 1 = output, 0 = input
+    DDRB = 0xFF; // All outputs
+    DDRC = PC_LPT_nINIT | PC_LPT_nSELPRIN;
+    DDRD = PD_UART_TX | PD_LPT_nAUTOFEED | PD_LPT_nSTROBE;
+    PORTB = 0xFF; // Outputs high by default
     PORTC = PC_LPT_nINIT | PC_LPT_nSELPRIN;
-    PORTD = PD_LPT_nACK | PD_LPT_nPE | PD_LPT_nERROR;
+    PORTD = PD_LPT_nSTROBE | PD_LPT_nAUTOFEED;
 #endif
 
     // Configure interrupts here.
