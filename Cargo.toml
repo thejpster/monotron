@@ -16,6 +16,7 @@ bench = false
 
 [profile.release]
 lto = true
+incremental = false
 debug = true
 codegen-units = 1
 opt-level = "s"
