@@ -16,6 +16,7 @@ bench = false
 
 [profile.release]
 lto = true
+incremental = false
 debug = true
 codegen-units = 1
 opt-level = "s"
@@ -59,8 +60,8 @@ version = "0.3.0"
 version = "0.2"
 
 [dependencies.embedded-sdmmc]
-version = "0.1"
-# path = "../embedded-sdmmc-rs"
+version = "0.2"
+# path = "../embedded-sdmmc"
 # git = "https://github.com/thejpster/embedded-sdmmc-rs"
 
 [dependencies.nb]

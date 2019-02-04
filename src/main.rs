@@ -107,12 +107,33 @@ impl embedded_sdmmc::TimeSource for DummyTimeSource {
 
 struct Context {
     pub value: u32,
-    uart: hal::serial::Serial<
+    usb_uart: hal::serial::Serial<
         hal::serial::UART0,
         hal::gpio::gpioa::PA1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
         hal::gpio::gpioa::PA0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
         (),
         (),
+    >,
+    avr_uart: hal::serial::Serial<
+        hal::serial::UART7,
+        hal::gpio::gpioe::PE1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioe::PE0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        (),
+        (),
+    >,
+    midi_uart: hal::serial::Serial<
+        hal::serial::UART3,
+        hal::gpio::gpioc::PC7<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioc::PC6<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        (),
+        (),
+    >,
+    rs232_uart: hal::serial::Serial<
+        hal::serial::UART1,
+        hal::gpio::gpiob::PB1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpiob::PB0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioc::PC4<hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>>,
+        hal::gpio::gpioc::PC5<hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>>,
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
     buffered_char: Option<Input>,
@@ -233,7 +254,7 @@ impl Context {
             core::mem::swap(&mut self.buffered_char, &mut x);
             return x;
         }
-        if let Ok(ch) = self.uart.read() {
+        if let Ok(ch) = self.usb_uart.read() {
             // Got some serial input
             // Backspace key in screen seems to generate 0x7F (delete).
             // Map it to backspace (0x08)
@@ -327,7 +348,7 @@ fn main() -> ! {
 
     let mut porta = p.GPIO_PORTA.split(&sc.power_control);
     let mut portb = p.GPIO_PORTB.split(&sc.power_control);
-    let portc = p.GPIO_PORTC.split(&sc.power_control);
+    let mut portc = p.GPIO_PORTC.split(&sc.power_control);
     let mut portd = p.GPIO_PORTD.split(&sc.power_control);
     let mut porte = p.GPIO_PORTE.split(&sc.power_control);
     let mut portf = p.GPIO_PORTF.split(&sc.power_control);
@@ -391,18 +412,8 @@ fn main() -> ! {
         &sc.power_control,
     );
 
-    unsafe {
-        let hw = VideoHardware {
-            h_timer: p.TIMER1,
-            red_ch: p.SSI1,
-            green_ch: p.SSI2,
-            blue_ch: p.SSI3,
-        };
-        FRAMEBUFFER.init(hw);
-    }
-
-    // Activate UART
-    let uart = Serial::uart0(
+    // USB Serial UART
+    let mut usb_uart = Serial::uart0(
         p.UART0,
         porta
             .pa1
@@ -417,6 +428,63 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
+
+    usb_uart.write_all(b"This is a test\r\n");
+
+    // MIDI UART
+    let mut midi_uart = Serial::uart3(
+        p.UART3,
+        portc.pc7.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
+        portc.pc6.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
+        (),
+        (),
+        31250_u32.bps(),
+        NewlineMode::Binary,
+        &clocks,
+        &sc.power_control,
+    );
+    midi_uart.write_all(b"This is a test\r\n");
+
+
+    // AVR UART
+    let mut avr_uart = Serial::uart7(
+        p.UART7,
+        porte.pe1.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
+        porte.pe0.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
+        (),
+        (),
+        115200_u32.bps(),
+        NewlineMode::Binary,
+        &clocks,
+        &sc.power_control,
+    );
+    avr_uart.write_all(b"This is a test\r\n");
+
+
+    // RS-232 UART
+    let mut rs232_uart = Serial::uart1(
+        p.UART1,
+        portb.pb1.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
+        portb.pb0.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
+        portc.pc4.into_af_push_pull::<hal::gpio::AF2>(&mut portc.control),
+        portc.pc5.into_af_push_pull::<hal::gpio::AF2>(&mut portc.control),
+        115200_u32.bps(),
+        NewlineMode::Binary,
+        &clocks,
+        &sc.power_control,
+    );
+    rs232_uart.write_all(b"This is a test\r\n");
+
+
+    unsafe {
+        let hw = VideoHardware {
+            h_timer: p.TIMER1,
+            red_ch: p.SSI1,
+            green_ch: p.SSI2,
+            blue_ch: p.SSI3,
+        };
+        FRAMEBUFFER.init(hw);
+    }
 
     // struct LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
     //     spi: T,
@@ -446,7 +514,10 @@ fn main() -> ! {
 
     let mut c = Context {
         value: 0,
-        uart,
+        usb_uart,
+        avr_uart,
+        midi_uart,
+        rs232_uart,
         keyboard,
         buffered_char: None,
         joystick: Joystick {
@@ -463,7 +534,7 @@ fn main() -> ! {
         clocks,
     };
 
-    while c.uart.read().is_ok() {
+    while c.usb_uart.read().is_ok() {
         // Try again and empty the buffer
     }
 
