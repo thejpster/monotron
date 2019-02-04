@@ -135,7 +135,7 @@ struct Context {
         hal::gpio::gpioc::PC4<hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>>,
         hal::gpio::gpioc::PC5<hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>>,
     >,
-    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
+    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2>,
     buffered_char: Option<Input>,
     joystick: Joystick,
     cont: embedded_sdmmc::Controller<
@@ -234,10 +234,6 @@ impl Joystick {
 }
 
 impl Context {
-    fn keyboard_read(&mut self) -> Option<u16> {
-        None
-    }
-
     fn has_char(&mut self) -> bool {
         let attempt = self.read();
         if attempt.is_some() {
@@ -264,13 +260,13 @@ impl Context {
                 Some(Input::Utf8(ch))
             }
         } else {
-            let key = if let Some(word) = self.keyboard_read() {
-                // Got something in the keyboard buffer
-                match self.keyboard.add_word(word) {
+            let key = if let Ok(ch) = self.avr_uart.read() {
+                // Got something in the buffer from the AVR
+                match self.keyboard.add_byte(ch) {
                     Ok(Some(event)) => self.keyboard.process_keyevent(event),
                     Ok(None) => None,
                     Err(e) => {
-                        writeln!(self, "Bad key input! {:?}", e).unwrap();
+                        writeln!(self, "Bad key input! {:?} (0x{:02x})", e, ch).unwrap();
                         None
                     }
                 }
@@ -432,7 +428,7 @@ fn main() -> ! {
     usb_uart.write_all(b"This is a test\r\n");
 
     // MIDI UART
-    let mut midi_uart = Serial::uart3(
+    let midi_uart = Serial::uart3(
         p.UART3,
         portc.pc7.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
         portc.pc6.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
@@ -443,26 +439,22 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
-    midi_uart.write_all(b"This is a test\r\n");
-
 
     // AVR UART
-    let mut avr_uart = Serial::uart7(
+    let avr_uart = Serial::uart7(
         p.UART7,
         porte.pe1.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
         porte.pe0.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
         (),
         (),
-        115200_u32.bps(),
+        19200_u32.bps(),
         NewlineMode::Binary,
         &clocks,
         &sc.power_control,
     );
-    avr_uart.write_all(b"This is a test\r\n");
-
 
     // RS-232 UART
-    let mut rs232_uart = Serial::uart1(
+    let rs232_uart = Serial::uart1(
         p.UART1,
         portb.pb1.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
         portb.pb0.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
@@ -473,8 +465,6 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
-    rs232_uart.write_all(b"This is a test\r\n");
-
 
     unsafe {
         let hw = VideoHardware {
@@ -510,7 +500,7 @@ fn main() -> ! {
 
     // let sdmmc_spi = LoggingSpi { spi: sdmmc_spi };
 
-    let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
+    let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2);
 
     let mut c = Context {
         value: 0,
