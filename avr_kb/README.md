@@ -12,6 +12,9 @@ Atmega48, and it controls the:
 It talks to the main Monotron MCU over a serial link at 115,200 bps (8-data
 bits, no parity, 1 stop bit).
 
+NB: As an interim test, there's an Arduino sketch in the `keyboard` folder
+which just emits raw scan-codes over the UART at 19,200 baud.
+
 ## Compilation
 
 This firmware builds with `avr-gcc` and `meson`.

@@ -344,6 +344,13 @@ On the [Monotron PCB](#monotron-pcb) I work around this issue by adding an
 Atmel AtMega48 microcontroller as an I/O expander, connected to [UART](#uart)
 7. Look in the [`avr_kb`](./avr_kb) folder for more information.
 
+__Note:__ There's a bug in the 0.7.0 PCB where both PS/2 connector pinouts are
+mirror image, compared to how they should be. It happened because although the
+connector drawings said "Bottom View" quite clearly, I didn't pay enough
+attention and assumed they were viewed from above! To use the PS/2 connectors,
+they must be fitted to the underside of the PCB (i.e. opposite to all the
+other connectors). This will be fixed in the next PCB revision.
+
 ### MIDI
 
 The [Monotron PCB](#monotron-pcb) has three 5-pin DIN MIDI ports: In, Out and
@@ -354,7 +361,8 @@ Through. These are connected to UART 3.
 The 25-pin Parallel Printer Port is connected to the Monotron PCB's AtMega48
 I/O controller. You send commands to the AtMega to get it to drive the printer
 port. Currently only SPP (classic mono-directional support as found on the
-original IBM PC). Support for the fancier EPP and ECP modes is TBD.
+original IBM PC) is planned for support. Support for the fancier EPP and ECP
+modes is TBD.
 
 ## Monotron PCB
 
