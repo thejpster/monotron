@@ -121,6 +121,7 @@ struct Context {
         (),
         (),
     >,
+    #[allow(dead_code)] // we'll get on to this later
     midi_uart: hal::serial::Serial<
         hal::serial::UART3,
         hal::gpio::gpioc::PC7<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -128,6 +129,7 @@ struct Context {
         (),
         (),
     >,
+    #[allow(dead_code)] // we'll get on to this later
     rs232_uart: hal::serial::Serial<
         hal::serial::UART1,
         hal::gpio::gpiob::PB1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -159,12 +161,12 @@ struct Context {
         DummyTimeSource,
     >,
     clocks: hal::sysctl::Clocks,
+    seen_keypress: bool,
 }
 
 enum Input {
-    Unicode(char),
     Special(pc_keyboard::KeyCode),
-    Utf8(u8),
+    Cp850(u8),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -255,18 +257,26 @@ impl Context {
             // Backspace key in screen seems to generate 0x7F (delete).
             // Map it to backspace (0x08)
             if ch == 0x7F {
-                Some(Input::Utf8(0x08))
+                Some(Input::Cp850(0x08))
             } else {
-                Some(Input::Utf8(ch))
+                // Just bodge the UTF-8 input into CP850 and hope for the best
+                Some(Input::Cp850(ch))
             }
         } else {
             let key = if let Ok(ch) = self.avr_uart.read() {
                 // Got something in the buffer from the AVR
                 match self.keyboard.add_byte(ch) {
-                    Ok(Some(event)) => self.keyboard.process_keyevent(event),
+                    Ok(Some(event)) => {
+                        self.seen_keypress = true;
+                        self.keyboard.process_keyevent(event)
+                    }
                     Ok(None) => None,
-                    Err(e) => {
+                    Err(e) if self.seen_keypress => {
                         writeln!(self, "Bad key input! {:?} (0x{:02x})", e, ch).unwrap();
+                        None
+                    }
+                    Err(_e) => {
+                        // Squash any random errors on start-up
                         None
                     }
                 }
@@ -279,9 +289,11 @@ impl Context {
                 Some(pc_keyboard::DecodedKey::Unicode(c)) => {
                     if c == '\n' {
                         // Return generates \n but menu wants \r
-                        Some(Input::Unicode('\r'))
+                        Some(Input::Cp850(b'\r'))
                     } else {
-                        Some(Input::Unicode(c))
+                        // Er, do a better Unicode to CP850 translation here!
+                        let byte = fb::Char::map_char(c) as u8;
+                        Some(Input::Cp850(byte))
                     }
                 }
                 Some(pc_keyboard::DecodedKey::RawKey(code)) => {
@@ -522,6 +534,7 @@ fn main() -> ! {
             DummyTimeSource,
         ),
         clocks,
+        seen_keypress: false,
     };
 
     while c.usb_uart.read().is_ok() {
@@ -566,15 +579,7 @@ fn main() -> ! {
         api::wfvbi(r.context);
         // Wait for new UTF-8 input
         match r.context.read() {
-            Some(Input::Unicode(ch)) => {
-                let mut char_as_bytes: [u8; 4] = [0u8; 4];
-                // Our menu takes UTF-8 chars for serial compatibility,
-                // so convert our Unicode to UTF8 bytes
-                for octet in ch.encode_utf8(&mut char_as_bytes).bytes() {
-                    r.input_byte(octet);
-                }
-            }
-            Some(Input::Utf8(octet)) => {
+            Some(Input::Cp850(octet)) => {
                 r.input_byte(octet);
             }
             Some(Input::Special(code)) => {

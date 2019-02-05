@@ -101,15 +101,11 @@ pub(crate) extern "C" fn readc(raw_ctx: *mut Context) -> i32 {
             None => {
                 asm::wfi();
             }
-            Some(Input::Unicode(_unicode_char)) => {
-                // TODO: Handle keyboard input
-                asm::wfi();
-            }
             Some(Input::Special(_scancode)) => {
                 // TODO: Handle keyboard input
                 asm::wfi();
             }
-            Some(Input::Utf8(ch)) => {
+            Some(Input::Cp850(ch)) => {
                 return ch as i32;
             }
         }
