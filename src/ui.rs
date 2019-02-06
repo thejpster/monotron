@@ -92,6 +92,12 @@ static ITEM_DPAGE: Item = Item {
     help: Some("Load and display a text file"),
 };
 
+static ITEM_RS232_READ: Item = Item {
+    item_type: menu::ItemType::Callback(item_rs232_read),
+    command: "read",
+    help: Some("Read from RS232"),
+};
+
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -109,6 +115,7 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_DLOAD,
         &ITEM_DDUMP,
         &ITEM_DPAGE,
+        &ITEM_RS232_READ,
     ],
     entry: None,
     exit: None,
@@ -594,6 +601,14 @@ fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
     match f(c) {
         Err(e) => writeln!(c, "Error: {:?}", e).unwrap(),
         _ => (),
+    }
+}
+
+fn item_rs232_read<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    // Check the RS-232 UART
+    while let Ok(ch) = c.rs232_uart.read() {
+        writeln!(c, "RX: 0x{:02x}", ch).unwrap();
+        writeln!(c.rs232_uart, "RX: 0x{:02x}", ch).unwrap();
     }
 }
 
