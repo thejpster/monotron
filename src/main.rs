@@ -512,7 +512,12 @@ fn main() -> ! {
 
     // let sdmmc_spi = LoggingSpi { spi: sdmmc_spi };
 
-    let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2);
+    // TODO let users pick a keyboard layout, and store their choice in EEPROM somewhere
+    let keyboard = pc_keyboard::Keyboard::new(
+        pc_keyboard::layouts::Uk105Key,
+        pc_keyboard::ScancodeSet2,
+        pc_keyboard::HandleControl::MapLettersToUnicode
+        );
 
     let mut c = Context {
         value: 0,

@@ -52,7 +52,7 @@ version = "0.6.1"
 version = "0.2"
 
 [dependencies.pc-keyboard]
-version = "0.4.1"
+version = "0.5"
 # path = "../pc-keyboard"
 
 [dependencies.monotron-synth]
