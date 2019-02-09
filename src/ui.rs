@@ -112,12 +112,12 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &Item {
             item_type: menu::ItemType::Callback(rs232_term),
             command: "rterm",
-            help: Some("<baud> - Enter terminal mode on RS232 port")
+            help: Some("<baud> - Enter terminal mode on RS232 port"),
         },
         &Item {
             item_type: menu::ItemType::Callback(midi_term),
             command: "mterm",
-            help: Some("Enter terminal mode on MIDI port")
+            help: Some("Enter terminal mode on MIDI port"),
         },
     ],
     entry: None,

@@ -53,10 +53,10 @@ extern crate panic_halt;
 
 use core::fmt::Write;
 use cortex_m_rt::{entry, exception};
+use fb::AsciiConsole;
 use monotron_synth::*;
 use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
-use fb::AsciiConsole;
 
 use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
@@ -308,9 +308,7 @@ impl Context {
 
     /// Write an 8-bit ASCII character to the screen.
     fn write_u8(&mut self, ch: u8) {
-        unsafe {
-            FRAMEBUFFER.write_character(ch).unwrap()
-        }
+        unsafe { FRAMEBUFFER.write_character(ch).unwrap() }
     }
 }
 
@@ -450,8 +448,12 @@ fn main() -> ! {
     // MIDI UART
     let midi_uart = Serial::uart3(
         p.UART3,
-        portc.pc7.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
-        portc.pc6.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
+        portc
+            .pc7
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
+        portc
+            .pc6
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
         (),
         (),
         31250_u32.bps(),
@@ -463,8 +465,12 @@ fn main() -> ! {
     // AVR UART
     let avr_uart = Serial::uart7(
         p.UART7,
-        porte.pe1.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
-        porte.pe0.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
+        porte
+            .pe1
+            .into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
+        porte
+            .pe0
+            .into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
         (),
         (),
         19200_u32.bps(),
@@ -476,10 +482,18 @@ fn main() -> ! {
     // RS-232 UART
     let rs232_uart = Serial::uart1(
         p.UART1,
-        portb.pb1.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
-        portb.pb0.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
-        portc.pc4.into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
-        portc.pc5.into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
+        portb
+            .pb1
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
+        portb
+            .pb0
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
+        portc
+            .pc4
+            .into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
+        portc
+            .pc5
+            .into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
         115200_u32.bps(),
         NewlineMode::Binary,
         &clocks,
@@ -524,8 +538,8 @@ fn main() -> ! {
     let keyboard = pc_keyboard::Keyboard::new(
         pc_keyboard::layouts::Uk105Key,
         pc_keyboard::ScancodeSet2,
-        pc_keyboard::HandleControl::MapLettersToUnicode
-        );
+        pc_keyboard::HandleControl::MapLettersToUnicode,
+    );
 
     let mut c = Context {
         value: 0,
