@@ -56,6 +56,7 @@ use cortex_m_rt::{entry, exception};
 use monotron_synth::*;
 use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
+use fb::AsciiConsole;
 
 use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
@@ -302,6 +303,13 @@ impl Context {
                     Some(Input::Special(code))
                 }
             }
+        }
+    }
+
+    /// Write an 8-bit ASCII character to the screen.
+    fn write_u8(&mut self, ch: u8) {
+        unsafe {
+            FRAMEBUFFER.write_character(ch).unwrap()
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::fb::{self, AsciiConsole, BaseConsole};
 use crate::hal::prelude::*;
-use crate::{api, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
+use crate::{api, Context, Input, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
 use core::fmt::Write;
 use embedded_hal::prelude::*;
 use menu;
@@ -92,12 +92,6 @@ static ITEM_DPAGE: Item = Item {
     help: Some("Load and display a text file"),
 };
 
-static ITEM_RS232_READ: Item = Item {
-    item_type: menu::ItemType::Callback(item_rs232_read),
-    command: "read",
-    help: Some("Read from RS232"),
-};
-
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -115,7 +109,16 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &ITEM_DLOAD,
         &ITEM_DDUMP,
         &ITEM_DPAGE,
-        &ITEM_RS232_READ,
+        &Item {
+            item_type: menu::ItemType::Callback(rs232_term),
+            command: "rterm",
+            help: Some("<baud> - Enter terminal mode on RS232 port")
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(midi_term),
+            command: "mterm",
+            help: Some("Enter terminal mode on MIDI port")
+        },
     ],
     entry: None,
     exit: None,
@@ -604,12 +607,84 @@ fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
     }
 }
 
-fn item_rs232_read<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
-    // Check the RS-232 UART
-    while let Ok(ch) = c.rs232_uart.read() {
-        writeln!(c, "RX: 0x{:02x}", ch).unwrap();
-        writeln!(c.rs232_uart, "RX: 0x{:02x}", ch).unwrap();
+fn rs232_term<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    if let Some(bitrate) = parts
+        .next()
+        .map_or(None, |p| u32::from_str_radix(p, 10).ok())
+    {
+        c.rs232_uart.change_baud_rate(bitrate.bps(), &c.clocks);
+        writeln!(c, "Connected at {} bps. Ctrl-Q to quit.", bitrate).unwrap();
+        loop {
+            match c.rs232_uart.read() {
+                Ok(ch) => {
+                    c.write_u8(ch);
+                }
+                Err(_e) => {
+                    // Ignore
+                }
+            }
+            match c.read() {
+                Some(Input::Cp850(17)) => {
+                    // User pressed Ctrl-Q
+                    break;
+                }
+                Some(Input::Cp850(b'\r')) => {
+                    // User pressed enter
+                    let _ = c.rs232_uart.write(b'\r');
+                    let _ = c.rs232_uart.write(b'\n');
+                }
+                Some(Input::Cp850(ch)) => {
+                    let _ = c.rs232_uart.write(ch);
+                }
+                Some(Input::Special(_code)) => {
+                    // Drop it on the floor
+                }
+                None => {
+                    // Do nothing
+                }
+            }
+            cortex_m::asm::wfi();
+        }
+        writeln!(c, "Disconnected!").unwrap();
+    } else {
+        writeln!(c, "Error: Need an integer baud rate (e.g. 115200)").unwrap();
     }
+}
+
+fn midi_term<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    writeln!(c, "Connected at 31,250 bps. Ctrl-Q to quit.").unwrap();
+    loop {
+        match c.midi_uart.read() {
+            Ok(0xFE) => {
+                // The 'Active Sensing' keep-alive byte
+            }
+            Ok(ch) => {
+                write!(c, "0x{:02x}  ", ch).unwrap();
+            }
+            Err(_) => {
+                // Do nothing
+            }
+        }
+        match c.read() {
+            Some(Input::Cp850(17)) => {
+                // User pressed Ctrl-Q
+                break;
+            }
+            Some(Input::Cp850(ch)) => {
+                let _ = c.midi_uart.write(ch);
+            }
+            Some(Input::Special(_code)) => {
+                // Drop it on the floor
+            }
+            None => {
+                // Do nothing
+            }
+        }
+        cortex_m::asm::wfi();
+    }
+    writeln!(c, "Disconnected!").unwrap();
 }
 
 // End of file
