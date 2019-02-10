@@ -74,7 +74,7 @@ const APPLICATION_LEN: usize = TOTAL_RAM_LEN - OS_RAM_LEN;
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 static GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
-static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
+// static FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
 struct VideoHardware {
     h_timer: cpu::TIMER1,
@@ -163,6 +163,7 @@ struct Context {
     >,
     clocks: hal::sysctl::Clocks,
     seen_keypress: bool,
+    console: fb::Console,
 }
 
 enum Input {
@@ -308,13 +309,13 @@ impl Context {
 
     /// Write an 8-bit ASCII character to the screen.
     fn write_u8(&mut self, ch: u8) {
-        unsafe { FRAMEBUFFER.write_character(ch).unwrap() }
+        self.console.write_character(ch).unwrap();
     }
 }
 
 impl core::fmt::Write for Context {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        unsafe { FRAMEBUFFER.write_str(s) }
+        self.console.write_str(s)
     }
 }
 
@@ -500,15 +501,13 @@ fn main() -> ! {
         &sc.power_control,
     );
 
-    unsafe {
-        let hw = VideoHardware {
-            h_timer: p.TIMER1,
-            red_ch: p.SSI1,
-            green_ch: p.SSI2,
-            blue_ch: p.SSI3,
-        };
-        FRAMEBUFFER.init(hw);
-    }
+    let hw = VideoHardware {
+        h_timer: p.TIMER1,
+        red_ch: p.SSI1,
+        green_ch: p.SSI2,
+        blue_ch: p.SSI3,
+    };
+    FRAMEBUFFER.init(hw);
 
     // struct LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
     //     spi: T,
@@ -568,10 +567,8 @@ fn main() -> ! {
         // Try again and empty the buffer
     }
 
-    unsafe {
-        FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
-        FRAMEBUFFER.clear();
-    }
+    FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
+    FRAMEBUFFER.clear();
 
     write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
     write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
@@ -756,6 +753,8 @@ impl fb::Hardware for VideoHardware {
 /// Called on start of sync pulse (end of front porch)
 interrupt!(TIMER1A, timer1a);
 fn timer1a() {
+    static FRAMEBUFFER: Framebuffer = Framebuffer::new();
+
     let pwm = unsafe { &*cpu::PWM0::ptr() };
     static mut NEXT_SAMPLE: u8 = 128;
     pwm._2_cmpa
@@ -772,7 +771,7 @@ fn timer1a() {
     ssi_r.dr.write(|w| unsafe { w.data().bits(0) });
     ssi_g.dr.write(|w| unsafe { w.data().bits(0) });
     // Run the draw routine
-    unsafe { FRAMEBUFFER.isr_sol() };
+    FRAMEBUFFER.isr_sol();
     // Run the audio routine
     unsafe {
         NEXT_SAMPLE = G_SYNTH.next().into();

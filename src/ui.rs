@@ -126,8 +126,8 @@ pub(crate) static ROOT_MENU: Menu = Menu {
 
 /// Clears the screen
 fn item_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Context) {
-    unsafe { FRAMEBUFFER.clear() };
-    unsafe { FRAMEBUFFER.set_pos(fb::Position::origin()).unwrap() };
+    FRAMEBUFFER.clear();
+    FRAMEBUFFER.set_pos(fb::Position::origin()).unwrap();
 }
 
 fn item_peek<'a>(_menu: &Menu, _item: &Item, input: &str, context: &mut Context) {
@@ -301,10 +301,7 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Co
 
 /// Print some debug info.
 fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, context: &mut Context) {
-    writeln!(context, "Framebuffer: {:08p}", unsafe {
-        &FRAMEBUFFER as *const _
-    })
-    .unwrap();
+    writeln!(context, "Framebuffer: {:08p}", &FRAMEBUFFER as *const _).unwrap();
     writeln!(context, "Application: {:08p}", APPLICATION_START_ADDR).unwrap();
     writeln!(
         context,
@@ -443,14 +440,9 @@ fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
         c.cont.iterate_dir(&v, &dir, |x| {
             if !x.attributes.is_hidden() && !x.attributes.is_volume() {
                 if x.attributes.is_directory() {
-                    unsafe {
-                        writeln!(FRAMEBUFFER, "{:13} {} <DIR>", x.name, x.mtime).unwrap();
-                    }
+                    writeln!(FRAMEBUFFER, "{:13} {} <DIR>", x.name, x.mtime).unwrap();
                 } else {
-                    unsafe {
-                        writeln!(FRAMEBUFFER, "{:13} {} {} bytes", x.name, x.mtime, x.size)
-                            .unwrap();
-                    }
+                    writeln!(FRAMEBUFFER, "{:13} {} {} bytes", x.name, x.mtime, x.size).unwrap();
                 }
             }
         })?;
@@ -575,9 +567,7 @@ fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
         let mut line_length = 0;
         const MAX_LINES: usize = 35;
         for &b in application_ram[0..f.length() as usize].iter() {
-            unsafe {
-                let _ = FRAMEBUFFER.write_character(b);
-            }
+            let _ = FRAMEBUFFER.write_character(b);
             line_length += 1;
             if (b == b'\n') || (line_length == 48) {
                 lines_printed += 1;

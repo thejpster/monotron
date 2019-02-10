@@ -83,7 +83,7 @@ pub(crate) extern "C" fn puts(_raw_ctx: *mut Context, s: *const u8) -> i32 {
 /// Print a single 8-bit character, in Code Page 850, to the screen. See
 /// `puts` for details.
 pub(crate) extern "C" fn putchar(_raw_ctx: *mut Context, ch: u8) -> i32 {
-    unsafe { FRAMEBUFFER.write_character(ch).unwrap() };
+    FRAMEBUFFER.write_character(ch).unwrap();
     ch as i32
 }
 
@@ -118,10 +118,10 @@ pub(crate) extern "C" fn readc(raw_ctx: *mut Context) -> i32 {
 ///
 /// Also useful for pausing for up to 1/60th of a second.
 pub(crate) extern "C" fn wfvbi(_raw_ctx: *mut Context) {
-    let old_frame = unsafe { FRAMEBUFFER.frame() };
+    let old_frame = FRAMEBUFFER.frame();
     loop {
         asm::wfi();
-        let new_frame = unsafe { FRAMEBUFFER.frame() };
+        let new_frame = FRAMEBUFFER.frame();
         if new_frame != old_frame {
             break;
         }
@@ -144,9 +144,7 @@ pub(crate) extern "C" fn move_cursor(_raw_ctx: *mut Context, row: u8, col: u8) {
     if col as usize <= TEXT_MAX_COL {
         if row as usize <= TEXT_MAX_ROW {
             let p = Position::new(Row(row), Col(col));
-            unsafe {
-                let _ = FRAMEBUFFER.set_pos(p);
-            }
+            let _ = FRAMEBUFFER.set_pos(p);
         }
     }
 }
@@ -211,9 +209,7 @@ pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: 
         _ => None,
     };
     if let Some(f) = new_font {
-        unsafe {
-            FRAMEBUFFER.set_custom_font(f);
-        }
+        FRAMEBUFFER.set_custom_font(f);
     }
 }
 
@@ -225,7 +221,5 @@ pub(crate) extern "C" fn get_joystick(raw_ctx: *mut Context) -> u8 {
 
 /// Change whether the cursor is visible
 pub(crate) extern "C" fn set_cursor_visible(_raw_ctx: *mut Context, visible: u8) {
-    unsafe {
-        FRAMEBUFFER.set_cursor_visible(visible != 0);
-    }
+    FRAMEBUFFER.set_cursor_visible(visible != 0);
 }
