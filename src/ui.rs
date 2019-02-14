@@ -8,107 +8,79 @@ use menu;
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
 
-static ITEM_CLEAR: Item = Item {
-    item_type: menu::ItemType::Callback(item_clear),
-    command: "clear",
-    help: Some("Reset the display."),
-};
-
-static ITEM_PEEK: Item = Item {
-    item_type: menu::ItemType::Callback(item_peek),
-    command: "peek",
-    help: Some("<addr> - Read a register."),
-};
-
-static ITEM_POKE: Item = Item {
-    item_type: menu::ItemType::Callback(item_poke),
-    command: "poke",
-    help: Some("<addr> <value> - Write a register."),
-};
-
-static ITEM_DUMP: Item = Item {
-    item_type: menu::ItemType::Callback(item_dump),
-    command: "dump",
-    help: Some("<addr> <bytes> - Dump RAM/ROM."),
-};
-
-static ITEM_LOAD: Item = Item {
-    item_type: menu::ItemType::Callback(item_load_file),
-    command: "load",
-    help: Some("Load program from UART."),
-};
-
-static ITEM_DEBUG: Item = Item {
-    item_type: menu::ItemType::Callback(item_debug_info),
-    command: "debug",
-    help: Some("Show some debug info."),
-};
-
-static ITEM_RUN: Item = Item {
-    item_type: menu::ItemType::Callback(item_run_program),
-    command: "run",
-    help: Some("Run loaded program."),
-};
-
-static ITEM_BEEP: Item = Item {
-    item_type: menu::ItemType::Callback(item_beep),
-    command: "beep",
-    help: Some("Make a beep."),
-};
-
-static ITEM_MOUNT: Item = Item {
-    item_type: menu::ItemType::Callback(item_mount),
-    command: "mount",
-    help: Some("Mount a new SD/MMC card."),
-};
-
-static ITEM_UNMOUNT: Item = Item {
-    item_type: menu::ItemType::Callback(item_unmount),
-    command: "unmount",
-    help: Some("Unmount an SD/MMC card."),
-};
-
-static ITEM_DIR: Item = Item {
-    item_type: menu::ItemType::Callback(item_dir),
-    command: "dir",
-    help: Some("List the root directory"),
-};
-
-static ITEM_DLOAD: Item = Item {
-    item_type: menu::ItemType::Callback(item_dload),
-    command: "dload",
-    help: Some("Load file from the SD-Card"),
-};
-
-static ITEM_DDUMP: Item = Item {
-    item_type: menu::ItemType::Callback(item_ddump),
-    command: "ddump",
-    help: Some("Load and display a binary file"),
-};
-
-static ITEM_DPAGE: Item = Item {
-    item_type: menu::ItemType::Callback(item_dpage),
-    command: "dpage",
-    help: Some("Load and display a text file"),
-};
-
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
-        &ITEM_CLEAR,
-        &ITEM_PEEK,
-        &ITEM_POKE,
-        &ITEM_DUMP,
-        &ITEM_LOAD,
-        &ITEM_RUN,
-        &ITEM_DEBUG,
-        &ITEM_BEEP,
-        &ITEM_MOUNT,
-        &ITEM_UNMOUNT,
-        &ITEM_DIR,
-        &ITEM_DLOAD,
-        &ITEM_DDUMP,
-        &ITEM_DPAGE,
+        &Item {
+            item_type: menu::ItemType::Callback(item_clear),
+            command: "clear",
+            help: Some("Reset the display."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_peek),
+            command: "peek",
+            help: Some("<addr> - Read a register."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_poke),
+            command: "poke",
+            help: Some("<addr> <value> - Write a register."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dump),
+            command: "dump",
+            help: Some("<addr> <bytes> - Dump RAM/ROM."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_load_file),
+            command: "load",
+            help: Some("Load program from UART."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_debug_info),
+            command: "debug",
+            help: Some("Show some debug info."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_run_program),
+            command: "run",
+            help: Some("Run loaded program."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_beep),
+            command: "beep",
+            help: Some("Make a beep."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_mount),
+            command: "mount",
+            help: Some("Mount a new SD/MMC card."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_unmount),
+            command: "unmount",
+            help: Some("Unmount an SD/MMC card."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dir),
+            command: "dir",
+            help: Some("List the root directory"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dload),
+            command: "dload",
+            help: Some("Load file from the SD-Card"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_ddump),
+            command: "ddump",
+            help: Some("Load and display a binary file"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dpage),
+            command: "dpage",
+            help: Some("Load and display a text file"),
+        },
         &Item {
             item_type: menu::ItemType::Callback(rs232_term),
             command: "rterm",
@@ -118,6 +90,11 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             item_type: menu::ItemType::Callback(midi_term),
             command: "mterm",
             help: Some("Enter terminal mode on MIDI port"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(i2c_rx),
+            command: "i2c_rx",
+            help: Some("<addr> <num> - Read from I2C device"),
         },
     ],
     entry: None,
@@ -685,6 +662,26 @@ fn midi_term<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
         cortex_m::asm::wfi();
     }
     writeln!(c, "Disconnected!").unwrap();
+}
+
+fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    const RTC_READ_ADDR: u8 = 0b11011111;
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    let addr = if let Some(s) = parts.next() {
+        u8::from_str_radix(s, 10).unwrap_or(0)
+    } else {
+        0x00
+    };
+    let num_bytes = if let Some(s) = parts.next() {
+        usize::from_str_radix(s, 10).unwrap_or(0x01)
+    } else {
+        0x01usize
+    };
+    let mut read_buffer = [0u8; 16];
+    let command = [ addr ];
+    let result = c.i2c_bus.write_read(RTC_READ_ADDR, &command, &mut read_buffer[0..num_bytes]);
+    writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
 }
 
 // End of file

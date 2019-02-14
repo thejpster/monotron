@@ -60,6 +60,7 @@ use vga_framebuffer as fb;
 
 use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
+use self::hal::i2c::I2c;
 use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
@@ -139,6 +140,23 @@ struct Context {
         hal::gpio::gpioc::PC5<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
     >,
     keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2>,
+    i2c_bus: I2c<
+        cpu::I2C1,
+        (
+            hal::gpio::gpioa::PA6<
+                hal::gpio::AlternateFunction<
+                    hal::gpio::AF3,
+                    hal::gpio::OpenDrain<hal::gpio::Floating>,
+                >,
+            >,
+            hal::gpio::gpioa::PA7<
+                hal::gpio::AlternateFunction<
+                    hal::gpio::AF3,
+                    hal::gpio::OpenDrain<hal::gpio::Floating>,
+                >,
+            >,
+        ),
+    >,
     buffered_char: Option<Input>,
     joystick: Joystick,
     cont: embedded_sdmmc::Controller<
@@ -500,6 +518,22 @@ fn main() -> ! {
         &sc.power_control,
     );
 
+    // I²C bus
+    let i2c_bus = I2c::i2c1(
+        p.I2C1,
+        (
+            porta
+                .pa6
+                .into_af_open_drain::<hal::gpio::AF3, hal::gpio::Floating>(&mut porta.control),
+            porta
+                .pa7
+                .into_af_open_drain::<hal::gpio::AF3, hal::gpio::Floating>(&mut porta.control),
+        ),
+        100_000.hz(),
+        &clocks,
+        &sc.power_control,
+    );
+
     unsafe {
         let hw = VideoHardware {
             h_timer: p.TIMER1,
@@ -548,6 +582,7 @@ fn main() -> ! {
         midi_uart,
         rs232_uart,
         keyboard,
+        i2c_bus,
         buffered_char: None,
         joystick: Joystick {
             up: porte.pe2.into_pull_up_input(),
