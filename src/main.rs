@@ -146,7 +146,7 @@ struct Context {
             hal::gpio::gpioa::PA6<
                 hal::gpio::AlternateFunction<
                     hal::gpio::AF3,
-                    hal::gpio::OpenDrain<hal::gpio::Floating>,
+                    hal::gpio::PushPull,
                 >,
             >,
             hal::gpio::gpioa::PA7<
@@ -518,13 +518,13 @@ fn main() -> ! {
         &sc.power_control,
     );
 
-    // I²C bus
+    // I²C bus - SDA is open-drain but SCL isn't (see the TM4C123 TRM page 657)
     let i2c_bus = I2c::i2c1(
         p.I2C1,
         (
             porta
                 .pa6
-                .into_af_open_drain::<hal::gpio::AF3, hal::gpio::Floating>(&mut porta.control),
+                .into_af_push_pull::<hal::gpio::AF3>(&mut porta.control),
             porta
                 .pa7
                 .into_af_open_drain::<hal::gpio::AF3, hal::gpio::Floating>(&mut porta.control),
