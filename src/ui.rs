@@ -8,6 +8,9 @@ use menu;
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
 
+// 7-bit address - driver handles read/write bits
+const RTC_I2C_ADDR: u32 = 111;
+
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
@@ -94,7 +97,12 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         &Item {
             item_type: menu::ItemType::Callback(i2c_rx),
             command: "i2c_rx",
-            help: Some("<addr> <num> - Read from I2C device"),
+            help: Some("<addr> <reg> <num> - Read from I2C device"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(i2c_tx),
+            command: "i2c_tx",
+            help: Some("<addr> <reg> <byte> - Write to I2C device"),
         },
     ],
     entry: None,
@@ -664,24 +672,78 @@ fn midi_term<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
     writeln!(c, "Disconnected!").unwrap();
 }
 
-fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
-    const RTC_READ_ADDR: u8 = 0b11011111;
+fn i2c_tx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
     let mut parts = input.split_whitespace();
     parts.next(); // skip command itself
-    let addr = if let Some(s) = parts.next() {
-        u8::from_str_radix(s, 10).unwrap_or(0)
+    let i2c_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(RTC_I2C_ADDR)
+    } else {
+        writeln!(c, "Need an I2C address to write to!").unwrap();
+        return;
+    } as u8;
+    let reg_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x00)
+    } else {
+        writeln!(c, "Need a register to write to!").unwrap();
+        return;
+    } as u8;
+    let value = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x01)
+    } else {
+        writeln!(c, "Need a value to write!").unwrap();
+        return;
+    } as u8;
+
+    let mut read_buffer = [ 0 ];
+    let command = [ reg_addr, value ];
+    writeln!(c, "i2c_addr={}, reg_addr={}, value={}", i2c_addr, reg_addr, value).unwrap();
+    let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
+    writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
+}
+
+fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    let i2c_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(RTC_I2C_ADDR)
+    } else {
+        RTC_I2C_ADDR
+    } as u8;
+    let reg_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x00)
     } else {
         0x00
-    };
-    let num_bytes = if let Some(s) = parts.next() {
-        usize::from_str_radix(s, 10).unwrap_or(0x01)
+    } as u8;
+    let mut read_len = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x01)
     } else {
-        0x01usize
-    };
-    let mut read_buffer = [0u8; 16];
-    let command = [ addr ];
-    let result = c.i2c_bus.write_read(RTC_READ_ADDR, &command, &mut read_buffer[0..num_bytes]);
+        0x01
+    } as usize;
+    if read_len > 16
+    {
+        read_len = 16;
+    }
+    let mut read_buffer = &mut [0u8; 16][0..read_len];
+    let command = [reg_addr];
+    writeln!(c, "i2c_addr={}, reg_addr={}, num={}", i2c_addr, reg_addr, read_buffer.len()).unwrap();
+    let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
     writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
+}
+
+fn parse_u32(s: &str) -> Option<u32> {
+    if s.starts_with("0x") {
+        // Assume hex
+        u32::from_str_radix(&s[2..], 16).ok()
+    } else if s.starts_with("0b") {
+        // Assume binary
+        u32::from_str_radix(&s[2..], 2).ok()
+    } else if s.starts_with("0") {
+        // Assume octal
+        u32::from_str_radix(&s[1..], 8).ok()
+    } else {
+        // Assume decimal
+        u32::from_str_radix(s, 10).ok()
+    }
 }
 
 // End of file
