@@ -1,4 +1,3 @@
 (sym_lib_table
   (lib (name tm4c123g_launchpad)(type Legacy)(uri ${KIPRJMOD}/tm4c123g_launchpad.lib)(options "")(descr ""))
-  (lib (name ConnectorLocal)(type Legacy)(uri ${KIPRJMOD}/Connector.lib)(options "")(descr ""))
 )
