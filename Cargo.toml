@@ -1,6 +1,6 @@
 [package]
 name = "monotron"
-version = "0.8.0"
+version = "0.9.0"
 authors = ["Jorge Aparicio <jorge@japaric.io>", "Jonathan 'theJPster' Pallant <monotron@thejpster.org.uk>"]
 description = "A simple 1980's home computer style application for the Tiva-C Launchpad."
 keywords = ["arm", "cortex-m", "template", "video", "menu"]

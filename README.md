@@ -462,13 +462,14 @@ See [monotron-apps](https://github.com/thejpster/monotron-apps) for example
 apps which will run from Monotron's RAM, along with a wrapper which makes
 using the callbacks as simple as using a normal C library.
 
-## Unreleased changes (will be 0.9.0)
+## Unreleased changes (will be 0.10.0)
 
-* PCB design (Gerbers, schematic, etc).
-* Support for the extra features/interfaces on the PCB.
+* Nothing yet
 
 ## Changelog
 
+* Version 0.9.0 - Added I2C commands and support for the AtMega keyboard
+  controller (WIP) on the Monotron PCB.
 * Version 0.8.0 - Added cursor support to ABI. Added basic SD Card support
   (read-only).
 * Version 0.7.0 - Move application RAM to 0x2000_2000. Added cursor support.
