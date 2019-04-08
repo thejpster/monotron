@@ -53,12 +53,14 @@ extern crate panic_halt;
 
 use core::fmt::Write;
 use cortex_m_rt::{entry, exception};
+use fb::AsciiConsole;
 use monotron_synth::*;
 use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
 
 use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
+use self::hal::i2c::I2c;
 use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
@@ -121,6 +123,7 @@ struct Context {
         (),
         (),
     >,
+    #[allow(dead_code)] // we'll get on to this later
     midi_uart: hal::serial::Serial<
         hal::serial::UART3,
         hal::gpio::gpioc::PC7<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -128,6 +131,7 @@ struct Context {
         (),
         (),
     >,
+    #[allow(dead_code)] // we'll get on to this later
     rs232_uart: hal::serial::Serial<
         hal::serial::UART1,
         hal::gpio::gpiob::PB1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -135,7 +139,21 @@ struct Context {
         hal::gpio::gpioc::PC4<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
         hal::gpio::gpioc::PC5<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
     >,
-    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key>,
+    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2>,
+    i2c_bus: I2c<
+        cpu::I2C1,
+        (
+            hal::gpio::gpioa::PA6<
+                hal::gpio::AlternateFunction<hal::gpio::AF3, hal::gpio::PushPull>,
+            >,
+            hal::gpio::gpioa::PA7<
+                hal::gpio::AlternateFunction<
+                    hal::gpio::AF3,
+                    hal::gpio::OpenDrain<hal::gpio::Floating>,
+                >,
+            >,
+        ),
+    >,
     buffered_char: Option<Input>,
     joystick: Joystick,
     cont: embedded_sdmmc::Controller<
@@ -159,12 +177,12 @@ struct Context {
         DummyTimeSource,
     >,
     clocks: hal::sysctl::Clocks,
+    seen_keypress: bool,
 }
 
 enum Input {
-    Unicode(char),
     Special(pc_keyboard::KeyCode),
-    Utf8(u8),
+    Cp850(u8),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -234,10 +252,6 @@ impl Joystick {
 }
 
 impl Context {
-    fn keyboard_read(&mut self) -> Option<u16> {
-        None
-    }
-
     fn has_char(&mut self) -> bool {
         let attempt = self.read();
         if attempt.is_some() {
@@ -259,18 +273,26 @@ impl Context {
             // Backspace key in screen seems to generate 0x7F (delete).
             // Map it to backspace (0x08)
             if ch == 0x7F {
-                Some(Input::Utf8(0x08))
+                Some(Input::Cp850(0x08))
             } else {
-                Some(Input::Utf8(ch))
+                // Just bodge the UTF-8 input into CP850 and hope for the best
+                Some(Input::Cp850(ch))
             }
         } else {
-            let key = if let Some(word) = self.keyboard_read() {
-                // Got something in the keyboard buffer
-                match self.keyboard.add_word(word) {
-                    Ok(Some(event)) => self.keyboard.process_keyevent(event),
+            let key = if let Ok(ch) = self.avr_uart.read() {
+                // Got something in the buffer from the AVR
+                match self.keyboard.add_byte(ch) {
+                    Ok(Some(event)) => {
+                        self.seen_keypress = true;
+                        self.keyboard.process_keyevent(event)
+                    }
                     Ok(None) => None,
-                    Err(e) => {
-                        writeln!(self, "Bad key input! {:?}", e).unwrap();
+                    Err(e) if self.seen_keypress => {
+                        writeln!(self, "Bad key input! {:?} (0x{:02x})", e, ch).unwrap();
+                        None
+                    }
+                    Err(_e) => {
+                        // Squash any random errors on start-up
                         None
                     }
                 }
@@ -283,9 +305,11 @@ impl Context {
                 Some(pc_keyboard::DecodedKey::Unicode(c)) => {
                     if c == '\n' {
                         // Return generates \n but menu wants \r
-                        Some(Input::Unicode('\r'))
+                        Some(Input::Cp850(b'\r'))
                     } else {
-                        Some(Input::Unicode(c))
+                        // Er, do a better Unicode to CP850 translation here!
+                        let byte = fb::Char::map_char(c) as u8;
+                        Some(Input::Cp850(byte))
                     }
                 }
                 Some(pc_keyboard::DecodedKey::RawKey(code)) => {
@@ -295,6 +319,11 @@ impl Context {
                 }
             }
         }
+    }
+
+    /// Write an 8-bit ASCII character to the screen.
+    fn write_u8(&mut self, ch: u8) {
+        unsafe { FRAMEBUFFER.write_character(ch).unwrap() }
     }
 }
 
@@ -432,10 +461,14 @@ fn main() -> ! {
     usb_uart.write_all(b"This is a test\r\n");
 
     // MIDI UART
-    let mut midi_uart = Serial::uart3(
+    let midi_uart = Serial::uart3(
         p.UART3,
-        portc.pc7.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
-        portc.pc6.into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
+        portc
+            .pc7
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
+        portc
+            .pc6
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portc.control),
         (),
         (),
         31250_u32.bps(),
@@ -443,38 +476,60 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
-    midi_uart.write_all(b"This is a test\r\n");
-
 
     // AVR UART
-    let mut avr_uart = Serial::uart7(
+    let avr_uart = Serial::uart7(
         p.UART7,
-        porte.pe1.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
-        porte.pe0.into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
+        porte
+            .pe1
+            .into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
+        porte
+            .pe0
+            .into_af_push_pull::<hal::gpio::AF1>(&mut porte.control),
         (),
         (),
-        115200_u32.bps(),
+        19200_u32.bps(),
         NewlineMode::Binary,
         &clocks,
         &sc.power_control,
     );
-    avr_uart.write_all(b"This is a test\r\n");
-
 
     // RS-232 UART
-    let mut rs232_uart = Serial::uart1(
+    let rs232_uart = Serial::uart1(
         p.UART1,
-        portb.pb1.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
-        portb.pb0.into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
-        portc.pc4.into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
-        portc.pc5.into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
+        portb
+            .pb1
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
+        portb
+            .pb0
+            .into_af_push_pull::<hal::gpio::AF1>(&mut portb.control),
+        portc
+            .pc4
+            .into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
+        portc
+            .pc5
+            .into_af_push_pull::<hal::gpio::AF8>(&mut portc.control),
         115200_u32.bps(),
         NewlineMode::Binary,
         &clocks,
         &sc.power_control,
     );
-    rs232_uart.write_all(b"This is a test\r\n");
 
+    // I²C bus - SDA is open-drain but SCL isn't (see the TM4C123 TRM page 657)
+    let i2c_bus = I2c::i2c1(
+        p.I2C1,
+        (
+            porta
+                .pa6
+                .into_af_push_pull::<hal::gpio::AF3>(&mut porta.control),
+            porta
+                .pa7
+                .into_af_open_drain::<hal::gpio::AF3, hal::gpio::Floating>(&mut porta.control),
+        ),
+        100_000.hz(),
+        &clocks,
+        &sc.power_control,
+    );
 
     unsafe {
         let hw = VideoHardware {
@@ -510,7 +565,12 @@ fn main() -> ! {
 
     // let sdmmc_spi = LoggingSpi { spi: sdmmc_spi };
 
-    let keyboard = pc_keyboard::Keyboard::new(pc_keyboard::layouts::Uk105Key);
+    // TODO let users pick a keyboard layout, and store their choice in EEPROM somewhere
+    let keyboard = pc_keyboard::Keyboard::new(
+        pc_keyboard::layouts::Uk105Key,
+        pc_keyboard::ScancodeSet2,
+        pc_keyboard::HandleControl::MapLettersToUnicode,
+    );
 
     let mut c = Context {
         value: 0,
@@ -519,6 +579,7 @@ fn main() -> ! {
         midi_uart,
         rs232_uart,
         keyboard,
+        i2c_bus,
         buffered_char: None,
         joystick: Joystick {
             up: porte.pe2.into_pull_up_input(),
@@ -532,6 +593,7 @@ fn main() -> ! {
             DummyTimeSource,
         ),
         clocks,
+        seen_keypress: false,
     };
 
     while c.usb_uart.read().is_ok() {
@@ -576,15 +638,7 @@ fn main() -> ! {
         api::wfvbi(r.context);
         // Wait for new UTF-8 input
         match r.context.read() {
-            Some(Input::Unicode(ch)) => {
-                let mut char_as_bytes: [u8; 4] = [0u8; 4];
-                // Our menu takes UTF-8 chars for serial compatibility,
-                // so convert our Unicode to UTF8 bytes
-                for octet in ch.encode_utf8(&mut char_as_bytes).bytes() {
-                    r.input_byte(octet);
-                }
-            }
-            Some(Input::Utf8(octet)) => {
+            Some(Input::Cp850(octet)) => {
                 r.input_byte(octet);
             }
             Some(Input::Special(code)) => {
@@ -731,8 +785,8 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-/// Called on start of sync pulse (end of front porch)
 interrupt!(TIMER1A, timer1a);
+/// Called on start of sync pulse (end of front porch)
 fn timer1a() {
     let pwm = unsafe { &*cpu::PWM0::ptr() };
     static mut NEXT_SAMPLE: u8 = 128;
@@ -760,13 +814,13 @@ fn timer1a() {
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
-/// Called on start of pixel data (end of back porch)
 interrupt!(TIMER1B, timer1b);
+/// Called on start of pixel data (end of back porch)
 fn timer1b() {
     unsafe {
-        /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
-        /// gets the colour video lined up, as we preload the red channel with 0x00
-        /// 0x00 and the green channel with 0x00.
+        // Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
+        // gets the colour video lined up, as we preload the red channel with 0x00
+        // 0x00 and the green channel with 0x00.
         asm!(
             "movs    r0, #132;
             movs    r1, #1;

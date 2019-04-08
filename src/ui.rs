@@ -1,6 +1,6 @@
 use crate::fb::{self, AsciiConsole, BaseConsole};
 use crate::hal::prelude::*;
-use crate::{api, Context, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
+use crate::{api, Context, Input, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
 use core::fmt::Write;
 use embedded_hal::prelude::*;
 use menu;
@@ -8,114 +8,102 @@ use menu;
 pub(crate) type Menu<'a> = menu::Menu<'a, Context>;
 pub(crate) type Item<'a> = menu::Item<'a, Context>;
 
-static ITEM_CLEAR: Item = Item {
-    item_type: menu::ItemType::Callback(item_clear),
-    command: "clear",
-    help: Some("Reset the display."),
-};
-
-static ITEM_PEEK: Item = Item {
-    item_type: menu::ItemType::Callback(item_peek),
-    command: "peek",
-    help: Some("<addr> - Read a register."),
-};
-
-static ITEM_POKE: Item = Item {
-    item_type: menu::ItemType::Callback(item_poke),
-    command: "poke",
-    help: Some("<addr> <value> - Write a register."),
-};
-
-static ITEM_DUMP: Item = Item {
-    item_type: menu::ItemType::Callback(item_dump),
-    command: "dump",
-    help: Some("<addr> <bytes> - Dump RAM/ROM."),
-};
-
-static ITEM_LOAD: Item = Item {
-    item_type: menu::ItemType::Callback(item_load_file),
-    command: "load",
-    help: Some("Load program from UART."),
-};
-
-static ITEM_DEBUG: Item = Item {
-    item_type: menu::ItemType::Callback(item_debug_info),
-    command: "debug",
-    help: Some("Show some debug info."),
-};
-
-static ITEM_RUN: Item = Item {
-    item_type: menu::ItemType::Callback(item_run_program),
-    command: "run",
-    help: Some("Run loaded program."),
-};
-
-static ITEM_BEEP: Item = Item {
-    item_type: menu::ItemType::Callback(item_beep),
-    command: "beep",
-    help: Some("Make a beep."),
-};
-
-static ITEM_MOUNT: Item = Item {
-    item_type: menu::ItemType::Callback(item_mount),
-    command: "mount",
-    help: Some("Mount a new SD/MMC card."),
-};
-
-static ITEM_UNMOUNT: Item = Item {
-    item_type: menu::ItemType::Callback(item_unmount),
-    command: "unmount",
-    help: Some("Unmount an SD/MMC card."),
-};
-
-static ITEM_DIR: Item = Item {
-    item_type: menu::ItemType::Callback(item_dir),
-    command: "dir",
-    help: Some("List the root directory"),
-};
-
-static ITEM_DLOAD: Item = Item {
-    item_type: menu::ItemType::Callback(item_dload),
-    command: "dload",
-    help: Some("Load file from the SD-Card"),
-};
-
-static ITEM_DDUMP: Item = Item {
-    item_type: menu::ItemType::Callback(item_ddump),
-    command: "ddump",
-    help: Some("Load and display a binary file"),
-};
-
-static ITEM_DPAGE: Item = Item {
-    item_type: menu::ItemType::Callback(item_dpage),
-    command: "dpage",
-    help: Some("Load and display a text file"),
-};
-
-static ITEM_RS232_READ: Item = Item {
-    item_type: menu::ItemType::Callback(item_rs232_read),
-    command: "read",
-    help: Some("Read from RS232"),
-};
+// 7-bit address - driver handles read/write bits
+const RTC_I2C_ADDR: u32 = 111;
 
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
-        &ITEM_CLEAR,
-        &ITEM_PEEK,
-        &ITEM_POKE,
-        &ITEM_DUMP,
-        &ITEM_LOAD,
-        &ITEM_RUN,
-        &ITEM_DEBUG,
-        &ITEM_BEEP,
-        &ITEM_MOUNT,
-        &ITEM_UNMOUNT,
-        &ITEM_DIR,
-        &ITEM_DLOAD,
-        &ITEM_DDUMP,
-        &ITEM_DPAGE,
-        &ITEM_RS232_READ,
+        &Item {
+            item_type: menu::ItemType::Callback(item_clear),
+            command: "clear",
+            help: Some("Reset the display."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_peek),
+            command: "peek",
+            help: Some("<addr> - Read a register."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_poke),
+            command: "poke",
+            help: Some("<addr> <value> - Write a register."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dump),
+            command: "dump",
+            help: Some("<addr> <bytes> - Dump RAM/ROM."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_load_file),
+            command: "load",
+            help: Some("Load program from UART."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_debug_info),
+            command: "debug",
+            help: Some("Show some debug info."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_run_program),
+            command: "run",
+            help: Some("Run loaded program."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_beep),
+            command: "beep",
+            help: Some("Make a beep."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_mount),
+            command: "mount",
+            help: Some("Mount a new SD/MMC card."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_unmount),
+            command: "unmount",
+            help: Some("Unmount an SD/MMC card."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dir),
+            command: "dir",
+            help: Some("List the root directory"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dload),
+            command: "dload",
+            help: Some("Load file from the SD-Card"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_ddump),
+            command: "ddump",
+            help: Some("Load and display a binary file"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(item_dpage),
+            command: "dpage",
+            help: Some("Load and display a text file"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(rs232_term),
+            command: "rterm",
+            help: Some("<baud> - Enter terminal mode on RS232 port"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(midi_term),
+            command: "mterm",
+            help: Some("Enter terminal mode on MIDI port"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(i2c_rx),
+            command: "i2c_rx",
+            help: Some("<addr> <reg> <num> - Read from I2C device"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback(i2c_tx),
+            command: "i2c_tx",
+            help: Some("<addr> <reg> <byte> - Write to I2C device"),
+        },
     ],
     entry: None,
     exit: None,
@@ -471,9 +459,17 @@ fn item_dload<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
         write!(c, "Loading {:?}...", file).unwrap();
         let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
         let dir = c.cont.open_root_dir(&volume)?;
-        let mut f = c
-            .cont
-            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let mut f =
+            match c
+                .cont
+                .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    c.cont.close_dir(&volume, dir);
+                    return Err(e);
+                }
+            };
         let application_ram: &'static mut [u8] =
             unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
         for b in application_ram.iter_mut() {
@@ -604,11 +600,168 @@ fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
     }
 }
 
-fn item_rs232_read<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
-    // Check the RS-232 UART
-    while let Ok(ch) = c.rs232_uart.read() {
-        writeln!(c, "RX: 0x{:02x}", ch).unwrap();
-        writeln!(c.rs232_uart, "RX: 0x{:02x}", ch).unwrap();
+fn rs232_term<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    if let Some(bitrate) = parts
+        .next()
+        .map_or(None, |p| u32::from_str_radix(p, 10).ok())
+    {
+        c.rs232_uart.change_baud_rate(bitrate.bps(), &c.clocks);
+        writeln!(c, "Connected at {} bps. Ctrl-Q to quit.", bitrate).unwrap();
+        loop {
+            match c.rs232_uart.read() {
+                Ok(ch) => {
+                    c.write_u8(ch);
+                }
+                Err(_e) => {
+                    // Ignore
+                }
+            }
+            match c.read() {
+                Some(Input::Cp850(17)) => {
+                    // User pressed Ctrl-Q
+                    break;
+                }
+                Some(Input::Cp850(b'\r')) => {
+                    // User pressed enter
+                    let _ = c.rs232_uart.write(b'\r');
+                    let _ = c.rs232_uart.write(b'\n');
+                }
+                Some(Input::Cp850(ch)) => {
+                    let _ = c.rs232_uart.write(ch);
+                }
+                Some(Input::Special(_code)) => {
+                    // Drop it on the floor
+                }
+                None => {
+                    // Do nothing
+                }
+            }
+            cortex_m::asm::wfi();
+        }
+        writeln!(c, "Disconnected!").unwrap();
+    } else {
+        writeln!(c, "Error: Need an integer baud rate (e.g. 115200)").unwrap();
+    }
+}
+
+fn midi_term<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    writeln!(c, "Connected at 31,250 bps. Ctrl-Q to quit.").unwrap();
+    loop {
+        match c.midi_uart.read() {
+            Ok(0xFE) => {
+                // The 'Active Sensing' keep-alive byte
+            }
+            Ok(ch) => {
+                write!(c, "0x{:02x}  ", ch).unwrap();
+            }
+            Err(_) => {
+                // Do nothing
+            }
+        }
+        match c.read() {
+            Some(Input::Cp850(17)) => {
+                // User pressed Ctrl-Q
+                break;
+            }
+            Some(Input::Cp850(ch)) => {
+                let _ = c.midi_uart.write(ch);
+            }
+            Some(Input::Special(_code)) => {
+                // Drop it on the floor
+            }
+            None => {
+                // Do nothing
+            }
+        }
+        cortex_m::asm::wfi();
+    }
+    writeln!(c, "Disconnected!").unwrap();
+}
+
+fn i2c_tx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    let i2c_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(RTC_I2C_ADDR)
+    } else {
+        writeln!(c, "Need an I2C address to write to!").unwrap();
+        return;
+    } as u8;
+    let reg_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x00)
+    } else {
+        writeln!(c, "Need a register to write to!").unwrap();
+        return;
+    } as u8;
+    let value = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x01)
+    } else {
+        writeln!(c, "Need a value to write!").unwrap();
+        return;
+    } as u8;
+
+    let mut read_buffer = [0];
+    let command = [reg_addr, value];
+    writeln!(
+        c,
+        "i2c_addr={}, reg_addr={}, value={}",
+        i2c_addr, reg_addr, value
+    )
+    .unwrap();
+    let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
+    writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
+}
+
+fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
+    let mut parts = input.split_whitespace();
+    parts.next(); // skip command itself
+    let i2c_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(RTC_I2C_ADDR)
+    } else {
+        RTC_I2C_ADDR
+    } as u8;
+    let reg_addr = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x00)
+    } else {
+        0x00
+    } as u8;
+    let mut read_len = if let Some(s) = parts.next() {
+        parse_u32(s).unwrap_or(0x01)
+    } else {
+        0x01
+    } as usize;
+    if read_len > 16 {
+        read_len = 16;
+    }
+    let mut read_buffer = &mut [0u8; 16][0..read_len];
+    let command = [reg_addr];
+    writeln!(
+        c,
+        "i2c_addr={}, reg_addr={}, num={}",
+        i2c_addr,
+        reg_addr,
+        read_buffer.len()
+    )
+    .unwrap();
+    let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
+    writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
+}
+
+fn parse_u32(s: &str) -> Option<u32> {
+    if s.starts_with("0x") {
+        // Assume hex
+        u32::from_str_radix(&s[2..], 16).ok()
+    } else if s.starts_with("0b") {
+        // Assume binary
+        u32::from_str_radix(&s[2..], 2).ok()
+    } else if s.starts_with("0") {
+        // Assume octal
+        u32::from_str_radix(&s[1..], 8).ok()
+    } else {
+        // Assume decimal
+        u32::from_str_radix(s, 10).ok()
     }
 }
 

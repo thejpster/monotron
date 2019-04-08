@@ -22,7 +22,7 @@ codegen-units = 1
 opt-level = "s"
 
 [dependencies.tm4c123x-hal]
-version = "0.9"
+version = "0.9.1"
 # path = "../tm4c-hal/tm4c123x-hal"
 # git = "https://github.com/thejpster/tm4c-hal"
 features = ["rt"]
@@ -52,7 +52,8 @@ version = "0.6.1"
 version = "0.2"
 
 [dependencies.pc-keyboard]
-version = "0.1.1"
+version = "0.5"
+# path = "../pc-keyboard"
 
 [dependencies.monotron-synth]
 # path = "../monotron-synth"

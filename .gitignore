@@ -6,3 +6,4 @@ Cargo.lock
 target/
 *.sublime-workspace
 env/
+avr_kb/build/
