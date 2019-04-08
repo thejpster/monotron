@@ -144,10 +144,7 @@ struct Context {
         cpu::I2C1,
         (
             hal::gpio::gpioa::PA6<
-                hal::gpio::AlternateFunction<
-                    hal::gpio::AF3,
-                    hal::gpio::PushPull,
-                >,
+                hal::gpio::AlternateFunction<hal::gpio::AF3, hal::gpio::PushPull>,
             >,
             hal::gpio::gpioa::PA7<
                 hal::gpio::AlternateFunction<
@@ -788,8 +785,8 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
-/// Called on start of sync pulse (end of front porch)
 interrupt!(TIMER1A, timer1a);
+/// Called on start of sync pulse (end of front porch)
 fn timer1a() {
     let pwm = unsafe { &*cpu::PWM0::ptr() };
     static mut NEXT_SAMPLE: u8 = 128;
@@ -817,13 +814,13 @@ fn timer1a() {
     timer.icr.write(|w| w.caecint().set_bit());
 }
 
-/// Called on start of pixel data (end of back porch)
 interrupt!(TIMER1B, timer1b);
+/// Called on start of pixel data (end of back porch)
 fn timer1b() {
     unsafe {
-        /// Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
-        /// gets the colour video lined up, as we preload the red channel with 0x00
-        /// 0x00 and the green channel with 0x00.
+        // Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
+        // gets the colour video lined up, as we preload the red channel with 0x00
+        // 0x00 and the green channel with 0x00.
         asm!(
             "movs    r0, #132;
             movs    r1, #1;

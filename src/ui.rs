@@ -694,9 +694,14 @@ fn i2c_tx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
         return;
     } as u8;
 
-    let mut read_buffer = [ 0 ];
-    let command = [ reg_addr, value ];
-    writeln!(c, "i2c_addr={}, reg_addr={}, value={}", i2c_addr, reg_addr, value).unwrap();
+    let mut read_buffer = [0];
+    let command = [reg_addr, value];
+    writeln!(
+        c,
+        "i2c_addr={}, reg_addr={}, value={}",
+        i2c_addr, reg_addr, value
+    )
+    .unwrap();
     let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
     writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
 }
@@ -719,13 +724,19 @@ fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
     } else {
         0x01
     } as usize;
-    if read_len > 16
-    {
+    if read_len > 16 {
         read_len = 16;
     }
     let mut read_buffer = &mut [0u8; 16][0..read_len];
     let command = [reg_addr];
-    writeln!(c, "i2c_addr={}, reg_addr={}, num={}", i2c_addr, reg_addr, read_buffer.len()).unwrap();
+    writeln!(
+        c,
+        "i2c_addr={}, reg_addr={}, num={}",
+        i2c_addr,
+        reg_addr,
+        read_buffer.len()
+    )
+    .unwrap();
     let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
     writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
 }
