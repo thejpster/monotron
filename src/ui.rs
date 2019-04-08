@@ -459,9 +459,17 @@ fn item_dload<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
         write!(c, "Loading {:?}...", file).unwrap();
         let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
         let dir = c.cont.open_root_dir(&volume)?;
-        let mut f = c
-            .cont
-            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let mut f =
+            match c
+                .cont
+                .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    c.cont.close_dir(&volume, dir);
+                    return Err(e);
+                }
+            };
         let application_ram: &'static mut [u8] =
             unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
         for b in application_ram.iter_mut() {
