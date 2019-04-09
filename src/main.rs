@@ -643,7 +643,8 @@ fn main() -> ! {
             }
             Some(Input::Special(code)) => {
                 // Can't handle special chars yet
-                writeln!(r.context, "Special char {:?}", code).unwrap();
+                writeln!(r.context, "\rSpecial char {:?}", code).unwrap();
+                r.prompt(false);
             }
             None => {}
         }
