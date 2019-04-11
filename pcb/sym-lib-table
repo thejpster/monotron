@@ -1,3 +1,4 @@
 (sym_lib_table
   (lib (name tm4c123g_launchpad)(type Legacy)(uri ${KIPRJMOD}/tm4c123g_launchpad.lib)(options "")(descr ""))
+  (lib (name monotron-rescue)(type Legacy)(uri ${KIPRJMOD}/monotron-rescue.lib)(options "")(descr ""))
 )

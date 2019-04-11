@@ -15,39 +15,6 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L power:+5V #PWR03
-U 1 1 5C2DBC6A
-P 2050 2450
-F 0 "#PWR03" H 2050 2300 50  0001 C CNN
-F 1 "+5V" H 2065 2623 50  0000 C CNN
-F 2 "" H 2050 2450 50  0001 C CNN
-F 3 "" H 2050 2450 50  0001 C CNN
-	1    2050 2450
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR04
-U 1 1 5C2DBD0A
-P 2050 2850
-F 0 "#PWR04" H 2050 2600 50  0001 C CNN
-F 1 "GND" H 2055 2677 50  0000 C CNN
-F 2 "" H 2050 2850 50  0001 C CNN
-F 3 "" H 2050 2850 50  0001 C CNN
-	1    2050 2850
-	1    0    0    -1  
-$EndComp
-$Comp
-L Device:CP C2
-U 1 1 5C2E6794
-P 2050 2650
-F 0 "C2" H 2165 2696 50  0000 L CNN
-F 1 "47u" H 2165 2605 50  0000 L CNN
-F 2 "Capacitor_THT:C_Radial_D5.0mm_H5.0mm_P2.00mm" H 2088 2500 50  0001 C CNN
-F 3 "~" H 2050 2650 50  0001 C CNN
-	1    2050 2650
-	1    0    0    -1  
-$EndComp
-$Comp
 L Connector:DB9_Male J2
 U 1 1 5C348A1D
 P 1550 10100
@@ -430,7 +397,7 @@ PD6_JS_LEFT
 Text Label 6300 3500 0    50   ~ 0
 PF4_JS_FIRE
 $Comp
-L Connector:AudioJack3 J9
+L monotron-rescue:AudioJack3-Connector J9
 U 1 1 5C4471BC
 P 10900 9100
 F 0 "J9" H 10880 9425 50  0000 C CNN
@@ -1527,7 +1494,7 @@ Wire Wire Line
 Wire Wire Line
 	10500 4050 10500 4000
 $Comp
-L MCU_Microchip_ATmega:ATmega48A-PU U?
+L monotron-rescue:ATmega48A-PU-MCU_Microchip_ATmega U?
 U 1 1 5C6E675C
 P 8650 2850
 AR Path="/5C821310/5C6E675C" Ref="U?"  Part="1" 
@@ -2460,8 +2427,6 @@ Text Notes 8200 8700 0    100  ~ 20
 AUDIO OUTPUT
 Text Notes 3850 8900 0    100  ~ 20
 REAL TIME CLOCK
-Text Notes 650  2200 0    100  ~ 20
-5V INPUT
 Wire Notes Line
 	13400 4000 15750 4000
 Wire Notes Line
@@ -2546,17 +2511,6 @@ Wire Notes Line
 	12550 8350 12550 4950
 Wire Notes Line
 	6050 4950 6050 8350
-$Comp
-L Connector:Jack-DC J1
-U 1 1 612690E5
-P 1000 2600
-F 0 "J1" H 1000 2950 50  0000 C CNN
-F 1 "2.1mm DC Jack" H 1000 2850 50  0000 C CNN
-F 2 "Connector_BarrelJack:BarrelJack_CUI_PJ-102AH_Horizontal" H 1050 2560 50  0001 C CNN
-F 3 "~" H 1050 2560 50  0001 C CNN
-	1    1000 2600
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	1650 5900 1300 5900
 Wire Wire Line
@@ -2660,68 +2614,12 @@ L Mechanical:MountingHole H1
 U 1 1 5C8DA5CE
 P 800 1250
 F 0 "H1" H 900 1296 50  0000 L CNN
-F 1 "DP14085" H 900 1205 50  0000 L CNN
-F 2 "Monotron:DP14085" H 800 1250 50  0001 C CNN
+F 1 "3.7mm" H 900 1205 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.7mm_Pad" H 800 1250 50  0001 C CNN
 F 3 "~" H 800 1250 50  0001 C CNN
 	1    800  1250
 	1    0    0    -1  
 $EndComp
-$Comp
-L Device:Polyfuse F1
-U 1 1 5C9966CB
-P 1500 2500
-F 0 "F1" V 1250 2500 50  0000 C CNN
-F 1 "Polyfuse" V 1350 2500 50  0000 C CNN
-F 2 "Capacitor_THT:C_Disc_D7.5mm_W4.4mm_P5.00mm" H 1550 2300 50  0001 L CNN
-F 3 "https://media.digikey.com/pdf/Data%20Sheets/Bel%20Fuse%20PDFs/0ZRP_Series.pdf" H 1500 2500 50  0001 C CNN
-F 4 "507-2403-ND" V 1500 2500 50  0001 C CNN "Digikey"
-	1    1500 2500
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D3
-U 1 1 5C9968E6
-P 1750 2650
-F 0 "D3" V 1350 2600 50  0000 L CNN
-F 1 "D_TVS" V 1450 2600 50  0000 L CNN
-F 2 "Diode_THT:D_5W_P12.70mm_Horizontal" H 1750 2650 50  0001 C CNN
-F 3 "http://www.vishay.com/docs/88378/sa50athrusa170ca.pdf" H 1750 2650 50  0001 C CNN
-F 4 "SA5.0CA-E3/54GICT-ND" V 1750 2650 50  0001 C CNN "Digikey"
-	1    1750 2650
-	0    1    1    0   
-$EndComp
-Wire Wire Line
-	1300 2500 1350 2500
-Wire Wire Line
-	1650 2500 1750 2500
-Wire Wire Line
-	1750 2500 2050 2500
-Connection ~ 1750 2500
-Wire Wire Line
-	2050 2500 2050 2450
-Connection ~ 2050 2500
-Wire Wire Line
-	2050 2800 2050 2850
-Wire Wire Line
-	2050 2800 1750 2800
-Connection ~ 2050 2800
-Wire Wire Line
-	1750 2800 1350 2800
-Wire Wire Line
-	1350 2800 1350 2700
-Wire Wire Line
-	1350 2700 1300 2700
-Connection ~ 1750 2800
-Text Notes 700  3150 0    50   ~ 0
-TVS trips at 6.4V\nPolyFuse passes 500mA, trips at 1A
-Wire Notes Line
-	650  3200 2350 3200
-Wire Notes Line
-	2350 3200 2350 2200
-Wire Notes Line
-	650  2200 650  3200
-Wire Notes Line
-	650  2200 2350 2200
 Wire Wire Line
 	10600 2150 11000 2150
 Wire Wire Line
@@ -2874,4 +2772,60 @@ Wire Wire Line
 	3900 3000 4600 3000
 Wire Wire Line
 	5300 10400 5300 10450
+$Comp
+L Mechanical:MountingHole H2
+U 1 1 5C998BFF
+P 800 1450
+F 0 "H2" H 900 1496 50  0000 L CNN
+F 1 "3.7mm" H 900 1405 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.7mm_Pad" H 800 1450 50  0001 C CNN
+F 3 "~" H 800 1450 50  0001 C CNN
+	1    800  1450
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H3
+U 1 1 5C998CA1
+P 1350 1250
+F 0 "H3" H 1450 1296 50  0000 L CNN
+F 1 "3.7mm" H 1450 1205 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.7mm_Pad" H 1350 1250 50  0001 C CNN
+F 3 "~" H 1350 1250 50  0001 C CNN
+	1    1350 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:MountingHole H4
+U 1 1 5C998D53
+P 1350 1450
+F 0 "H4" H 1450 1496 50  0000 L CNN
+F 1 "3.7mm" H 1450 1405 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.7mm_Pad" H 1350 1450 50  0001 C CNN
+F 3 "~" H 1350 1450 50  0001 C CNN
+	1    1350 1450
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector:DB9_Male J1
+U 1 1 5C99A06D
+P 3050 10050
+F 0 "J1" H 3230 10096 50  0000 L CNN
+F 1 "DE9M" H 3230 10005 50  0000 L CNN
+F 2 "Connector_Dsub:DSUB-9_Male_Horizontal_P2.77x2.84mm_EdgePinOffset7.70mm_Housed_MountingHolesOffset9.12mm" H 3050 10050 50  0001 C CNN
+F 3 " http://portal.fciconnect.com/Comergent//fci/drawing/c-dd-0024.pdf" H 3050 10050 50  0001 C CNN
+F 4 "609-5918-ND" H 3050 10050 50  0001 C CNN "Digikey"
+	1    3050 10050
+	-1   0    0    -1  
+$EndComp
+$Comp
+L tm4c123g_launchpad:MCP23017 U?
+U 1 1 5C99CE50
+P 2050 8500
+F 0 "U?" V 1967 9128 100 0000 L CNN
+F 1 "MCP23017" V 2133 9128 100 0000 L CNN
+F 2 "" H 2050 8500 100 0001 C CNN
+F 3 "" H 2050 8500 100 0001 C CNN
+	1    2050 8500
+	0    1    1    0   
+$EndComp
 $EndSCHEMATC

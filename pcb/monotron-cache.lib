@@ -1,11 +1,11 @@
 EESchema-LIBRARY Version 2.4
 #encoding utf-8
 #
-# 74xx_74LS14
+# 74xx:74LS14
 #
-DEF 74xx_74LS14 U 0 40 Y Y 7 L N
+DEF 74xx:74LS14 U 0 40 Y Y 7 L N
 F0 "U" 0 50 50 H V C CNN
-F1 "74xx_74LS14" 0 -50 50 H V C CNN
+F1 "74xx:74LS14" 0 -50 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 ALIAS 74HC14 74HC04 74LS14
@@ -37,33 +37,11 @@ X GND 7 0 -500 200 U 50 50 7 0 W
 ENDDRAW
 ENDDEF
 #
-# Connector_AudioJack3
+# Connector:Conn_01x03_Male
 #
-DEF Connector_AudioJack3 J 0 20 Y Y 1 F N
-F0 "J" 0 350 50 H V C CNN
-F1 "Connector_AudioJack3" 0 250 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- Jack*
-$ENDFPLIST
-DRAW
-S -200 -200 -250 -100 0 1 10 F
-S 100 150 -200 -200 0 1 10 f
-P 4 0 1 10 0 -100 25 -125 50 -100 100 -100 N
-P 5 0 1 10 -75 -100 -50 -125 -25 -100 -25 0 100 0 N
-P 5 0 1 10 100 100 -100 100 -100 -100 -125 -125 -150 -100 N
-X ~ R 200 0 100 L 50 50 1 1 P
-X ~ S 200 100 100 L 50 50 1 1 P
-X ~ T 200 -100 100 L 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Connector_Conn_01x03_Male
-#
-DEF Connector_Conn_01x03_Male J 0 40 Y N 1 F N
+DEF Connector:Conn_01x03_Male J 0 40 Y N 1 F N
 F0 "J" 0 200 50 H V C CNN
-F1 "Connector_Conn_01x03_Male" 0 -200 50 H V C CNN
+F1 "Connector:Conn_01x03_Male" 0 -200 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -82,11 +60,11 @@ X Pin_3 3 200 -100 150 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_Conn_01x04_Male
+# Connector:Conn_01x04_Male
 #
-DEF Connector_Conn_01x04_Male J 0 40 Y N 1 F N
+DEF Connector:Conn_01x04_Male J 0 40 Y N 1 F N
 F0 "J" 0 200 50 H V C CNN
-F1 "Connector_Conn_01x04_Male" 0 -300 50 H V C CNN
+F1 "Connector:Conn_01x04_Male" 0 -300 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -108,11 +86,11 @@ X Pin_4 4 200 -200 150 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_DB15_Female_HighDensity_MountingHoles
+# Connector:DB15_Female_HighDensity_MountingHoles
 #
-DEF Connector_DB15_Female_HighDensity_MountingHoles J 0 40 Y N 1 F N
+DEF Connector:DB15_Female_HighDensity_MountingHoles J 0 40 Y N 1 F N
 F0 "J" 0 850 50 H V C CNN
-F1 "Connector_DB15_Female_HighDensity_MountingHoles" 0 750 50 H V C CNN
+F1 "Connector:DB15_Female_HighDensity_MountingHoles" 0 750 50 H V C CNN
 F2 "" -950 400 50 H I C CNN
 F3 "" -950 400 50 H I C CNN
 $FPLIST
@@ -159,11 +137,11 @@ X ~ 9 -300 -100 200 R 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_DB25_Female
+# Connector:DB25_Female
 #
-DEF Connector_DB25_Female J 0 40 Y N 1 F N
+DEF Connector:DB25_Female J 0 40 Y N 1 F N
 F0 "J" 0 1350 50 H V C CNN
-F1 "Connector_DB25_Female" 0 -1375 50 H V C CNN
+F1 "Connector:DB25_Female" 0 -1375 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -249,11 +227,11 @@ X 9 9 -300 -400 150 R 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_DB9_Male
+# Connector:DB9_Male
 #
-DEF Connector_DB9_Male J 0 40 Y N 1 F N
+DEF Connector:DB9_Male J 0 40 Y N 1 F N
 F0 "J" 0 550 50 H V C CNN
-F1 "Connector_DB9_Male" 0 -575 50 H V C CNN
+F1 "Connector:DB9_Male" 0 -575 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -291,11 +269,11 @@ X 9 9 -300 300 150 R 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_DIN-5_180degree
+# Connector:DIN-5_180degree
 #
-DEF Connector_DIN-5_180degree J 0 40 Y Y 1 F N
+DEF Connector:DIN-5_180degree J 0 40 Y Y 1 F N
 F0 "J" 125 225 50 H V C CNN
-F1 "Connector_DIN-5_180degree" 0 -250 50 H V C CNN
+F1 "Connector:DIN-5_180degree" 0 -250 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -324,129 +302,11 @@ X ~ 5 300 100 100 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_Generic_Conn_01x07
+# Connector:Micro_SD_Card_Det
 #
-DEF Connector_Generic_Conn_01x07 J 0 40 Y N 1 F N
-F0 "J" 0 400 50 H V C CNN
-F1 "Connector_Generic_Conn_01x07" 0 -400 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- Connector*:*_1x??_*
-$ENDFPLIST
-DRAW
-S -50 -295 0 -305 1 1 6 N
-S -50 -195 0 -205 1 1 6 N
-S -50 -95 0 -105 1 1 6 N
-S -50 5 0 -5 1 1 6 N
-S -50 105 0 95 1 1 6 N
-S -50 205 0 195 1 1 6 N
-S -50 305 0 295 1 1 6 N
-S -50 350 50 -350 1 1 10 f
-X Pin_1 1 -200 300 150 R 50 50 1 1 P
-X Pin_2 2 -200 200 150 R 50 50 1 1 P
-X Pin_3 3 -200 100 150 R 50 50 1 1 P
-X Pin_4 4 -200 0 150 R 50 50 1 1 P
-X Pin_5 5 -200 -100 150 R 50 50 1 1 P
-X Pin_6 6 -200 -200 150 R 50 50 1 1 P
-X Pin_7 7 -200 -300 150 R 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Connector_Generic_Conn_02x03_Odd_Even
-#
-DEF Connector_Generic_Conn_02x03_Odd_Even J 0 40 Y N 1 F N
-F0 "J" 50 200 50 H V C CNN
-F1 "Connector_Generic_Conn_02x03_Odd_Even" 50 -200 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- Connector*:*_2x??_*
-$ENDFPLIST
-DRAW
-S -50 -95 0 -105 1 1 6 N
-S -50 5 0 -5 1 1 6 N
-S -50 105 0 95 1 1 6 N
-S -50 150 150 -150 1 1 10 f
-S 150 -95 100 -105 1 1 6 N
-S 150 5 100 -5 1 1 6 N
-S 150 105 100 95 1 1 6 N
-X Pin_1 1 -200 100 150 R 50 50 1 1 P
-X Pin_2 2 300 100 150 L 50 50 1 1 P
-X Pin_3 3 -200 0 150 R 50 50 1 1 P
-X Pin_4 4 300 0 150 L 50 50 1 1 P
-X Pin_5 5 -200 -100 150 R 50 50 1 1 P
-X Pin_6 6 300 -100 150 L 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Connector_Generic_Conn_02x06_Odd_Even
-#
-DEF Connector_Generic_Conn_02x06_Odd_Even J 0 40 Y N 1 F N
-F0 "J" 50 300 50 H V C CNN
-F1 "Connector_Generic_Conn_02x06_Odd_Even" 50 -400 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- Connector*:*_2x??_*
-$ENDFPLIST
-DRAW
-S -50 -295 0 -305 1 1 6 N
-S -50 -195 0 -205 1 1 6 N
-S -50 -95 0 -105 1 1 6 N
-S -50 5 0 -5 1 1 6 N
-S -50 105 0 95 1 1 6 N
-S -50 205 0 195 1 1 6 N
-S -50 250 150 -350 1 1 10 f
-S 150 -295 100 -305 1 1 6 N
-S 150 -195 100 -205 1 1 6 N
-S 150 -95 100 -105 1 1 6 N
-S 150 5 100 -5 1 1 6 N
-S 150 105 100 95 1 1 6 N
-S 150 205 100 195 1 1 6 N
-X Pin_1 1 -200 200 150 R 50 50 1 1 P
-X Pin_10 10 300 -200 150 L 50 50 1 1 P
-X Pin_11 11 -200 -300 150 R 50 50 1 1 P
-X Pin_12 12 300 -300 150 L 50 50 1 1 P
-X Pin_2 2 300 200 150 L 50 50 1 1 P
-X Pin_3 3 -200 100 150 R 50 50 1 1 P
-X Pin_4 4 300 100 150 L 50 50 1 1 P
-X Pin_5 5 -200 0 150 R 50 50 1 1 P
-X Pin_6 6 300 0 150 L 50 50 1 1 P
-X Pin_7 7 -200 -100 150 R 50 50 1 1 P
-X Pin_8 8 300 -100 150 L 50 50 1 1 P
-X Pin_9 9 -200 -200 150 R 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Connector_Jack-DC
-#
-DEF Connector_Jack-DC J 0 40 Y Y 1 F N
-F0 "J" 0 210 50 H V C CNN
-F1 "Connector_Jack-DC" 0 -200 50 H V C CNN
-F2 "" 50 -40 50 H I C CNN
-F3 "" 50 -40 50 H I C CNN
-ALIAS Jack-DC
-$FPLIST
- BarrelJack*
-$ENDFPLIST
-DRAW
-A -130 100 25 901 -901 0 1 10 F -130 125 -130 75
-A -130 100 25 901 -901 0 1 10 N -130 125 -130 75
-S -200 150 200 -150 0 1 10 f
-S 145 125 -130 75 0 1 10 F
-P 2 0 1 10 200 100 150 100 N
-P 6 0 1 10 -150 -100 -100 -100 -50 -50 0 -100 100 -100 200 -100 N
-X ~ 1 300 100 100 L 50 50 1 1 P
-X ~ 2 300 -100 100 L 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Connector_Micro_SD_Card_Det
-#
-DEF Connector_Micro_SD_Card_Det J 0 40 Y Y 1 F N
+DEF Connector:Micro_SD_Card_Det J 0 40 Y Y 1 F N
 F0 "J" -650 700 50 H V C CNN
-F1 "Connector_Micro_SD_Card_Det" 650 700 50 H V R CNN
+F1 "Connector:Micro_SD_Card_Det" 650 700 50 H V R CNN
 F2 "" 2050 700 50 H I C CNN
 F3 "" 0 100 50 H I C CNN
 ALIAS Micro_SD_Card_Det_Hirose_DM3AT
@@ -478,11 +338,11 @@ X DET_B 9 -900 -500 150 R 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_Mini-DIN-6
+# Connector:Mini-DIN-6
 #
-DEF Connector_Mini-DIN-6 J 0 40 Y Y 1 F N
+DEF Connector:Mini-DIN-6 J 0 40 Y Y 1 F N
 F0 "J" 0 250 50 H V C CNN
-F1 "Connector_Mini-DIN-6" 0 -250 50 H V C CNN
+F1 "Connector:Mini-DIN-6" 0 -250 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -517,11 +377,106 @@ X ~ 6 -300 100 100 R 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_Battery_Cell
+# Connector_Generic:Conn_01x07
 #
-DEF Device_Battery_Cell BT 0 0 N N 1 F N
+DEF Connector_Generic:Conn_01x07 J 0 40 Y N 1 F N
+F0 "J" 0 400 50 H V C CNN
+F1 "Connector_Generic:Conn_01x07" 0 -400 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ Connector*:*_1x??_*
+$ENDFPLIST
+DRAW
+S -50 -295 0 -305 1 1 6 N
+S -50 -195 0 -205 1 1 6 N
+S -50 -95 0 -105 1 1 6 N
+S -50 5 0 -5 1 1 6 N
+S -50 105 0 95 1 1 6 N
+S -50 205 0 195 1 1 6 N
+S -50 305 0 295 1 1 6 N
+S -50 350 50 -350 1 1 10 f
+X Pin_1 1 -200 300 150 R 50 50 1 1 P
+X Pin_2 2 -200 200 150 R 50 50 1 1 P
+X Pin_3 3 -200 100 150 R 50 50 1 1 P
+X Pin_4 4 -200 0 150 R 50 50 1 1 P
+X Pin_5 5 -200 -100 150 R 50 50 1 1 P
+X Pin_6 6 -200 -200 150 R 50 50 1 1 P
+X Pin_7 7 -200 -300 150 R 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# Connector_Generic:Conn_02x03_Odd_Even
+#
+DEF Connector_Generic:Conn_02x03_Odd_Even J 0 40 Y N 1 F N
+F0 "J" 50 200 50 H V C CNN
+F1 "Connector_Generic:Conn_02x03_Odd_Even" 50 -200 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ Connector*:*_2x??_*
+$ENDFPLIST
+DRAW
+S -50 -95 0 -105 1 1 6 N
+S -50 5 0 -5 1 1 6 N
+S -50 105 0 95 1 1 6 N
+S -50 150 150 -150 1 1 10 f
+S 150 -95 100 -105 1 1 6 N
+S 150 5 100 -5 1 1 6 N
+S 150 105 100 95 1 1 6 N
+X Pin_1 1 -200 100 150 R 50 50 1 1 P
+X Pin_2 2 300 100 150 L 50 50 1 1 P
+X Pin_3 3 -200 0 150 R 50 50 1 1 P
+X Pin_4 4 300 0 150 L 50 50 1 1 P
+X Pin_5 5 -200 -100 150 R 50 50 1 1 P
+X Pin_6 6 300 -100 150 L 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# Connector_Generic:Conn_02x06_Odd_Even
+#
+DEF Connector_Generic:Conn_02x06_Odd_Even J 0 40 Y N 1 F N
+F0 "J" 50 300 50 H V C CNN
+F1 "Connector_Generic:Conn_02x06_Odd_Even" 50 -400 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ Connector*:*_2x??_*
+$ENDFPLIST
+DRAW
+S -50 -295 0 -305 1 1 6 N
+S -50 -195 0 -205 1 1 6 N
+S -50 -95 0 -105 1 1 6 N
+S -50 5 0 -5 1 1 6 N
+S -50 105 0 95 1 1 6 N
+S -50 205 0 195 1 1 6 N
+S -50 250 150 -350 1 1 10 f
+S 150 -295 100 -305 1 1 6 N
+S 150 -195 100 -205 1 1 6 N
+S 150 -95 100 -105 1 1 6 N
+S 150 5 100 -5 1 1 6 N
+S 150 105 100 95 1 1 6 N
+S 150 205 100 195 1 1 6 N
+X Pin_1 1 -200 200 150 R 50 50 1 1 P
+X Pin_10 10 300 -200 150 L 50 50 1 1 P
+X Pin_11 11 -200 -300 150 R 50 50 1 1 P
+X Pin_12 12 300 -300 150 L 50 50 1 1 P
+X Pin_2 2 300 200 150 L 50 50 1 1 P
+X Pin_3 3 -200 100 150 R 50 50 1 1 P
+X Pin_4 4 300 100 150 L 50 50 1 1 P
+X Pin_5 5 -200 0 150 R 50 50 1 1 P
+X Pin_6 6 300 0 150 L 50 50 1 1 P
+X Pin_7 7 -200 -100 150 R 50 50 1 1 P
+X Pin_8 8 300 -100 150 L 50 50 1 1 P
+X Pin_9 9 -200 -200 150 R 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# Device:Battery_Cell
+#
+DEF Device:Battery_Cell BT 0 0 N N 1 F N
 F0 "BT" 100 100 50 H V L CNN
-F1 "Device_Battery_Cell" 100 0 50 H V L CNN
+F1 "Device:Battery_Cell" 100 0 50 H V L CNN
 F2 "" 0 60 50 V I C CNN
 F3 "" 0 60 50 V I C CNN
 DRAW
@@ -536,11 +491,11 @@ X - 2 0 -100 100 U 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_C
+# Device:C
 #
-DEF Device_C C 0 10 N Y 1 F N
+DEF Device:C C 0 10 N Y 1 F N
 F0 "C" 25 100 50 H V L CNN
-F1 "Device_C" 25 -100 50 H V L CNN
+F1 "Device:C" 25 -100 50 H V L CNN
 F2 "" 38 -150 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -554,11 +509,11 @@ X ~ 2 0 -150 110 U 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_CP
+# Device:CP
 #
-DEF Device_CP C 0 10 N Y 1 F N
+DEF Device:CP C 0 10 N Y 1 F N
 F0 "C" 25 100 50 H V L CNN
-F1 "Device_CP" 25 -100 50 H V L CNN
+F1 "Device:CP" 25 -100 50 H V L CNN
 F2 "" 38 -150 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -577,11 +532,11 @@ X ~ 2 0 -150 110 U 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_Crystal
+# Device:Crystal
 #
-DEF Device_Crystal Y 0 40 N N 1 F N
+DEF Device:Crystal Y 0 40 N N 1 F N
 F0 "Y" 0 150 50 H V C CNN
-F1 "Device_Crystal" 0 -150 50 H V C CNN
+F1 "Device:Crystal" 0 -150 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -598,11 +553,11 @@ X 2 2 150 0 50 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_D
+# Device:D
 #
-DEF Device_D D 0 40 N N 1 F N
+DEF Device:D D 0 40 N N 1 F N
 F0 "D" 0 100 50 H V C CNN
-F1 "Device_D" 0 -100 50 H V C CNN
+F1 "Device:D" 0 -100 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -620,34 +575,11 @@ X A 2 150 0 100 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_D_TVS
+# Device:LED
 #
-DEF Device_D_TVS D 0 40 N N 1 F N
+DEF Device:LED D 0 40 N N 1 F N
 F0 "D" 0 100 50 H V C CNN
-F1 "Device_D_TVS" 0 -100 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- TO-???*
- *_Diode_*
- *SingleDiode*
- D_*
-$ENDFPLIST
-DRAW
-P 2 0 1 0 50 0 -50 0 N
-P 4 0 1 8 -100 -50 0 0 -100 50 -100 -50 N
-P 4 0 1 8 20 50 0 50 0 -50 -20 -50 N
-P 4 0 1 8 100 50 100 -50 0 0 100 50 N
-X A1 1 -150 0 100 R 50 50 1 1 P
-X A2 2 150 0 100 L 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Device_LED
-#
-DEF Device_LED D 0 40 N N 1 F N
-F0 "D" 0 100 50 H V C CNN
-F1 "Device_LED" 0 -100 50 H V C CNN
+F1 "Device:LED" 0 -100 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -666,31 +598,11 @@ X A 2 150 0 100 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Device_Polyfuse
+# Device:R
 #
-DEF Device_Polyfuse F 0 0 N Y 1 F N
-F0 "F" -100 0 50 V V C CNN
-F1 "Device_Polyfuse" 100 0 50 V V C CNN
-F2 "" 50 -200 50 H I L CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- *polyfuse*
- *PTC*
-$ENDFPLIST
-DRAW
-S -30 100 30 -100 0 1 10 N
-P 2 0 1 0 0 100 0 -100 N
-P 4 0 1 0 -60 100 -60 60 60 -60 60 -100 N
-X ~ 1 0 150 50 D 50 50 1 1 P
-X ~ 2 0 -150 50 U 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Device_R
-#
-DEF Device_R R 0 0 N Y 1 F N
+DEF Device:R R 0 0 N Y 1 F N
 F0 "R" 80 0 50 V V C CNN
-F1 "Device_R" 0 0 50 V V C CNN
+F1 "Device:R" 0 0 50 V V C CNN
 F2 "" -70 0 50 V I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -703,11 +615,11 @@ X ~ 2 0 -150 50 U 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Interface_UART_MAX3232
+# Interface_UART:MAX3232
 #
-DEF Interface_UART_MAX3232 U 0 40 Y Y 1 F N
+DEF Interface_UART:MAX3232 U 0 40 Y Y 1 F N
 F0 "U" -100 1125 50 H V R CNN
-F1 "Interface_UART_MAX3232" -100 1050 50 H V R CNN
+F1 "Interface_UART:MAX3232" -100 1050 50 H V R CNN
 F2 "" 50 -1050 50 H I L CNN
 F3 "" 0 100 50 H I C CNN
 ALIAS MAX232I MAX202 ADM232A MAX3232 ICL3232
@@ -755,11 +667,11 @@ X R2OUT 9 -800 -700 200 R 50 50 1 1 O
 ENDDRAW
 ENDDEF
 #
-# Isolator_6N138
+# Isolator:6N138
 #
-DEF Isolator_6N138 U 0 40 Y N 1 F N
+DEF Isolator:6N138 U 0 40 Y N 1 F N
 F0 "U" -160 350 50 H V C CNN
-F1 "Isolator_6N138" 90 350 50 H V C CNN
+F1 "Isolator:6N138" 90 350 50 H V C CNN
 F2 "" 290 -300 50 H I C CNN
 F3 "" 290 -300 50 H I C CNN
 ALIAS 6N139
@@ -801,14 +713,55 @@ X VCC 8 300 200 100 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# MCU_Microchip_ATmega_ATmega48A-PU
+# Mechanical:MountingHole
 #
-DEF MCU_Microchip_ATmega_ATmega48A-PU U 0 20 Y Y 1 F N
+DEF Mechanical:MountingHole MH 0 40 Y Y 1 F N
+F0 "MH" 0 200 50 H V C CNN
+F1 "Mechanical:MountingHole" 0 125 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ MountingHole*
+$ENDFPLIST
+DRAW
+C 0 0 50 0 1 50 N
+ENDDRAW
+ENDDEF
+#
+# Timer:MCP7940N-xP
+#
+DEF Timer:MCP7940N-xP U 0 20 Y Y 1 F N
+F0 "U" -250 350 50 H V C CNN
+F1 "Timer:MCP7940N-xP" 450 350 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+ALIAS MCP7940N-xP MCP7940N-xSN MCP7940N-xST
+$FPLIST
+ SOIC*3.9x4.9mm*P1.27mm*
+ TSSOP*4.4x3mm*P0.65mm*
+ MSOP*3x3mm*P0.65mm*
+ DIP*W7.62mm*
+$ENDFPLIST
+DRAW
+S -300 300 300 -300 0 1 10 f
+X X1 1 400 100 100 L 50 50 1 1 I
+X X2 2 400 -100 100 L 50 50 1 1 O
+X VBAT 3 100 400 100 D 50 50 1 1 W
+X VSS 4 0 -400 100 U 50 50 1 1 W
+X SDA 5 -400 100 100 R 50 50 1 1 B
+X SCL 6 -400 200 100 R 50 50 1 1 I
+X MFP 7 -400 -100 100 R 50 50 1 1 C
+X VCC 8 0 400 100 D 50 50 1 1 W
+ENDDRAW
+ENDDEF
+#
+# monotron-rescue:ATmega48A-PU-MCU_Microchip_ATmega
+#
+DEF monotron-rescue:ATmega48A-PU-MCU_Microchip_ATmega U 0 20 Y Y 1 F N
 F0 "U" -500 1450 50 H V L BNN
-F1 "MCU_Microchip_ATmega_ATmega48A-PU" 100 -1450 50 H V L TNN
+F1 "monotron-rescue:ATmega48A-PU-MCU_Microchip_ATmega" 100 -1450 50 H V L TNN
 F2 "Package_DIP:DIP-28_W7.62mm" 0 0 50 H I C CIN
 F3 "" 0 0 50 H I C CNN
-ALIAS ATmega48P-20PU ATmega48A-PU ATmega48PA-PU ATmega88PV-10PU ATmega88P-20PU ATmega88A-PU ATmega88PA-PU ATmega168PV-10PU ATmega168P-20PU ATmega168A-PU ATmega168PA-PU ATmega328-PU ATmega328P-PU
 $FPLIST
  DIP*W7.62mm*
 $ENDFPLIST
@@ -845,53 +798,48 @@ X XTAL1/PB6 9 600 600 100 L 50 50 1 1 T
 ENDDRAW
 ENDDEF
 #
-# Mechanical_MountingHole
+# monotron-rescue:AudioJack3-Connector
 #
-DEF Mechanical_MountingHole H 0 40 Y Y 1 F N
-F0 "H" 0 200 50 H V C CNN
-F1 "Mechanical_MountingHole" 0 125 50 H V C CNN
+DEF monotron-rescue:AudioJack3-Connector J 0 20 Y Y 1 F N
+F0 "J" 0 350 50 H V C CNN
+F1 "monotron-rescue:AudioJack3-Connector" 0 250 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
- MountingHole*
+ Jack*
 $ENDFPLIST
 DRAW
-C 0 0 50 0 1 50 N
+S -200 -200 -250 -100 0 1 10 F
+S 100 150 -200 -200 0 1 10 f
+P 4 0 1 10 0 -100 25 -125 50 -100 100 -100 N
+P 5 0 1 10 -75 -100 -50 -125 -25 -100 -25 0 100 0 N
+P 5 0 1 10 100 100 -100 100 -100 -100 -125 -125 -150 -100 N
+X ~ R 200 0 100 L 50 50 1 1 P
+X ~ S 200 100 100 L 50 50 1 1 P
+X ~ T 200 -100 100 L 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Timer_MCP7940N-xP
+# power:+3.3V
 #
-DEF Timer_MCP7940N-xP U 0 20 Y Y 1 F N
-F0 "U" -250 350 50 H V C CNN
-F1 "Timer_MCP7940N-xP" 450 350 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-ALIAS MCP7940N-xP MCP7940N-xSN MCP7940N-xST
-$FPLIST
- SOIC*3.9x4.9mm*P1.27mm*
- TSSOP*4.4x3mm*P0.65mm*
- MSOP*3x3mm*P0.65mm*
- DIP*W7.62mm*
-$ENDFPLIST
-DRAW
-S -300 300 300 -300 0 1 10 f
-X X1 1 400 100 100 L 50 50 1 1 I
-X X2 2 400 -100 100 L 50 50 1 1 O
-X VBAT 3 100 400 100 D 50 50 1 1 W
-X VSS 4 0 -400 100 U 50 50 1 1 W
-X SDA 5 -400 100 100 R 50 50 1 1 B
-X SCL 6 -400 200 100 R 50 50 1 1 I
-X MFP 7 -400 -100 100 R 50 50 1 1 C
-X VCC 8 0 400 100 D 50 50 1 1 W
-ENDDRAW
-ENDDEF
-#
-# power_+3.3V
-#
-DEF power_+3.3V #PWR 0 0 Y Y 1 F P
+DEF power:+3.3V #PWR 0 0 Y Y 1 F P
 F0 "#PWR" 0 -150 50 H I C CNN
-F1 "power_+3.3V" 0 140 50 H V C CNN
+F1 "power:+3.3V" 0 140 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+DRAW
+P 2 0 1 0 -30 50 0 100 N
+P 2 0 1 0 0 0 0 100 N
+P 2 0 1 0 0 100 30 50 N
+X +3V3 1 0 0 0 U 50 50 1 1 W N
+ENDDRAW
+ENDDEF
+#
+# power:+3V3
+#
+DEF power:+3V3 #PWR 0 0 Y Y 1 F P
+F0 "#PWR" 0 -150 50 H I C CNN
+F1 "power:+3V3" 0 140 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 ALIAS +3.3V
@@ -903,26 +851,11 @@ X +3V3 1 0 0 0 U 50 50 1 1 W N
 ENDDRAW
 ENDDEF
 #
-# power_+3V3
+# power:+5V
 #
-DEF power_+3V3 #PWR 0 0 Y Y 1 F P
+DEF power:+5V #PWR 0 0 Y Y 1 F P
 F0 "#PWR" 0 -150 50 H I C CNN
-F1 "power_+3V3" 0 140 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-DRAW
-P 2 0 1 0 -30 50 0 100 N
-P 2 0 1 0 0 0 0 100 N
-P 2 0 1 0 0 100 30 50 N
-X +3V3 1 0 0 0 U 50 50 1 1 W N
-ENDDRAW
-ENDDEF
-#
-# power_+5V
-#
-DEF power_+5V #PWR 0 0 Y Y 1 F P
-F0 "#PWR" 0 -150 50 H I C CNN
-F1 "power_+5V" 0 140 50 H V C CNN
+F1 "power:+5V" 0 140 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 DRAW
@@ -933,11 +866,11 @@ X +5V 1 0 0 0 U 50 50 1 1 W N
 ENDDRAW
 ENDDEF
 #
-# power_+BATT
+# power:+BATT
 #
-DEF power_+BATT #PWR 0 0 Y Y 1 F P
+DEF power:+BATT #PWR 0 0 Y Y 1 F P
 F0 "#PWR" 0 -150 50 H I C CNN
-F1 "power_+BATT" 0 140 50 H V C CNN
+F1 "power:+BATT" 0 140 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 DRAW
@@ -948,11 +881,11 @@ X +BATT 1 0 0 0 U 50 50 1 1 W N
 ENDDRAW
 ENDDEF
 #
-# power_GND
+# power:GND
 #
-DEF power_GND #PWR 0 0 Y Y 1 F P
+DEF power:GND #PWR 0 0 Y Y 1 F P
 F0 "#PWR" 0 -250 50 H I C CNN
-F1 "power_GND" 0 -150 50 H V C CNN
+F1 "power:GND" 0 -150 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 DRAW
@@ -961,11 +894,11 @@ X GND 1 0 0 0 D 50 50 1 1 W N
 ENDDRAW
 ENDDEF
 #
-# power_PWR_FLAG
+# power:PWR_FLAG
 #
-DEF power_PWR_FLAG #FLG 0 0 N N 1 F P
+DEF power:PWR_FLAG #FLG 0 0 N N 1 F P
 F0 "#FLG" 0 75 50 H I C CNN
-F1 "power_PWR_FLAG" 0 150 50 H V C CNN
+F1 "power:PWR_FLAG" 0 150 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 DRAW
@@ -974,11 +907,51 @@ X pwr 1 0 0 0 U 50 50 0 0 w
 ENDDRAW
 ENDDEF
 #
-# tm4c123g_launchpad_TM4C123G_Launchpad
+# tm4c123g_launchpad:MCP23017
 #
-DEF tm4c123g_launchpad_TM4C123G_Launchpad U 0 40 Y Y 1 F N
+DEF tm4c123g_launchpad:MCP23017 U 0 40 Y Y 1 F N
+F0 "U" 350 700 100 H V C CNN
+F1 "tm4c123g_launchpad:MCP23017" -250 700 100 H V C CNN
+F2 "" 0 0 100 H I C CNN
+F3 "" 0 0 100 H I C CNN
+DRAW
+S -300 600 300 -900 0 1 0 N
+X GPB0 1 -400 500 100 R 50 50 1 1 B
+X VSS 10 -400 -400 100 R 50 50 1 1 W
+X NC 11 -400 -500 100 R 50 50 1 1 N
+X SCL 12 -400 -600 100 R 50 50 1 1 C
+X SDA 13 -400 -700 100 R 50 50 1 1 C
+X NC 14 -400 -800 100 R 50 50 1 1 N
+X A0 15 400 -800 100 L 50 50 1 1 I
+X A1 16 400 -700 100 L 50 50 1 1 I
+X A2 17 400 -600 100 L 50 50 1 1 I
+X ~RESET 18 400 -500 100 L 50 50 1 1 I
+X INTB 19 400 -400 100 L 50 50 1 1 O
+X GPB1 2 -400 400 100 R 50 50 1 1 B
+X INTA 20 400 -300 100 L 50 50 1 1 O
+X GPA0 21 400 -200 100 L 50 50 1 1 B
+X GPA1 22 400 -100 100 L 50 50 1 1 B
+X GPA2 23 400 0 100 L 50 50 1 1 B
+X GPA3 24 400 100 100 L 50 50 1 1 B
+X GPA4 25 400 200 100 L 50 50 1 1 B
+X GPA5 26 400 300 100 L 50 50 1 1 B
+X GPA6 27 400 400 100 L 50 50 1 1 B
+X GPA7 28 400 500 100 L 50 50 1 1 B
+X GPB2 3 -400 300 100 R 50 50 1 1 B
+X GPB3 4 -400 200 100 R 50 50 1 1 B
+X GPB4 5 -400 100 100 R 50 50 1 1 B
+X GPB5 6 -400 0 100 R 50 50 1 1 B
+X GPB6 7 -400 -100 100 R 50 50 1 1 B
+X GPB7 8 -400 -200 100 R 50 50 1 1 B
+X VDD 9 -400 -300 100 R 50 50 1 1 W
+ENDDRAW
+ENDDEF
+#
+# tm4c123g_launchpad:TM4C123G_Launchpad
+#
+DEF tm4c123g_launchpad:TM4C123G_Launchpad U 0 40 Y Y 1 F N
 F0 "U" -550 1150 50 H V C CNN
-F1 "tm4c123g_launchpad_TM4C123G_Launchpad" 150 1150 50 H V C CNN
+F1 "tm4c123g_launchpad:TM4C123G_Launchpad" 150 1150 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 DRAW
