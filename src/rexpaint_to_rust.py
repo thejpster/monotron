@@ -36,32 +36,31 @@ for col in range(0, width):
 		cells[(row, col)] = (uni, fg, bg)
 
 rgb_map = {
-	(255, 255, 255) : 'A',
-	(255, 255, 0) : 'B',
-	(255, 0, 255) : 'C',
-	(255, 0, 0) : 'D',
-	(0, 255, 255) : 'E',
-	(0, 255, 0) : 'F',
-	(0, 0, 255) : 'G',
-	(0, 0, 0) : 'H',
+	(255, 255, 255) : 'W',
+	(255, 255, 0) : 'Y',
+	(255, 0, 255) : 'M',
+	(255, 0, 0) : 'R',
+	(0, 255, 255) : 'C',
+	(0, 255, 0) : 'G',
+	(0, 0, 255) : 'M',
+	(0, 0, 0) : 'K',
 }
 
 current_fg = ''
 current_bg = ''
 for row in range(0, height):
-	sys.stdout.write("write!(context, \"");
 	for col in range(0, width):
 		(ch, fg, bg) = cells[row, col]
 		fg_ch = rgb_map[fg]
 		bg_ch = rgb_map[bg].lower()
 		if fg_ch != current_fg:
-			sys.stdout.write("\\u{{001b}}{}".format(fg_ch))
+			sys.stdout.write("^{}".format(fg_ch))
 			current_fg = fg_ch
 		if bg_ch != current_bg:
-			sys.stdout.write("\\u{{001b}}{}".format(bg_ch))
+			sys.stdout.write("^{}".format(bg_ch))
 			current_bg = bg_ch
 		if ord(ch) >= 32:
 			sys.stdout.write("{}".format(ch))
 		else:
 			sys.stdout.write("\\u{{{:04x}}}".format(ord(ch)))
-	sys.stdout.write("\").unwrap();\n")
+	sys.stdout.write("\n")
