@@ -393,13 +393,40 @@ edges, but I'm working on it.
 
 ## Running
 
-When running, a simple command driven interface is presented. Commands can be
-entered over serial, or using a PS/2 keyboard. Commands are split on
-whitespace and then interpreted based on the left-most word. Enter the command
-'help' to see a list of commands. Some commands place you in to a sub-menu -
-use 'exit' to return to the previous menu.
+When you boot the Monotron, the OS will first configure the hardware. It will
+then jump to a 'UI' application in Flash. The UI can chain-load another
+application using an ABI call to set the URL for the application to chain
+load, then exiting with a return code of zero.
 
-## Loading apps
+There is space for two UI applications in flash, or 32 KiB each. One could be
+a command-line shell, and one could be a BASIC intepreter (so Monotron can
+boot to BASIC). Each application should start with two pointers - the first is
+a pointer to the reset function (which receives the OS callback structure as
+per any other application), and the second is a pointer to an ASCII string
+which describes the application (null-terminated and/or maximum 32
+characters). If two UI applications are found (i.e. both pointers appear
+valid), then Monotron displays a menu asking the user to select one.
+
+Either UI application can use the whole 24 KiB of RAM for data storage, as the
+code all lives in flash.
+
+| Address       | Length  | Description     |
+|---------------|---------|-----------------|
+| 0x0000_0000   | 192 KiB | OS Code         |
+| 0x0003_0000   | 32 KiB  | Flash App 1     |
+| 0x0003_8000   | 32 KiB  | Flash App 2     |
+| 0x2000_0000   | 8 KiB   | OS Data + Stack |
+| 0x2000_2000   | 24 KiB  | Shell RAM       |
+
+## Shell
+
+When running the shell, a simple command driven interface is presented.
+Commands can be entered over serial, or using a PS/2 keyboard. Commands are
+split on whitespace and then interpreted based on the left-most word. Enter
+the command 'help' to see a list of commands. Some commands place you in to a
+sub-menu - use 'exit' to return to the previous menu.
+
+## Loading other apps
 
 Applications can be compiled and loaded into RAM for exection. They must be
 linked to run from address `0x2000_2000` and take less than 24 KiB for all
