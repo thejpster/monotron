@@ -4,6 +4,8 @@ target extended-remote :3333
 # print demangled symbols by default
 set print asm-demangle on
 
+set backtrace limit 32
+
 monitor arm semihosting enable
 
 # # send captured ITM to the file itm.fifo
