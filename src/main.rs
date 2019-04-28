@@ -74,7 +74,11 @@ pub struct RamIsrs {
 }
 
 /// This is a magic value to make the video timing work.
-const ISR_LATENCY: u32 = 94;
+const ISR_LATENCY: u32 = 24;
+
+/// This is a magic value for a pre-ISR which puts the CPU into a known state
+/// before our pixel start ISR.
+const ISR_LATENCY_WARMUP: u32 = 3;
 
 /// This is how much RAM we have.
 const TOTAL_RAM_LEN: usize = 32768;
@@ -704,8 +708,8 @@ impl fb::Hardware for VideoHardware {
         self.green_ch.cr1.modify(|_, w| w.sse().clear_bit());
         // SSIClk = SysClk / (CPSDVSR * (1 + SCR))
         // e.g. 20 MHz = 80 MHz / (4 * (1 + 0))
-        // CPSDVSR = 4 -------^
-        // SCR = 0 --------------------^
+        // CPSDVSR = 4 ------------^
+        // SCR = 0 -------------------------^
         let ratio = 80_000_000 / clock_rate;
         // For all sensible divisors of 80 MHz, we want SCR = 0.
         self.red_ch
@@ -773,18 +777,21 @@ impl fb::Hardware for VideoHardware {
         });
         // We're counting down in PWM mode, so start at the end
         // We start 16 pixels early
-        let multiplier = 80_000_000 / clock_rate;
+        let convert_to_clockset = |i: u32| -> u32 {
+            (ratio * i) - 1
+        };
         self.h_timer
             .tailr
-            .modify(|_, w| unsafe { w.bits(width * multiplier - 1) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
         self.h_timer
             .tbilr
-            .modify(|_, w| unsafe { w.bits(width * multiplier - 1) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
         self.h_timer
             .tamatchr
-            .modify(|_, w| unsafe { w.bits(multiplier * (width - sync_end) - 1) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width - sync_end)) });
+        // Counting down, so adding here makes it earlier
         self.h_timer.tbmatchr.modify(|_, w| unsafe {
-            w.bits((multiplier * (width - line_start)) + ISR_LATENCY - 1)
+            w.bits(convert_to_clockset(ISR_LATENCY + width - line_start))
         });
         self.h_timer.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires at start of line
@@ -813,12 +820,12 @@ impl fb::Hardware for VideoHardware {
         });
         // We're counting down in PWM mode, so start at the end
         // We start a few pixels before Timer1B
-        let multiplier = 80_000_000 / clock_rate;
         self.h_timer2
             .tailr
-            .modify(|_, w| unsafe { w.bits(width * multiplier - 1) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
+        // Counting down, so adding here makes it earlier
         self.h_timer2.tamatchr.modify(|_, w| unsafe {
-            w.bits((multiplier * (width - line_start)) + ISR_LATENCY + 16 - 1)
+            w.bits(convert_to_clockset(ISR_LATENCY + ISR_LATENCY_WARMUP + width - line_start))
         });
         self.h_timer2.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires just before at start of data
