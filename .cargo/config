@@ -1,7 +1,7 @@
 [target.thumbv7em-none-eabihf]
 runner = 'gdb-multiarch'
 rustflags = [
-  "-C", "link-arg=-Tmonotron_os.ld",
+  "-C", "link-arg=-Tlink.x",
 ]
 [build]
 target = "thumbv7em-none-eabihf"

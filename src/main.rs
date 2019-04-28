@@ -58,20 +58,13 @@ use monotron_synth::*;
 use tm4c123x_hal as hal;
 use vga_framebuffer as fb;
 
-use self::cpu::Interrupt;
+use self::cpu::{interrupt, Interrupt};
 use self::hal::bb;
 use self::hal::i2c::I2c;
 use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
 use self::hal::tm4c123x as cpu;
-
-/// We have to wrap our RAM interrupt vector table in a struct to be able to
-/// use align()
-#[repr(align(1024))]
-pub struct RamIsrs {
-    contents: [u32; 139 + 16]
-}
 
 /// This is a magic value to make the video timing work.
 const ISR_LATENCY: u32 = 24;
@@ -105,17 +98,6 @@ static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
 /// This is both the video renderer state, and the buffer into which text
 /// characters are drawn. These should probably be two separate things.
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
-
-/// This variable holds a copy of the interrupt table in Flash. This has two benefits:
-///
-/// 1. The ISR latency is lower and less affected by flash operations (i.e. OS
-/// code execution) at interrupt time
-///
-/// 2. You can patch this table at run time to register new ISRs
-#[no_mangle]
-pub static mut RAM_ISRS: RamIsrs = RamIsrs {
-    contents: [0u32; 139 + 16]
-};
 
 struct VideoHardware {
     h_timer: cpu::TIMER1,
@@ -385,11 +367,6 @@ fn main() -> ! {
     // Copy ISR to RAM
     let p = hal::Peripherals::take().unwrap();
     let cp = hal::CorePeripherals::take().unwrap();
-    // Move Interrupt Table into RAM
-    unsafe {
-        core::ptr::copy_nonoverlapping::<u32>(0 as *mut u32, RAM_ISRS.contents.as_mut_ptr(), RAM_ISRS.contents.len());
-        cp.SCB.vtor.write(RAM_ISRS.contents.as_ptr() as u32);
-    };
 
     let mut sc = p.SYSCTL.constrain();
     sc.clock_setup.oscillator = sysctl::Oscillator::Main(
@@ -664,12 +641,12 @@ fn main() -> ! {
 
     let stack_space = unsafe {
         extern "C" {
-            static __edata: u32;
-            static __sbss: u32;
+            static __ebss: u32;
+            static __sdata: u32;
         }
-        let edata = &__edata as *const u32 as usize;
-        let start = &__sbss as *const u32 as usize;
-        let total = edata - start;
+        let ebss = &__ebss as *const u32 as usize;
+        let sdata = &__sdata as *const u32 as usize;
+        let total = ebss - sdata;
         8192 - total
     };
     writeln!(
@@ -882,119 +859,134 @@ impl fb::Hardware for VideoHardware {
     }
 }
 
+interrupt!(TIMER2A, timer2a);
+
 /// Called just before Timer1B. Gives Timer1B lower interrupt jitter.
-#[allow(non_snake_case)]
-#[no_mangle]
-#[link_section = ".data"]
-pub unsafe extern "C" fn TIMER2A() {
-    asm!("wfi");
-    let timer = &*cpu::TIMER2::ptr();
-    timer.icr.write(|w| w.caecint().set_bit());
+fn timer2a() {
+    unsafe {
+        asm!("wfi");
+        let timer = &*cpu::TIMER2::ptr();
+        timer.icr.write(|w| w.caecint().set_bit());
+    }
 }
 
-/// Called on start of sync pulse (end of front porch)
-#[allow(non_snake_case)]
-#[no_mangle]
-pub unsafe extern "C" fn TIMER1A() {
-    let pwm = &*cpu::PWM0::ptr();
-    static mut NEXT_SAMPLE: u8 = 128;
-    pwm._2_cmpa
-        .write(|w| w.compa().bits(NEXT_SAMPLE as u16));
-    let ssi_r = &*cpu::SSI1::ptr();
-    let ssi_g = &*cpu::SSI2::ptr();
-    let ssi_b = &*cpu::SSI3::ptr();
-    // Disable the SPIs as we don't want pixels yet
-    ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
-    ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
-    ssi_b.cr1.modify(|_, w| w.sse().clear_bit());
-    // Pre-load red with 2 bytes and green 1 with (they start early so we can line them up)
-    ssi_r.dr.write(|w| w.data().bits(0));
-    ssi_r.dr.write(|w| w.data().bits(0));
-    ssi_g.dr.write(|w| w.data().bits(0));
-    // Run the draw routine
-     FRAMEBUFFER.isr_sol();
-    // Run the audio routine
-    NEXT_SAMPLE = G_SYNTH.next().into();
-    // Clear timer A interrupt
-    let timer = &*cpu::TIMER1::ptr();
-    timer.icr.write(|w| w.caecint().set_bit());
+interrupt!(TIMER1A, timer1a);
+
+/// Called on start of sync pulse (end of front porch). This is unsafe because
+/// we mutate statics (technically this is undefined behaviour).
+fn timer1a() {
+    unsafe {
+        let pwm = &*cpu::PWM0::ptr();
+        static mut NEXT_SAMPLE: u8 = 128;
+        pwm._2_cmpa
+            .write(|w| w.compa().bits(NEXT_SAMPLE as u16));
+        let ssi_r = &*cpu::SSI1::ptr();
+        let ssi_g = &*cpu::SSI2::ptr();
+        let ssi_b = &*cpu::SSI3::ptr();
+        // Disable the SPIs as we don't want pixels yet
+        ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
+        ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
+        ssi_b.cr1.modify(|_, w| w.sse().clear_bit());
+        // Pre-load red with 2 bytes and green 1 with (they start early so we can line them up)
+        ssi_r.dr.write(|w| w.data().bits(0));
+        ssi_r.dr.write(|w| w.data().bits(0));
+        ssi_g.dr.write(|w| w.data().bits(0));
+        // Run the draw routine
+        FRAMEBUFFER.isr_sol();
+        // Run the audio routine
+        NEXT_SAMPLE = G_SYNTH.next().into();
+        // Clear timer A interrupt
+        let timer = &*cpu::TIMER1::ptr();
+        timer.icr.write(|w| w.caecint().set_bit());
+    }
 }
+
+interrupt!(TIMER1B, timer1b);
 
 /// Called on start of pixel data (end of back porch)
-#[allow(non_snake_case)]
-#[no_mangle]
-#[link_section = ".data"]
-pub unsafe extern "C" fn TIMER1B() {
+fn timer1b() {
     // Activate the three FIFOs exactly 32 clock cycles (or 8 pixels) apart This
     // gets the colour video lined up, as we preload the red channel with 0x00
     // 0x00 and the green channel with 0x00.
-    asm!(
-        "movs    r0, #132;
-        movs    r1, #1;
-        movt    r0, #16914;
-        mov.w   r2, #131072;
-        mov.w   r3, #262144;
-        str r1, [r0, #0];
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        str r1, [r0, r2];
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        nop;
-        str r1, [r0, r3];
-        "
-        :
-        :
-        : "r0" "r1" "r2" "r3"
-        : "volatile");
-    // Clear timer B interrupt
-    let timer = &*cpu::TIMER1::ptr();
-    timer.icr.write(|w| w.cbecint().set_bit());
+    unsafe {
+        asm!(
+            "movs    r0, #132;
+            movs    r1, #1;
+            movt    r0, #16914;
+            mov.w   r2, #131072;
+            mov.w   r3, #262144;
+            str r1, [r0, #0];
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            str r1, [r0, r2];
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            nop;
+            str r1, [r0, r3];
+            "
+            :
+            :
+            : "r0" "r1" "r2" "r3"
+            : "volatile");
+        // Clear timer B interrupt
+        let timer = &*cpu::TIMER1::ptr();
+        timer.icr.write(|w| w.cbecint().set_bit());
+    }
 }
 
 #[exception]
