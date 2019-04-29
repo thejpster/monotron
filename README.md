@@ -489,6 +489,55 @@ See [monotron-apps](https://github.com/thejpster/monotron-apps) for example
 apps which will run from Monotron's RAM, along with a wrapper which makes
 using the callbacks as simple as using a normal C library.
 
+## URL schema
+
+The idea is to implement a Redox-style (or perhaps Windows style) URL
+based file handling mechanism to use over the ABI.
+
+A URL points at a resource - be it a Serial port, file on SD card, I2C, etc.
+
+You can open a URL, or attempt to delete a URL. Once a URL is open, you can:
+
+* close it
+* send it a control command (e.g. seek, or URL specific commands)
+* read from it
+* write to it
+
+URLs are strings of a given length (i.e. not necessarily null-terminated), of the format:
+
+    <protocol> :// <id> [ [ /  [ <dir> / ]* <filename> ] ? [ <key> = <value> [ & <key> = <value> ]* ]
+
+List of supported protocols:
+
+* `rand` - generates random bytes
+* `disk` - for 512 byte blocks on storage devices / partitions
+* `protocols` - list of supported protocols
+* `js` - joystick inputs
+* `kb` - raw keyboard events
+* `mouse` - raw mouse events
+* `file` - allows files to be created/opened/deleted from mounted filesystems (which live on disks / partitions)
+* `dir` - for directory listings
+* `lpt` - for Parallel Printers
+* `serial` - for Serial Ports (including MIDI)
+* `i2c` - read/write to I2C devices at specific addresses
+
+For example:
+
+* `file://0/images/test.img?mode=r` - File /images/test.img on the disk mounted as drive 0, in read mode
+* `disk://sd0` - Read/write access to raw SD card blocks
+* `disk://sd0/0?mode=r` - Read-only access SD card blocks from partition 0
+* `uart://2?baud=115200&parity=N` - UART 2 @ 11500bps, No Parity (data and stop bits are default)
+* `audio://1` - Synth channel 1
+* `js://0` - Joystick 0
+* `lpt://0?mode=SPP` - LPT port in SPP mode
+* `i2c://111/0` - Address 0 on I2C device 111
+* `i2c://35` - I2C device 35 (set address with a Control command)
+
+The control commands vary by URL protocol. On a file, you might be able to
+seek. On an audio channel you can change the waveform. On an LPT port you
+might be able to change the printer mode, or inspect the status pins.
+
+
 ## Unreleased changes (will be 0.10.0)
 
 * Fixed video interrupt jitter by entering WFI before drawing pixels.

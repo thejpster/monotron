@@ -2,6 +2,7 @@ use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row, TEXT_MAX_COL, TEX
 use crate::{Context, Input, FRAMEBUFFER};
 use cortex_m::asm;
 
+/// ```
 /// struct callbacks_t {
 ///    int32_t (*putchar)(void* p_context, char ch);
 ///    int32_t (*puts)(void* p_context, const char*);
@@ -13,7 +14,14 @@ use cortex_m::asm;
 ///    void (*change_font)(void* p_context, uint32_t mode, const void* p_font);
 ///    uint8_t (*get_joystick)(void* p_context) -> uint8_t;
 ///    void (*set_cursor_visible)(void* p_context, uint8_t visible);
+///    int32_t (*url_open)(void* p_context, const uint8_t* p_url, uint16_t url_len),
+///    int32_t (*url_delete)(void* p_context, const uint8_t* p_url, uint16_t url_len),
+///    int32_t (*handle_close)(void* p_context, int32_t openHandle),
+///    int32_t (*handle_control)(void* p_context, int32_t openHandle),
+///    int32_t (*handle_read)(void* p_context, int32_t openHandle, uint8_t* p_buffer, uint16_t* p_buffer_size),
+///    int32_t (*handle_write)(void* p_context, int32_t openHandle, const uint8_t* p_data, uint16_t* p_buffer_size),
 /// };
+/// ```
 #[repr(C)]
 pub(crate) struct Table {
     putchar: extern "C" fn(*mut Context, u8) -> i32,
@@ -26,6 +34,12 @@ pub(crate) struct Table {
     change_font: extern "C" fn(*mut Context, u32, *const u8),
     get_joystick: extern "C" fn(*mut Context) -> u8,
     set_cursor_visible: extern "C" fn(*mut Context, u8),
+    url_open: extern "C" fn(*mut Context, *const u8, u32) -> i32,
+    url_delete: extern "C" fn(*mut Context, *const u8, u32) -> i32,
+    handle_close: extern "C" fn(*mut Context, i32) -> i32,
+    handle_control: extern "C" fn(*mut Context, i32) -> i32,
+    handle_read: extern "C" fn(*mut Context, i32, *mut u8, i32) -> i32,
+    handle_write: extern "C" fn(*mut Context, i32, *const u8, i32) -> i32,
 }
 
 pub(crate) static CALLBACK_TABLE: Table = Table {
