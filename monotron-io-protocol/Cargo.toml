@@ -1,0 +1,13 @@
+[package]
+name = "monotron-io-protocol"
+version = "0.1.0"
+authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
+edition = "2018"
+description = "Describes the messages that get passed between the main Monotron processor and the IO/keyboard processor"
+
+[dependencies]
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+features = ["derive"]
