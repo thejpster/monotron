@@ -346,12 +346,15 @@ impl Context {
 
     /// Write an 8-bit ASCII character to the screen.
     fn write_u8(&mut self, ch: u8) {
+        self.usb_uart.write(ch).unwrap();
         unsafe { FRAMEBUFFER.write_character(ch).unwrap() }
     }
 }
 
 impl core::fmt::Write for Context {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.usb_uart.write_all(s);
+        //self.usb_uart.write('\n' as u8).unwrap();
         unsafe { FRAMEBUFFER.write_str(s) }
     }
 }
