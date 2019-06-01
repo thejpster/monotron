@@ -44,6 +44,7 @@
 
 #![no_main]
 #![no_std]
+#![allow(deprecated)]
 #![feature(asm)]
 
 mod api;
