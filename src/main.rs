@@ -131,7 +131,6 @@ impl embedded_sdmmc::TimeSource for DummyTimeSource {
 }
 
 struct Context {
-    pub value: u32,
     usb_uart: hal::serial::Serial<
         hal::serial::UART0,
         hal::gpio::gpioa::PA1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -146,7 +145,6 @@ struct Context {
         (),
         (),
     >,
-    #[allow(dead_code)] // we'll get on to this later
     midi_uart: hal::serial::Serial<
         hal::serial::UART3,
         hal::gpio::gpioc::PC7<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -154,7 +152,6 @@ struct Context {
         (),
         (),
     >,
-    #[allow(dead_code)] // we'll get on to this later
     rs232_uart: hal::serial::Serial<
         hal::serial::UART1,
         hal::gpio::gpiob::PB1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
@@ -598,7 +595,6 @@ fn main() -> ! {
     );
 
     let mut c = Context {
-        value: 0,
         usb_uart,
         avr_uart,
         midi_uart,
