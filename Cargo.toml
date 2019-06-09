@@ -1,18 +1,9 @@
-[package]
-name = "monotron"
-version = "0.9.0"
-authors = ["Jorge Aparicio <jorge@japaric.io>", "Jonathan 'theJPster' Pallant <monotron@thejpster.org.uk>"]
-description = "A simple 1980's home computer style application for the Tiva-C Launchpad."
-keywords = ["arm", "cortex-m", "template", "video", "menu"]
-categories = ["embedded", "no-std"]
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/thejpster/monotron"
-edition = "2018"
-
-[[bin]]
-name = "monotron"
-test = false
-bench = false
+[workspace]
+members = [
+    "rom",
+    "monotron-io-protocol",
+    "monotron-api",
+]
 
 [profile.release]
 lto = true
@@ -20,55 +11,4 @@ incremental = false
 debug = true
 codegen-units = 1
 opt-level = "s"
-
-[dependencies.tm4c123x-hal]
-version = "0.9.1"
-# path = "../tm4c-hal/tm4c123x-hal"
-# git = "https://github.com/thejpster/tm4c-hal"
-features = ["rt"]
-
-[dependencies.menu]
-version = "0.2.1"
-# git = "https://github.com/thejpster/menu"
-# path = "../menu"
-
-[dependencies.vga-framebuffer]
-version = "0.7.4"
-# git = "https://github.com/thejpster/vga-framebuffer-rs"
-# path = "../vga-framebuffer-rs"
-features = ["const_fn"]
-
-[dependencies.embedded-hal]
-version = "0.2.1"
-features = ["unproven"]
-
-[dependencies.cortex-m]
-version = "0.6"
-
-[dependencies.cortex-m-rt]
-version = "0.6.1"
-
-[dependencies.panic-halt]
-version = "0.2"
-
-[dependencies.pc-keyboard]
-version = "0.5"
-# path = "../pc-keyboard"
-
-[dependencies.monotron-synth]
-# path = "../monotron-synth"
-# git = "https://github.com/thejpster/monotron-synth"
-version = "0.2"
-
-[dependencies.embedded-sdmmc]
-version = "0.2"
-# path = "../embedded-sdmmc"
-# git = "https://github.com/thejpster/embedded-sdmmc-rs"
-
-[dependencies.nb]
-version = "0.1"
-
-[dependencies.crc]
-version = "1.8.1"
-default-features = false
 

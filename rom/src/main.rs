@@ -627,12 +627,20 @@ fn main() -> ! {
         FRAMEBUFFER.clear();
     }
 
-    write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
+    write!(
+        c,
+        "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗"
+    )
+    .unwrap();
     write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
     write!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
     write!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
     write!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
-    write!(c, "╚══════════════════════════════════════════════╝").unwrap();
+    write!(
+        c,
+        "╚══════════════════════════════════════════════╝"
+    )
+    .unwrap();
     writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
     writeln!(c, "Copyright © theJPster 2018").unwrap();
 
@@ -751,9 +759,7 @@ impl fb::Hardware for VideoHardware {
         });
         // We're counting down in PWM mode, so start at the end
         // We start 16 pixels early
-        let convert_to_clockset = |i: u32| -> u32 {
-            (ratio * i) - 1
-        };
+        let convert_to_clockset = |i: u32| -> u32 { (ratio * i) - 1 };
         self.h_timer
             .tailr
             .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
@@ -799,7 +805,9 @@ impl fb::Hardware for VideoHardware {
             .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
         // Counting down, so adding here makes it earlier
         self.h_timer2.tamatchr.modify(|_, w| unsafe {
-            w.bits(convert_to_clockset(ISR_LATENCY + ISR_LATENCY_WARMUP + width - line_start))
+            w.bits(convert_to_clockset(
+                ISR_LATENCY + ISR_LATENCY_WARMUP + width - line_start,
+            ))
         });
         self.h_timer2.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires just before at start of data
@@ -875,8 +883,7 @@ fn timer1a() {
     unsafe {
         let pwm = &*cpu::PWM0::ptr();
         static mut NEXT_SAMPLE: u8 = 128;
-        pwm._2_cmpa
-            .write(|w| w.compa().bits(NEXT_SAMPLE as u16));
+        pwm._2_cmpa.write(|w| w.compa().bits(NEXT_SAMPLE as u16));
         let ssi_r = &*cpu::SSI1::ptr();
         let ssi_g = &*cpu::SSI2::ptr();
         let ssi_b = &*cpu::SSI3::ptr();
