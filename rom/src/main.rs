@@ -641,8 +641,9 @@ fn main() -> ! {
         "╚══════════════════════════════════════════════╝"
     )
     .unwrap();
-    writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
-    writeln!(c, "Copyright © theJPster 2018").unwrap();
+    writeln!(c, "Monotron v{}", VERSION).unwrap();
+    writeln!(c, "{}", GIT_DESCRIBE).unwrap();
+    writeln!(c, "Copyright © theJPster 2019").unwrap();
 
     let stack_space = unsafe {
         extern "C" {
@@ -853,14 +854,14 @@ impl fb::Hardware for VideoHardware {
     }
 
     /// Write pixels straight to FIFOs
-    fn write_pixels(&mut self, red: u32, green: u32, blue: u32) {
+    fn write_pixels(&mut self, xrgb: vga_framebuffer::XRGBColour) {
         let ssi_r = unsafe { &*cpu::SSI1::ptr() };
         let ssi_g = unsafe { &*cpu::SSI2::ptr() };
         let ssi_b = unsafe { &*cpu::SSI3::ptr() };
         while (ssi_r.sr.read().bits() & 0x02) == 0 {}
-        ssi_r.dr.write(|w| unsafe { w.bits(red) });
-        ssi_g.dr.write(|w| unsafe { w.bits(green) });
-        ssi_b.dr.write(|w| unsafe { w.bits(blue) });
+        ssi_r.dr.write(|w| unsafe { w.bits(xrgb.red()) });
+        ssi_g.dr.write(|w| unsafe { w.bits(xrgb.green()) });
+        ssi_b.dr.write(|w| unsafe { w.bits(xrgb.blue()) });
     }
 }
 

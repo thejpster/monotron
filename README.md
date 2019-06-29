@@ -465,6 +465,7 @@ using the callbacks as simple as using a normal C library.
 ## Unreleased changes (will be 0.10.0)
 
 * Fixed video interrupt jitter by entering WFI before drawing pixels.
+* Updated VGA framebuffer callback API
 
 ## Changelog
 
