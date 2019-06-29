@@ -27,7 +27,8 @@ version = "0.2.1"
 
 [dependencies.vga-framebuffer]
 version = "0.8.0"
-# git = "https://github.com/thejpster/vga-framebuffer-rs"
+git = "https://github.com/thejpster/vga-framebuffer-rs"
+branch = "eighty_columns"
 # path = "../../vga-framebuffer-rs"
 features = ["const_fn"]
 

@@ -627,16 +627,16 @@ fn main() -> ! {
         FRAMEBUFFER.clear();
     }
 
-    write!(
+    writeln!(
         c,
         "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗"
     )
     .unwrap();
-    write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
-    write!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
-    write!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
-    write!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
-    write!(
+    writeln!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
+    writeln!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
+    writeln!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
+    writeln!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
+    writeln!(
         c,
         "╚══════════════════════════════════════════════╝"
     )
@@ -705,21 +705,21 @@ impl fb::Hardware for VideoHardware {
             .cpsr
             .write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
         self.red_ch.cr0.write(|w| {
-            w.dss()._8();
+            w.dss()._10();
             w.frf().moto();
             w.spo().clear_bit();
             w.sph().set_bit();
             w
         });
         self.blue_ch.cr0.write(|w| {
-            w.dss()._8();
+            w.dss()._10();
             w.frf().moto();
             w.spo().clear_bit();
             w.sph().set_bit();
             w
         });
         self.green_ch.cr0.write(|w| {
-            w.dss()._8();
+            w.dss()._10();
             w.frf().moto();
             w.spo().clear_bit();
             w.sph().set_bit();
@@ -863,6 +863,28 @@ impl fb::Hardware for VideoHardware {
         ssi_g.dr.write(|w| unsafe { w.bits(xrgb.green()) });
         ssi_b.dr.write(|w| unsafe { w.bits(xrgb.blue()) });
     }
+
+    fn write_solid(&mut self) {
+        let ssi_r = unsafe { &*cpu::SSI1::ptr() };
+        let ssi_g = unsafe { &*cpu::SSI2::ptr() };
+        let ssi_b = unsafe { &*cpu::SSI3::ptr() };
+        while (ssi_r.sr.read().bits() & 0x02) == 0 {}
+        // Write out all 10 bits per column
+        ssi_r.dr.write(|w| unsafe { w.bits(0x3FF) });
+        ssi_g.dr.write(|w| unsafe { w.bits(0x3FF) });
+        ssi_b.dr.write(|w| unsafe { w.bits(0x3FF) });
+    }
+
+    /// Write mono pixels straight to the FIFOs
+    fn write_mono_pixels(&mut self, pixels: u8) {
+        let ssi_r = unsafe { &*cpu::SSI1::ptr() };
+        let ssi_g = unsafe { &*cpu::SSI2::ptr() };
+        let ssi_b = unsafe { &*cpu::SSI3::ptr() };
+        while (ssi_r.sr.read().bits() & 0x02) == 0 {}
+        ssi_r.dr.write(|w| unsafe { w.bits(pixels as u32) });
+        ssi_g.dr.write(|w| unsafe { w.bits(pixels as u32) });
+        ssi_b.dr.write(|w| unsafe { w.bits(pixels as u32) });
+    }
 }
 
 interrupt!(TIMER2A, timer2a);
@@ -940,31 +962,7 @@ fn timer1b() {
             nop;
             nop;
             nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
             str r1, [r0, r2];
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
-            nop;
             nop;
             nop;
             nop;
