@@ -104,6 +104,11 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             command: "i2c_tx",
             help: Some("<addr> <reg> <byte> - Write to I2C device"),
         },
+        &Item {
+            item_type: menu::ItemType::Callback(charset),
+            command: "charset",
+            help: Some("Shows the entire character set"),
+        },
     ],
     entry: None,
     exit: None,
@@ -747,6 +752,21 @@ fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, c: &mut Context) {
     .unwrap();
     let result = c.i2c_bus.write_read(i2c_addr, &command, &mut read_buffer);
     writeln!(c, "Result={:?}, Data={:?}", result, read_buffer).unwrap();
+}
+
+/// Print the entire character set
+fn charset<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
+    writeln!(c, "Monotron Character set:").unwrap();
+    for row in 0..16 {
+        for col in 0..16 {
+            let b = row * 16 + col;
+            unsafe {
+                FRAMEBUFFER.write_char(b' ', None);
+                FRAMEBUFFER.write_char(if (b == 10) || (b == 13) { b'.' } else { b }, None);
+            }
+        }
+        writeln!(c).unwrap();
+    }
 }
 
 fn parse_u32(s: &str) -> Option<u32> {
