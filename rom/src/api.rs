@@ -26,6 +26,7 @@ pub(crate) struct Table {
     change_font: extern "C" fn(*mut Context, u32, *const u8),
     get_joystick: extern "C" fn(*mut Context) -> u8,
     set_cursor_visible: extern "C" fn(*mut Context, u8),
+    read_char_at: extern "C" fn(*mut Context, u8, u8) -> u16,
 }
 
 pub(crate) static CALLBACK_TABLE: Table = Table {
@@ -39,6 +40,7 @@ pub(crate) static CALLBACK_TABLE: Table = Table {
     change_font,
     get_joystick,
     set_cursor_visible,
+    read_char_at,
 };
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
@@ -227,5 +229,15 @@ pub(crate) extern "C" fn get_joystick(raw_ctx: *mut Context) -> u8 {
 pub(crate) extern "C" fn set_cursor_visible(_raw_ctx: *mut Context, visible: u8) {
     unsafe {
         FRAMEBUFFER.set_cursor_visible(visible != 0);
+    }
+}
+
+/// Return what's on the screen at this point
+pub(crate) extern "C" fn read_char_at(_raw_ctx: *mut Context, row: u8, col: u8) -> u16 {
+    let p = Position::new(Row(row), Col(col));
+    if let Some((glyph, attr)) = unsafe { FRAMEBUFFER.read_glyph_at(p) } {
+        (((glyph as u8) as u16) << 8) + attr.as_u8() as u16
+    } else {
+        0
     }
 }
