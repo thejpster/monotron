@@ -203,7 +203,7 @@ pub(crate) extern "C" fn play(
 pub(crate) extern "C" fn change_font(_raw_ctx: *mut Context, mode: u32, p_font: *const u8) {
     let new_font = match mode {
         0 => Some(None),
-        1 => Some(Some(&vga_framebuffer::freebsd_teletext::FONT_DATA[..])),
+        1 => Some(Some(&vga_framebuffer::freebsd_teletext_8x16::FONT_DATA[..])),
         2 if !p_font.is_null() => {
             let font_data: &'static [u8] = unsafe { core::slice::from_raw_parts(p_font, 4096) };
             Some(Some(font_data))

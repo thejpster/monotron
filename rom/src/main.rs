@@ -875,8 +875,8 @@ impl fb::Hardware for VideoHardware {
         ssi_b.dr.write(|w| unsafe { w.bits(0x3FF) });
     }
 
-    /// Write mono pixels straight to the FIFOs
-    fn write_mono_pixels(&mut self, pixels: u8) {
+    /// Write the same mono pixels straight to all three FIFOs
+    fn write_mono_pixels(&mut self, pixels: u16) {
         let ssi_r = unsafe { &*cpu::SSI1::ptr() };
         let ssi_g = unsafe { &*cpu::SSI2::ptr() };
         let ssi_b = unsafe { &*cpu::SSI3::ptr() };
