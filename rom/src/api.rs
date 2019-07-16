@@ -25,6 +25,7 @@ pub(crate) static CALLBACK_TABLE: Api = Api {
     opendir,
     readdir,
     stat,
+    gettime,
 };
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
@@ -136,6 +137,31 @@ pub(crate) extern "C" fn move_cursor(row: u8, col: u8) {
                 let _ = FRAMEBUFFER.set_pos(p);
             }
         }
+    }
+}
+
+/// Get the current time.
+///
+/// The system has no concept of timezones or leap seconds. We get the calendar time from the RTC on start up, then
+/// rely on a timer tick to keep the calendar updated.
+///
+/// TODO: Implement this. For now, return a fixed time.
+pub(crate) extern "C" fn gettime() -> monotron_api::Timestamp {
+    monotron_api::Timestamp {
+        /// The Gregorian calendar year, minus 1970 (so 10 is 1980, and 30 is the year 2000)
+        year_from_1970: 49,
+        /// The month of the year, where January is 1 and December is 12
+        month: 7,
+        /// The day of the month where 1 is the first of the month, through to 28,
+        /// 29, 30 or 31 (as appropriate)
+        day: 16,
+        /// The hour in the day, from 0 to 23
+        hour: 20,
+        /// The minutes past the hour, from 0 to 59
+        minute: 44,
+        /// The seconds past the minute, from 0 to 59. Note that some filesystems
+        /// only have 2-second precision on their timestamps.
+        second: 38,
     }
 }
 
