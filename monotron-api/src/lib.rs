@@ -12,7 +12,9 @@
 //! extensible.
 //!
 //! A C header file version of this API can be generated with `cbindgen`.
-#![no_std]
+//!
+//! All types in this file must be `#[repr(C)]`.
+#![cfg_attr(not(test), no_std)]
 #![deny(missing_docs)]
 
 /// The set of Error codes the API can report.
@@ -123,6 +125,86 @@ pub struct Timestamp {
     pub second: u8,
 }
 
+/// Represents the seven days of the week
+#[repr(C)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum DayOfWeek {
+    /// First day of the week
+    Monday,
+    /// Comes after Monday
+    Tuesday,
+    /// Middle of the week
+    Wednesday,
+    /// Between Wednesday and Friday
+    Thursday,
+    /// Almost the weekend
+    Friday,
+    /// First day of the weekend
+    Saturday,
+    /// Last day of the week
+    Sunday,
+}
+
+impl DayOfWeek {
+    /// Returns the UK English word for the day of the week
+    pub fn day_str(&self) -> &'static str {
+        match self {
+            DayOfWeek::Monday => "Monday",
+            DayOfWeek::Tuesday => "Tuesday",
+            DayOfWeek::Wednesday => "Wednesday",
+            DayOfWeek::Thursday => "Thursday",
+            DayOfWeek::Friday => "Friday",
+            DayOfWeek::Saturday => "Saturday",
+            DayOfWeek::Sunday => "Sunday",
+        }
+    }
+}
+
+impl Timestamp {
+    /// Returns the day of the week for the given timestamp.
+    pub fn day_of_week(&self) -> DayOfWeek {
+        let zellers_month = ((i32::from(self.month) + 9) % 12) + 1;
+        let k = i32::from(self.day);
+        let year = if zellers_month >= 11 {
+            i32::from(self.year_from_1970) + 1969
+        } else {
+            i32::from(self.year_from_1970) + 1970
+        };
+        let d = year % 100;
+        let c = year / 100;
+        let f = k + (((13 * zellers_month) - 1) / 5) + d + (d / 4) + (c / 4) - (2 * c);
+        let day_of_week = f % 7;
+        match day_of_week {
+            0 => DayOfWeek::Sunday,
+            1 => DayOfWeek::Monday,
+            2 => DayOfWeek::Tuesday,
+            3 => DayOfWeek::Wednesday,
+            4 => DayOfWeek::Thursday,
+            5 => DayOfWeek::Friday,
+            _ => DayOfWeek::Saturday,
+        }
+    }
+
+    /// Returns the current month as a UK English string (e.g. "August").
+    pub fn month_str(&self) -> &'static str {
+        match self.month {
+            1 => "January",
+            2 => "February",
+            3 => "March",
+            4 => "April",
+            5 => "May",
+            6 => "June",
+            7 => "July",
+            8 => "August",
+            9 => "September",
+            10 => "October",
+            11 => "November",
+            12 => "December",
+            _ => "Unknown",
+        }
+    }
+}
+
 /// Describes a file as it exists on disk.
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -176,10 +258,10 @@ pub extern "C" fn monotron_filemode_is_archive(flags: FileMode) -> bool {
 }
 
 impl FileMode {
-    const READ_ONLY: u8 = 1u8 << 0;
-    const VOLUME: u8 = 1u8 << 1;
-    const SYSTEM: u8 = 1u8 << 2;
-    const ARCHIVE: u8 = 1u8 << 3;
+    const READ_ONLY: u8 = 1;
+    const VOLUME: u8 = 2;
+    const SYSTEM: u8 = 4;
+    const ARCHIVE: u8 = 8;
 }
 
 /// Represents how far to move the current read/write pointer through a file.
@@ -277,10 +359,50 @@ pub extern "C" fn monotron_openmode_readwrite(
     }
 }
 
+/// Standard Output
+pub static STDOUT: Handle = Handle(0);
+
+/// Standard Error
+pub static STDERR: Handle = Handle(1);
+
+/// Standard Input
+pub static STDIN: Handle = Handle(2);
+
 /// This structure contains all the function pointers the application can use
 /// to access OS functions.
 #[repr(C)]
 pub struct Api {
+    /// Old function for writing a single 8-bit character to the screen.
+    pub putchar: extern "C" fn(ch: u8) -> i32,
+
+    /// Old function for writing a null-terminated 8-bit string to the screen.
+    pub puts: extern "C" fn(string: *const u8) -> i32,
+
+    /// Old function for reading one byte from stdin, blocking.
+    pub readc: extern "C" fn() -> i32,
+
+    /// Old function for checking if readc() would block.
+    pub kbhit: extern "C" fn() -> i32,
+
+    /// Old function for moving the cursor on screen. To be replaced with ANSI
+    /// escape codes.
+    pub move_cursor: extern "C" fn(row: u8, col: u8),
+
+    /// Old function for playing a note.
+    pub play: extern "C" fn(frequency: u32, channel: u8, volume: u8, waveform: u8) -> i32,
+
+    /// Old function for changing the on-screen font.
+    pub change_font: extern "C" fn(font_id: u32, font_data: *const u8),
+
+    /// Old function for reading the Joystick status.
+    pub get_joystick: extern "C" fn() -> u8,
+
+    /// Old function for turning the cursor on/off.
+    pub set_cursor_visible: extern "C" fn(enabled: u8),
+
+    /// Old function for reading the contents of the screen.
+    pub read_char_at: extern "C" fn(row: u8, col: u8) -> u16,
+
     /// Wait for next vertical blanking interval.
     pub wfvbi: extern "C" fn(),
 
@@ -321,4 +443,54 @@ pub struct Api {
 
     /// Get information about a file by path
     pub stat: extern "C" fn(filename: BorrowedString, stat_entry: &mut DirEntry) -> EmptyResult,
+
+    /// Get the current time
+    pub gettime: extern "C" fn() -> Timestamp,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn day_of_week() {
+        let samples = [
+            (
+                Timestamp {
+                    year_from_1970: 49,
+                    month: 7,
+                    day: 16,
+                    hour: 0,
+                    minute: 0,
+                    second: 0,
+                },
+                DayOfWeek::Tuesday,
+            ),
+            (
+                Timestamp {
+                    year_from_1970: 49,
+                    month: 7,
+                    day: 17,
+                    hour: 0,
+                    minute: 0,
+                    second: 0,
+                },
+                DayOfWeek::Wednesday,
+            ),
+            (
+                Timestamp {
+                    year_from_1970: 49,
+                    month: 7,
+                    day: 18,
+                    hour: 0,
+                    minute: 0,
+                    second: 0,
+                },
+                DayOfWeek::Thursday,
+            ),
+        ];
+        for (timestamp, day) in samples.iter() {
+            assert_eq!(timestamp.day_of_week(), *day);
+        }
+    }
 }
