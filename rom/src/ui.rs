@@ -333,7 +333,7 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut
             monotron_synth::Waveform::Square,
         );
     }
-    println!("\u{001B}K\u{001B}w\n\nResult: {}", result);
+    println!("\u{001B}W\u{001B}k\n\nResult: {}", result);
 }
 
 /// Makes a short beep.
