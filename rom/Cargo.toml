@@ -18,7 +18,7 @@ bench = false
 path = "../monotron-api"
 
 [dependencies.tm4c123x-hal]
-version = "0.9.1"
+version = "0.9.2"
 # path = "../../tm4c-hal/tm4c123x-hal"
 # git = "https://github.com/thejpster/tm4c-hal"
 features = ["rt"]

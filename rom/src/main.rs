@@ -102,6 +102,56 @@ static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
 /// characters are drawn. These should probably be two separate things.
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
+struct TimeContextInner {
+    timestamp_frame_count: u32,
+    timestamp: monotron_api::Timestamp,
+}
+
+pub struct TimeContext {
+    inner: spin::Mutex<TimeContextInner>,
+}
+
+pub static TIME_CONTEXT: TimeContext = TimeContext {
+    inner: spin::Mutex::new(TimeContextInner {
+        timestamp_frame_count: 0,
+        timestamp: monotron_api::Timestamp {
+            year_from_1970: 0,
+            month: 1,
+            days: 1,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        },
+    }),
+};
+
+impl TimeContextInner {
+    pub fn get_timestamp(&mut self) -> monotron_api::Timestamp {
+        let num_frames = unsafe { FRAMEBUFFER.frame() } as u32;
+        if num_frames != self.timestamp_frame_count {
+            let delta = num_frames.wrapping_sub(self.timestamp_frame_count) / 60;
+            let days = delta / (3600 * 24);
+            let seconds = delta % (3600 * 24);
+            self.timestamp.increment(days, seconds);
+            self.timestamp_frame_count += delta * 60;
+        }
+        self.timestamp.clone()
+    }
+}
+
+impl TimeContext {
+    pub fn get_timestamp(&self) -> monotron_api::Timestamp {
+        let mut inner = self.inner.lock();
+        inner.get_timestamp()
+    }
+
+    pub fn set_timestamp(&self, timestamp: monotron_api::Timestamp) {
+        let mut inner = self.inner.lock();
+        inner.timestamp = timestamp;
+        inner.timestamp_frame_count = unsafe { FRAMEBUFFER.frame() } as u32;
+    }
+}
+
 struct VideoHardware {
     h_timer: cpu::TIMER1,
     h_timer2: cpu::TIMER2,
@@ -118,17 +168,16 @@ struct Joystick {
     fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
 }
 
-struct DummyTimeSource;
-
-impl embedded_sdmmc::TimeSource for DummyTimeSource {
+impl embedded_sdmmc::TimeSource for &TimeContext {
     fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        let time = self.inner.lock().get_timestamp();
         embedded_sdmmc::Timestamp {
-            year_since_1970: 0,
-            zero_indexed_month: 0,
-            zero_indexed_day: 0,
-            hours: 0,
-            minutes: 0,
-            seconds: 0,
+            year_since_1970: time.year_from_1970,
+            zero_indexed_month: time.month - 1,
+            zero_indexed_day: time.days - 1,
+            hours: time.hours,
+            minutes: time.minutes,
+            seconds: time.seconds,
         }
     }
 }
@@ -197,7 +246,7 @@ pub struct Context {
             >,
             hal::gpio::gpioa::PA3<hal::gpio::Output<hal::gpio::PushPull>>,
         >,
-        DummyTimeSource,
+        &'static TimeContext,
     >,
     clocks: hal::sysctl::Clocks,
     seen_keypress: bool,
@@ -637,7 +686,7 @@ fn main() -> ! {
         },
         cont: embedded_sdmmc::Controller::new(
             embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs),
-            DummyTimeSource,
+            &TIME_CONTEXT,
         ),
         clocks,
         seen_keypress: false,
@@ -654,24 +703,15 @@ fn main() -> ! {
         // Try again and empty the buffer
     }
 
-    unsafe {
-        FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
-        FRAMEBUFFER.clear();
-    }
-
-    println!(
-        "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗"
-    );
-    println!("║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║");
-    println!("║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║");
-    println!("║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║");
-    println!("║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║");
-    println!(
-        "╚══════════════════════════════════════════════╝"
-    );
-    println!("Monotron v{}", VERSION);
-    println!("{}", GIT_DESCRIBE);
-    println!("Copyright © theJPster 2019");
+    println!("\u{001b}W\u{001b}k\u{001b}Z");
+    println!(" \u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W");
+    println!(" \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W");
+    println!(" \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W");
+    println!(" \u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W");
+    println!("* Monotron v{}", VERSION);
+    println!("* {}", GIT_DESCRIBE);
+    println!("* Copyright © theJPster 2019");
+    println!("* https://github.com/thejpster/monotron");
 
     let stack_space = unsafe {
         extern "C" {
@@ -695,7 +735,8 @@ fn main() -> ! {
     loop {
         api::wfvbi();
         // Wait for new UTF-8 input
-        match GLOBAL_CONTEXT.lock().as_mut().unwrap().read() {
+        let input = GLOBAL_CONTEXT.lock().as_mut().unwrap().read();
+        match input {
             Some(Input::Cp850(octet)) => {
                 r.input_byte(octet);
             }

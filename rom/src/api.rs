@@ -1,8 +1,11 @@
 use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row, TEXT_MAX_COL, TEXT_MAX_ROW};
+use crate::hal::time::U32Ext;
 use crate::GLOBAL_CONTEXT;
 use crate::{Input, FRAMEBUFFER};
 use cortex_m::asm;
 pub use monotron_api::*;
+
+const UART0_HANDLE: Handle = Handle(100);
 
 pub(crate) static CALLBACK_TABLE: Api = Api {
     putchar,
@@ -26,6 +29,7 @@ pub(crate) static CALLBACK_TABLE: Api = Api {
     readdir,
     stat,
     gettime,
+    puts_utf8,
 };
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
@@ -142,26 +146,24 @@ pub(crate) extern "C" fn move_cursor(row: u8, col: u8) {
 
 /// Get the current time.
 ///
-/// The system has no concept of timezones or leap seconds. We get the calendar time from the RTC on start up, then
-/// rely on a timer tick to keep the calendar updated.
+/// The system has no concept of timezones or leap seconds. We get the
+/// calendar time from the RTC on start up, then rely on a timer tick to keep
+/// the calendar updated.
 ///
-/// TODO: Implement this. For now, return a fixed time.
+/// TODO: Actually get the RTC time on startup
 pub(crate) extern "C" fn gettime() -> monotron_api::Timestamp {
-    monotron_api::Timestamp {
-        /// The Gregorian calendar year, minus 1970 (so 10 is 1980, and 30 is the year 2000)
-        year_from_1970: 49,
-        /// The month of the year, where January is 1 and December is 12
-        month: 7,
-        /// The day of the month where 1 is the first of the month, through to 28,
-        /// 29, 30 or 31 (as appropriate)
-        day: 16,
-        /// The hour in the day, from 0 to 23
-        hour: 20,
-        /// The minutes past the hour, from 0 to 59
-        minute: 44,
-        /// The seconds past the minute, from 0 to 59. Note that some filesystems
-        /// only have 2-second precision on their timestamps.
-        second: 38,
+    crate::TIME_CONTEXT.get_timestamp()
+}
+
+/// Write a UTF-8 string.
+pub(crate) extern "C" fn puts_utf8(string: *const u8, length: usize) {
+    use core::fmt::Write as _;
+    unsafe {
+        FRAMEBUFFER
+            .write_str(core::str::from_utf8_unchecked(core::slice::from_raw_parts(
+                string, length,
+            )))
+            .unwrap();
     }
 }
 
@@ -254,30 +256,97 @@ pub(crate) extern "C" fn read_char_at(row: u8, col: u8) -> u16 {
 }
 
 /// Open/create a device/file. Returns a file handle, or an error.
-pub(crate) extern "C" fn open(_filename: BorrowedString, _mode: OpenMode) -> HandleResult {
-    unimplemented!();
+pub(crate) extern "C" fn open(filename: BorrowedString, _mode: OpenMode) -> HandleResult {
+    if filename == BorrowedString::new("/dev/uart0@9600") {
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        ctx.rs232_uart.change_baud_rate(9600u32.bps(), &ctx.clocks);
+        HandleResult::Ok(UART0_HANDLE)
+    } else if filename == BorrowedString::new("/dev/uart0@115200") {
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        ctx.rs232_uart
+            .change_baud_rate(115200u32.bps(), &ctx.clocks);
+        HandleResult::Ok(UART0_HANDLE)
+    } else {
+        HandleResult::Error(Error::FileNotFound)
+    }
 }
 
 /// Close a previously opened handle.
-pub(crate) extern "C" fn close(_handle: Handle) -> EmptyResult {
-    unimplemented!();
+pub(crate) extern "C" fn close(handle: Handle) -> EmptyResult {
+    if handle == UART0_HANDLE {
+        EmptyResult::Ok
+    } else {
+        EmptyResult::Error(Error::BadFileHandle)
+    }
 }
 
 /// Read from a file handle into the given buffer. Returns an error, or
 /// the number of bytes read (which may be less than `buffer_len`).
-pub(crate) extern "C" fn read(_handle: Handle, _buffer: *mut u8, _buffer_len: usize) -> SizeResult {
-    unimplemented!();
+pub(crate) extern "C" fn read(
+    handle: Handle,
+    buffer_ptr: *mut u8,
+    buffer_len: usize,
+) -> SizeResult {
+    if handle == UART0_HANDLE {
+        use embedded_hal::serial::Read;
+        let buffer = unsafe { core::slice::from_raw_parts_mut(buffer_ptr, buffer_len) };
+        let mut read = 0;
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        while read < buffer.len() {
+            match ctx.rs232_uart.read() {
+                Ok(ch) => {
+                    buffer[read] = ch;
+                    read += 1;
+                }
+                Err(nb::Error::WouldBlock) => {
+                    break;
+                }
+                Err(_e) => {
+                    return SizeResult::Error(Error::IOError);
+                }
+            }
+        }
+        SizeResult::Ok(read)
+    } else {
+        SizeResult::Error(Error::BadFileHandle)
+    }
 }
 
 /// Write the contents of the given buffer to a file handle. Returns an
 /// error, or the number of bytes written (which may be less than
 /// `buffer_len`).
 pub(crate) extern "C" fn write(
-    _handle: Handle,
-    _buffer: *const u8,
-    _buffer_len: usize,
+    handle: Handle,
+    buffer_ptr: *const u8,
+    buffer_len: usize,
 ) -> SizeResult {
-    unimplemented!();
+    if handle == UART0_HANDLE {
+        use embedded_hal::serial::Write;
+        let buffer = unsafe { core::slice::from_raw_parts(buffer_ptr, buffer_len) };
+        let mut written = 0;
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        while written < buffer.len() {
+            let ch = buffer[written];
+            match ctx.rs232_uart.write(ch) {
+                Ok(_) => {
+                    written += 1;
+                }
+                Err(nb::Error::WouldBlock) => {
+                    break;
+                }
+                Err(_e) => {
+                    return SizeResult::Error(Error::IOError);
+                }
+            }
+        }
+        SizeResult::Ok(written)
+    } else {
+        SizeResult::Error(Error::BadFileHandle)
+    }
 }
 
 /// Write to the handle and the read from the handle. Useful when doing an

@@ -111,6 +111,11 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             command: "charset",
             help: Some("Shows the entire character set"),
         },
+        &Item {
+            item_type: menu::ItemType::Callback(date),
+            command: "date",
+            help: Some("Get/set the date/time"),
+        },
     ],
     entry: None,
     exit: None,
@@ -207,7 +212,7 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut M
         .as_mut()
         .unwrap()
         .usb_uart
-        .write_all(b"READY");
+        .write_all(b"READY\r\n");
     let mut i = 0;
     let max_bytes = application_ram.len();
     const ACK_EVERY: usize = 4;
@@ -308,7 +313,27 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut
         let code: extern "C" fn(*const api::Api) -> u32 = ::core::mem::transmute(ptr);
         code(&api::CALLBACK_TABLE)
     };
-    println!("Result: {}", result);
+    unsafe {
+        crate::G_SYNTH.play(
+            monotron_synth::CHANNEL_0,
+            monotron_synth::Frequency::from_hertz(440),
+            0,
+            monotron_synth::Waveform::Square,
+        );
+        crate::G_SYNTH.play(
+            monotron_synth::CHANNEL_1,
+            monotron_synth::Frequency::from_hertz(440),
+            0,
+            monotron_synth::Waveform::Square,
+        );
+        crate::G_SYNTH.play(
+            monotron_synth::CHANNEL_2,
+            monotron_synth::Frequency::from_hertz(440),
+            0,
+            monotron_synth::Waveform::Square,
+        );
+    }
+    println!("\u{001B}K\u{001B}w\n\nResult: {}", result);
 }
 
 /// Makes a short beep.
@@ -765,6 +790,53 @@ fn charset<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuCont
         }
         println!();
     }
+}
+
+/// Get/set the date
+fn date<'a>(_menu: &Menu, item: &Item, input: &str, _context: &mut MenuContext) {
+    if input.len() > item.command.len() {
+        let f = || -> Result<(), (&'static str, core::num::ParseIntError)> {
+            // Set new date
+            let mut iter = input[item.command.len() + 1..].split(|c| " -T:/".contains(c));
+            let timestamp = monotron_api::Timestamp {
+                year_from_1970: (iter
+                    .next()
+                    .unwrap_or("1970")
+                    .parse::<u32>()
+                    .map_err(|e| ("Bad year", e))?
+                    - 1970) as u8,
+                month: iter
+                    .next()
+                    .unwrap_or("1")
+                    .parse::<u8>()
+                    .map_err(|e| ("Bad month", e))?,
+                days: iter
+                    .next()
+                    .unwrap_or("1")
+                    .parse::<u8>()
+                    .map_err(|e| ("Bad days", e))?,
+                hours: iter
+                    .next()
+                    .unwrap_or("0")
+                    .parse::<u8>()
+                    .map_err(|e| ("Bad hours", e))?,
+                minutes: iter
+                    .next()
+                    .unwrap_or("0")
+                    .parse::<u8>()
+                    .map_err(|e| ("Bad minutes", e))?,
+                seconds: iter
+                    .next()
+                    .unwrap_or("0")
+                    .parse::<u8>()
+                    .map_err(|e| ("Bad seconds", e))?,
+            };
+            crate::TIME_CONTEXT.set_timestamp(timestamp);
+            Ok(())
+        };
+        println!("Setting the time - {:?}", f());
+    }
+    println!("Date: {}", crate::TIME_CONTEXT.get_timestamp());
 }
 
 fn parse_u32(s: &str) -> Option<u32> {

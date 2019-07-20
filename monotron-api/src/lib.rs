@@ -25,6 +25,8 @@ pub enum Error {
     FileNotFound,
     /// The given file handle was not valid
     BadFileHandle,
+    /// Error reading or writing
+    IOError,
     /// You can't do that operation on that sort of file
     NotSupported,
     /// An unknown error occured
@@ -33,7 +35,7 @@ pub enum Error {
 
 /// Describes a handle to some resource.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Handle(pub u16);
 
 /// Describes a string of fixed length, which must not be free'd by the
@@ -41,12 +43,34 @@ pub struct Handle(pub u16);
 /// be present. The string must be valid UTF-8 (or 7-bit ASCII, which is a
 /// valid subset of UTF-8).
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct BorrowedString {
     /// The start of the string
     pub ptr: *const u8,
     /// The length of the string in bytes
     pub length: usize,
+}
+
+impl BorrowedString {
+    /// Create a new API-compatible borrowed string, from a static string slice.
+    pub fn new(value: &'static str) -> BorrowedString {
+        BorrowedString {
+            ptr: value.as_ptr(),
+            length: value.len(),
+        }
+    }
+}
+
+impl core::cmp::PartialEq for BorrowedString {
+    fn eq(&self, rhs: &BorrowedString) -> bool {
+        if self.length == rhs.length {
+            let left = unsafe { core::slice::from_raw_parts(self.ptr, self.length) };
+            let right = unsafe { core::slice::from_raw_parts(rhs.ptr, rhs.length) };
+            left == right
+        } else {
+            false
+        }
+    }
 }
 
 /// Describes the result of a function which may return a `Handle` if
@@ -70,7 +94,7 @@ pub enum HandleResult {
 #[derive(Debug)]
 pub enum EmptyResult {
     /// Success - nothing is returned
-    Ok(u8),
+    Ok,
     /// Failure - an error is returned
     Error(Error),
 }
@@ -115,14 +139,14 @@ pub struct Timestamp {
     pub month: u8,
     /// The day of the month where 1 is the first of the month, through to 28,
     /// 29, 30 or 31 (as appropriate)
-    pub day: u8,
+    pub days: u8,
     /// The hour in the day, from 0 to 23
-    pub hour: u8,
+    pub hours: u8,
     /// The minutes past the hour, from 0 to 59
-    pub minute: u8,
+    pub minutes: u8,
     /// The seconds past the minute, from 0 to 59. Note that some filesystems
     /// only have 2-second precision on their timestamps.
-    pub second: u8,
+    pub seconds: u8,
 }
 
 /// Represents the seven days of the week
@@ -164,7 +188,7 @@ impl Timestamp {
     /// Returns the day of the week for the given timestamp.
     pub fn day_of_week(&self) -> DayOfWeek {
         let zellers_month = ((i32::from(self.month) + 9) % 12) + 1;
-        let k = i32::from(self.day);
+        let k = i32::from(self.days);
         let year = if zellers_month >= 11 {
             i32::from(self.year_from_1970) + 1969
         } else {
@@ -185,6 +209,52 @@ impl Timestamp {
         }
     }
 
+    /// Move this timestamp forward by a number of days and seconds.
+    pub fn increment(&mut self, days: u32, seconds: u32) {
+        let new_seconds = seconds + u32::from(self.seconds);
+        self.seconds = (new_seconds % 60) as u8;
+        let new_minutes = (new_seconds / 60) + u32::from(self.minutes);
+        self.minutes = (new_minutes % 60) as u8;
+        let new_hours = (new_minutes / 60) + u32::from(self.hours);
+        self.hours = (new_hours % 24) as u8;
+        let mut new_days = (new_hours / 24) + u32::from(self.days) + days;
+        while new_days > u32::from(self.days_in_month()) {
+            new_days -= u32::from(self.days_in_month());
+            self.month += 1;
+            if self.month > 12 {
+                self.month = 1;
+                self.year_from_1970 += 1;
+            }
+        }
+        self.days = new_days as u8;
+    }
+
+    /// Returns true if this is a leap year, false otherwise.
+    pub fn is_leap_year(&self) -> bool {
+        let year = u32::from(self.year_from_1970) + 1970;
+        (year == 2000) || (((year % 4) == 0) && ((year % 100) != 0))
+    }
+
+    /// Returns the number of days in the current month
+    pub fn days_in_month(&self) -> u8 {
+        match self.month {
+            1 => 31,
+            2 if self.is_leap_year() => 29,
+            2 => 28,
+            3 => 31,
+            4 => 30,
+            5 => 31,
+            6 => 30,
+            7 => 31,
+            8 => 31,
+            9 => 30,
+            10 => 31,
+            11 => 30,
+            12 => 31,
+            _ => panic!("Bad timestamp {:?}", self),
+        }
+    }
+
     /// Returns the current month as a UK English string (e.g. "August").
     pub fn month_str(&self) -> &'static str {
         match self.month {
@@ -202,6 +272,17 @@ impl Timestamp {
             12 => "December",
             _ => "Unknown",
         }
+    }
+}
+
+impl core::fmt::Display for Timestamp {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(f, "{:02}-", self.days)?;
+        write!(f, "{:02}-", self.month)?;
+        write!(f, "{:04} ", u32::from(self.year_from_1970) + 1970)?;
+        write!(f, "{:02}:", self.hours)?;
+        write!(f, "{:02}:", self.minutes)?;
+        write!(f, "{:02}", self.seconds)
     }
 }
 
@@ -446,6 +527,9 @@ pub struct Api {
 
     /// Get the current time
     pub gettime: extern "C" fn() -> Timestamp,
+
+    /// Old function for writing a UTF-8 string to the screen.
+    pub puts_utf8: extern "C" fn(string: *const u8, length: usize),
 }
 
 #[cfg(test)]
@@ -460,9 +544,9 @@ mod test {
                     year_from_1970: 49,
                     month: 7,
                     day: 16,
-                    hour: 0,
-                    minute: 0,
-                    second: 0,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
                 },
                 DayOfWeek::Tuesday,
             ),
@@ -471,9 +555,9 @@ mod test {
                     year_from_1970: 49,
                     month: 7,
                     day: 17,
-                    hour: 0,
-                    minute: 0,
-                    second: 0,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
                 },
                 DayOfWeek::Wednesday,
             ),
@@ -482,9 +566,9 @@ mod test {
                     year_from_1970: 49,
                     month: 7,
                     day: 18,
-                    hour: 0,
-                    minute: 0,
-                    second: 0,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
                 },
                 DayOfWeek::Thursday,
             ),
