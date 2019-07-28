@@ -39,8 +39,8 @@ For the Tiva-C Launchpad motherboard, that works out as:
 
 1. VCC_5V
 2. VCC_3.3V
-3. UART_RX (PB0, PC6)
-4. UART_TX (PB1, PC7)
+3. UART_RX (PB0, PC6, Pxx)
+4. UART_TX (PB1, PC7, Pxx)
 5. UART_RTS (PC4)
 6. UART_CTS (PC5)
 7. SPI_BUS_CLK (PA2)
@@ -64,18 +64,18 @@ they're too fast to run over the expansion bus).
 
 ## Proposed Expansion Cards
 
-* 2x Atari Joystick (MCP23017 based)
+* 2x Atari Joystick (MCP23017 + SPI)
 * 2x Sega Megadrive pad (Atmega?)
 * Parallel Printer Port (Atmega? MCP23017?)
-* Dual PS/2 (Atmega?)
+* Dual PS/2 (Atmega + 2-wire UART?)
 * Full 9-wire RS232 (Atmega?)
-* WiFi (ESP8266 on-chip stack)
-* WiFi + Bluetooth (ESP32  on-chip stack)
-* 10base-T Ethernet (Microchip 28J60, MAC/PHY only)
-* PmodNIC100 based 100base-T Ethernet (Microchip ENC424J600, MAC/PHY only)
-* USB Serial Device (FT232, with USB micro-B socket)
-* Full-size SD Card slot
-* Micro SD slot
+* WiFi (ESP8266 on-chip stack + UART)
+* WiFi + Bluetooth (ESP32 on-chip stack + UART)
+* 10base-T Ethernet (Microchip 28J60 + SPI, MAC/PHY only)
+* PmodNIC100 based 100base-T Ethernet (Microchip ENC424J600 + SPI, MAC/PHY only)
+* USB Serial Device (FT232 + UART, with USB micro-B socket)
+* Full-size SD Card slot (SPI)
+* Micro SD slot (SPI)
 * Real Time Clock (I2C)
 * IDE interface (Atmega, see http://sbc.rictor.org/io/IDE.html)
 * USB Host interface (MAX3421E, see https://www.sparkfun.com/products/9947)
@@ -98,7 +98,7 @@ they're too fast to run over the expansion bus).
 ||__||  | ::::: |   | O |               |   |  |   |  |   |  |   |
 +----+--+-------+---+---+---------------+---+--+---+--+---+--+---+
  Power   Monitor   Line-Out             Slot0  Slot1  Slot2  Slot3
- USB B
+ USB B    VGA     3.5mm TRS
 ```
 
 ## Pins which stay on the motherboard.
@@ -108,25 +108,26 @@ they're too fast to run over the expansion bus).
 * VGA_R (PF1)
 * VGA_G (PB7)
 * VGA_B (PD3)
-* KEYB_UART_RX (PE0)
-* KEYB_UART_TX (PE1)
 * AUDIO_LEFT (PE4)
 * AUDIO_RIGHT (PE5)
 
 ## Labels for the slots
 
+### Slot 0
 UART1 (4-wire)
 SPI CS0 / IRQ 0
 
-UART1 (4-wire)
+### Slot 1
+UART3 (2-wire)
 SPI CS1 / IRQ 1
 
-UART3 (2-wire)
+### Slot 2
+UART7 (2-wire)
 SPI CS2 / IRQ 2
 
-UART3 (2-wire)
+### Slot 3
 SPI CS3 / IRQ 3
 
-You can only one UART 4-wire board fitted (in slot 0 or slot 1) and one UART
-2-wire board fitted (in slot 2 or slot 3). You can have four SPI boards
-or four I2C boards fitted at once.
+You can have up to one UART 4-wire boards fitted (in slot 0) and up to three
+UART 2-wire boards fitted (in slot 0, 1 and 2). You can have up to four SPI
+boards and up to four I2C boards fitted at once.
