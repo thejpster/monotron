@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "rom",
+    "stm32_kb",
     "monotron-io-protocol",
     "monotron-api",
 ]

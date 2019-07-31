@@ -1,0 +1,32 @@
+[package]
+name = "stm32_kb"
+version = "0.1.0"
+authors = ["Jonathan 'theJPster' Pallant <github@thejpster.org.uk>"]
+edition = "2018"
+keywords = ["arm", "cortex-m", "keyboard", "uart"]
+categories = ["embedded", "no-std"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/thejpster/monotron"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.embedded-hal]
+version = "0.2.1"
+features = ["unproven"]
+
+[dependencies.cortex-m]
+version = "0.6"
+
+[dependencies.cortex-m-rt]
+version = "0.6.1"
+
+[dependencies.panic-halt]
+version = "0.2"
+
+[dependencies.monotron-io-protocol]
+path = "../monotron-io-protocol"
+
+[dependencies.stm32f0xx-hal]
+version = "0.14"
+features = ["stm32f042", "rt"]
