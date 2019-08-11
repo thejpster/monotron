@@ -10,109 +10,245 @@ use menu;
 pub(crate) type Menu<'a> = menu::Menu<'a, MenuContext>;
 pub(crate) type Item<'a> = menu::Item<'a, MenuContext>;
 
-// 7-bit address - driver handles read/write bits
-const RTC_I2C_ADDR: u32 = 111;
-
 pub(crate) static ROOT_MENU: Menu = Menu {
     label: "root",
     items: &[
         &Item {
-            item_type: menu::ItemType::Callback(item_clear),
+            item_type: menu::ItemType::Callback {
+                function: item_clear,
+                parameters: &[],
+            },
             command: "clear",
             help: Some("Reset the display."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_peek),
+            item_type: menu::ItemType::Callback {
+                function: item_peek,
+                parameters: &[menu::Parameter::Mandatory {
+                    parameter_name: "ADDRESS",
+                    help: Some("The address to read from."),
+                }],
+            },
             command: "peek",
-            help: Some("<addr> - Read a register."),
+            help: Some("Read from memory."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_poke),
+            item_type: menu::ItemType::Callback {
+                function: item_poke,
+                parameters: &[
+                    menu::Parameter::Mandatory {
+                        parameter_name: "ADDRESS",
+                        help: Some("The address to write to."),
+                    },
+                    menu::Parameter::Mandatory {
+                        parameter_name: "VALUE",
+                        help: Some("The 32-bit value to write."),
+                    },
+                ],
+            },
             command: "poke",
-            help: Some("<addr> <value> - Write a register."),
+            help: Some("Write to memory."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_dump),
+            item_type: menu::ItemType::Callback {
+                function: item_dump,
+                parameters: &[
+                    menu::Parameter::Mandatory {
+                        parameter_name: "ADDRESS",
+                        help: Some("The address to start at."),
+                    },
+                    menu::Parameter::NamedValue {
+                        parameter_name: "length",
+                        argument_name: "BYTES",
+                        help: Some("The number of bytes to display."),
+                    },
+                ],
+            },
             command: "dump",
-            help: Some("<addr> <bytes> - Dump RAM/ROM."),
+            help: Some("Display memory contents."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_load_file),
+            item_type: menu::ItemType::Callback {
+                function: item_load_from_uart,
+                parameters: &[],
+            },
             command: "load",
-            help: Some("Load program from UART."),
+            help: Some("Load from UART."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_debug_info),
+            item_type: menu::ItemType::Callback {
+                function: item_debug_info,
+                parameters: &[],
+            },
             command: "debug",
-            help: Some("Show some debug info."),
+            help: Some("Show some debug."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_run_program),
+            item_type: menu::ItemType::Callback {
+                function: item_run_program,
+                parameters: &[],
+            },
             command: "run",
-            help: Some("Run loaded program."),
+            help: Some("Run program."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_beep),
+            item_type: menu::ItemType::Callback {
+                function: item_beep,
+                parameters: &[
+                    menu::Parameter::NamedValue {
+                        parameter_name: "wave",
+                        argument_name: "X",
+                        help: Some("The shape of the waveform to play."),
+                    },
+                    menu::Parameter::NamedValue {
+                        parameter_name: "len",
+                        argument_name: "N",
+                        help: Some("The length of the beep in frames."),
+                    },
+                    menu::Parameter::NamedValue {
+                        parameter_name: "freq",
+                        argument_name: "HZ",
+                        help: Some("The pitch of the beep in Hz."),
+                    },
+                    menu::Parameter::NamedValue {
+                        parameter_name: "chan",
+                        argument_name: "N",
+                        help: Some("The channel (0, 1 or 2)."),
+                    },
+                ],
+            },
             command: "beep",
             help: Some("Make a beep."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_mount),
+            item_type: menu::ItemType::Callback {
+                function: item_mount,
+                parameters: &[],
+            },
             command: "mount",
-            help: Some("Mount a new SD/MMC card."),
+            help: Some("Mount the SD card."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_unmount),
+            item_type: menu::ItemType::Callback {
+                function: item_unmount,
+                parameters: &[],
+            },
             command: "unmount",
-            help: Some("Unmount an SD/MMC card."),
+            help: Some("Unmount the SD card."),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_dir),
+            item_type: menu::ItemType::Callback {
+                function: item_dir,
+                parameters: &[],
+            },
             command: "dir",
-            help: Some("List the root directory"),
+            help: Some("List the root dir"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_dload),
+            item_type: menu::ItemType::Callback {
+                function: item_dload,
+                parameters: &[menu::Parameter::Mandatory {
+                    parameter_name: "FILE",
+                    help: Some("The file to load."),
+                }],
+            },
             command: "dload",
-            help: Some("Load file from the SD-Card"),
+            help: Some("Load file from SD card"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_ddump),
+            item_type: menu::ItemType::Callback {
+                function: item_ddump,
+                parameters: &[],
+            },
             command: "ddump",
-            help: Some("Load and display a binary file"),
+            help: Some("Hexdump a file"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(item_dpage),
+            item_type: menu::ItemType::Callback {
+                function: item_dpage,
+                parameters: &[],
+            },
             command: "dpage",
-            help: Some("Load and display a text file"),
+            help: Some("Show a text file"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(rs232_term),
+            item_type: menu::ItemType::Callback {
+                function: rs232_term,
+                parameters: &[menu::Parameter::NamedValue {
+                    parameter_name: "bitrate",
+                    argument_name: "BPS",
+                    help: Some("The bit rate for the UART - typically 115200."),
+                }],
+            },
             command: "rterm",
-            help: Some("<baud> - Enter terminal mode on RS232 port"),
+            help: Some("RS232 serial terminal"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(midi_term),
+            item_type: menu::ItemType::Callback {
+                function: midi_term,
+                parameters: &[],
+            },
             command: "mterm",
-            help: Some("Enter terminal mode on MIDI port"),
+            help: Some("MIDI debug terminal"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(i2c_rx),
+            item_type: menu::ItemType::Callback {
+                function: i2c_rx,
+                parameters: &[
+                    menu::Parameter::Mandatory {
+                        parameter_name: "ADDR",
+                        help: Some("The 7-bit I2C device address"),
+                    },
+                    menu::Parameter::Mandatory {
+                        parameter_name: "REG",
+                        help: Some("The register number to read from the device"),
+                    },
+                    menu::Parameter::Mandatory {
+                        parameter_name: "N",
+                        help: Some("The number of bytes to read from the register"),
+                    },
+                ],
+            },
             command: "i2c_rx",
-            help: Some("<addr> <reg> <num> - Read from I2C device"),
+            help: Some("Read from I2C device"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(i2c_tx),
+            item_type: menu::ItemType::Callback {
+                function: i2c_tx,
+                parameters: &[
+                    menu::Parameter::Mandatory {
+                        parameter_name: "ADDR",
+                        help: Some("The 7-bit I2C device address"),
+                    },
+                    menu::Parameter::Mandatory {
+                        parameter_name: "REG",
+                        help: Some("The register number to write to on the device"),
+                    },
+                    menu::Parameter::Mandatory {
+                        parameter_name: "BYTE",
+                        help: Some("A single byte to write to the register"),
+                    },
+                ],
+            },
             command: "i2c_tx",
-            help: Some("<addr> <reg> <byte> - Write to I2C device"),
+            help: Some("Write to I2C device"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(charset),
+            item_type: menu::ItemType::Callback {
+                function: charset,
+                parameters: &[],
+            },
             command: "charset",
-            help: Some("Shows the entire character set"),
+            help: Some("Shows the character set"),
         },
         &Item {
-            item_type: menu::ItemType::Callback(date),
+            item_type: menu::ItemType::Callback {
+                function: date,
+                parameters: &[menu::Parameter::Optional {
+                    parameter_name: "TIMESTAMP",
+                    help: Some("The date/time string in YYYY-MM-DDTHH:MM:SS format"),
+                }],
+            },
             command: "date",
             help: Some("Get/set the date/time"),
         },
@@ -122,38 +258,31 @@ pub(crate) static ROOT_MENU: Menu = Menu {
 };
 
 /// Clears the screen
-fn item_clear<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_clear<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     unsafe { FRAMEBUFFER.clear() };
     unsafe { FRAMEBUFFER.set_pos(fb::Position::origin()).unwrap() };
 }
 
-fn item_peek<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
-    let mut parts = input.split_whitespace();
-    parts.next();
-    if let Some(addr) = parts
-        .next()
-        .map_or(None, |p| usize::from_str_radix(p, 16).ok())
+fn item_peek<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if let Some(addr) = ::menu::argument_finder(item, args, "ADDRESS")
+        .unwrap()
+        .map_or(None, |p| parse_u32(p))
     {
         let data = unsafe { ::core::ptr::read_volatile(addr as *const u32) };
         println!("Addr 0x{:08x} is 0x{:08x}", addr, data);
     } else {
-        println!(
-            "Bad address {:?}. Enter hex, without the 0x prefix..",
-            input
-        );
+        println!("Missing or bad address.");
     }
 }
 
-fn item_poke<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
-    let mut parts = input.split_whitespace();
-    parts.next();
-    if let Some(addr) = parts
-        .next()
-        .map_or(None, |p| usize::from_str_radix(p, 16).ok())
+fn item_poke<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if let Some(addr) = ::menu::argument_finder(item, args, "ADDRESS")
+        .unwrap()
+        .map_or(None, |p| parse_u32(p))
     {
-        if let Some(value) = parts
-            .next()
-            .map_or(None, |p| u32::from_str_radix(p, 16).ok())
+        if let Some(value) = ::menu::argument_finder(item, args, "VALUE")
+            .unwrap()
+            .map_or(None, |p| parse_u32(p))
         {
             println!("Poking 0x{:08x} to addr 0x{:08x}...", value, addr);
             unsafe {
@@ -167,19 +296,18 @@ fn item_poke<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCon
     }
 }
 
-fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
-    let mut parts = input.split_whitespace();
-    parts.next();
-    if let Some(mut addr) = parts
-        .next()
-        .map_or(None, |p| usize::from_str_radix(p, 16).ok())
+fn item_dump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if let Some(addr) = ::menu::argument_finder(item, args, "ADDRESS")
+        .unwrap()
+        .map_or(None, |p| parse_u32(p))
     {
-        if let Some(count) = parts
-            .next()
-            .map_or(None, |p| u32::from_str_radix(p, 16).ok())
+        if let Some(length) = ::menu::argument_finder(item, args, "length")
+            .unwrap_or(Some("16"))
+            .map_or(None, |p| parse_u32(p))
         {
-            println!("Dumping 0x{:08x} bytes from 0x{:08x}...", count, addr);
-            for i in 0..count {
+            let mut addr = addr;
+            println!("Dumping 0x{:08x} bytes from 0x{:08x}...", length, addr);
+            for i in 0..length {
                 let data = unsafe { ::core::ptr::read_volatile(addr as *const u8) };
                 print!("{:02x}", data);
                 if ((i + 1) % 4) == 0 {
@@ -192,7 +320,7 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCon
             }
             println!("\nDone.");
         } else {
-            println!("Missing or bad value.");
+            println!("Missing or bad length.");
         }
     } else {
         println!("Missing or bad address.");
@@ -200,7 +328,7 @@ fn item_dump<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCon
 }
 
 /// Reads raw binary from the UART and dumps it into application RAM.
-fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_load_from_uart<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let application_ram: &'static mut [u8] =
         unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
     for b in application_ram.iter_mut() {
@@ -293,14 +421,14 @@ fn item_load_file<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut M
 }
 
 /// Print some debug info.
-fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_debug_info<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     println!("Framebuffer: {:08p}", unsafe { &FRAMEBUFFER as *const _ });
     println!("Application: {:08p}", APPLICATION_START_ADDR);
     println!("Chip:\n{:#?}", tm4c123x_hal::sysctl::chip_id::get());
 }
 
 /// Runs a program from application RAM, then returns.
-fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_run_program<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let application_ram: &'static mut [u8] =
         unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
     let addr = ((application_ram[3] as u32) << 24)
@@ -342,21 +470,24 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut
 /// The second sets the frequency (in Hz).
 /// The third sets the duration (in 60Hz frames).
 /// The fourth sets the channel.
-fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
+fn item_beep<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
     use monotron_synth::*;
-    let mut parts = input.split_whitespace();
-    parts.next(); // skip command itself
-    let waveform = match parts.next() {
-        Some("square") | None => Waveform::Square,
-        Some("sine") => Waveform::Sine,
-        Some("sawtooth") => Waveform::Sawtooth,
-        Some("noise") => Waveform::Noise,
+    let waveform_arg = ::menu::argument_finder(item, args, "wave");
+    let frequency_arg = ::menu::argument_finder(item, args, "freq");
+    let length_arg = ::menu::argument_finder(item, args, "len");
+    let channel_arg = ::menu::argument_finder(item, args, "chan");
+
+    let waveform = match waveform_arg {
+        Ok(Some("square")) | Ok(None) => Waveform::Square,
+        Ok(Some("sine")) => Waveform::Sine,
+        Ok(Some("sawtooth")) => Waveform::Sawtooth,
+        Ok(Some("noise")) => Waveform::Noise,
         e => {
             println!("Unknown wave argument {:?}", e);
             return;
         }
     };
-    let frequency = if let Some(arg) = parts.next() {
+    let frequency = if let Ok(Some(arg)) = frequency_arg {
         match u16::from_str_radix(arg, 10) {
             Ok(f) => f,
             Err(e) => {
@@ -367,7 +498,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCon
     } else {
         440
     };
-    let duration = if let Some(arg) = parts.next() {
+    let duration = if let Ok(Some(arg)) = length_arg {
         match usize::from_str_radix(arg, 10) {
             Ok(f) => f,
             Err(e) => {
@@ -378,10 +509,10 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCon
     } else {
         60
     };
-    let channel = match parts.next() {
-        Some("0") | None => CHANNEL_0,
-        Some("1") => CHANNEL_1,
-        Some("2") => CHANNEL_2,
+    let channel = match channel_arg {
+        Ok(Some("0")) | Ok(None) => CHANNEL_0,
+        Ok(Some("1")) => CHANNEL_1,
+        Ok(Some("2")) => CHANNEL_2,
         e => {
             println!("Unknown duration argument {:?}", e);
             return;
@@ -412,7 +543,7 @@ fn item_beep<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCon
 }
 
 /// Init the card and dump some details
-fn item_mount<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_mount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
         print!("Init SD card...");
         c.cont.device().init()?;
@@ -429,7 +560,7 @@ fn item_mount<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuC
 }
 
 /// De-init the card so it can't be used.
-fn item_unmount<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_unmount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     print!("De-init SD card...");
     GLOBAL_CONTEXT
         .lock()
@@ -442,7 +573,7 @@ fn item_unmount<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut Men
 }
 
 /// List the root directory
-fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn item_dir<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
         print!("Volume 0...");
         let v = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
@@ -469,18 +600,18 @@ fn item_dir<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuCon
 /// Load a file from the SD card.
 /// TODO work out how to release the directory handle and file handle when the
 /// function aborts (e.g. with file not found).
-fn item_dload<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
+fn item_dload<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
-        let mut parts = input.split_whitespace();
-        parts.next(); // skip command itself
-        let file = parts.next().unwrap();
-        print!("Loading {:?}...", file);
+        let filename = ::menu::argument_finder(item, args, "FILE")
+            .unwrap()
+            .unwrap();
+        print!("Loading {:?}...", filename);
         let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
         let dir = c.cont.open_root_dir(&volume)?;
         let mut f =
             match c
                 .cont
-                .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)
+                .open_file_in_dir(&volume, &dir, filename, embedded_sdmmc::Mode::ReadOnly)
             {
                 Ok(f) => f,
                 Err(e) => {
@@ -509,17 +640,17 @@ fn item_dload<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCo
 /// Do a hex-dump of a file on disk
 /// TODO work out how to release the directory handle and file handle when the
 /// function aborts (e.g. with file not found).
-fn item_ddump<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
+fn item_ddump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
-        let mut parts = input.split_whitespace();
-        parts.next(); // skip command itself
-        let file = parts.next().unwrap();
-        print!("Dumping {:?}...", file);
+        let filename = ::menu::argument_finder(item, args, "FILE")
+            .unwrap()
+            .unwrap();
+        print!("Dumping {:?}...", filename);
         let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
         let dir = c.cont.open_root_dir(&volume)?;
-        let mut f = c
-            .cont
-            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let mut f =
+            c.cont
+                .open_file_in_dir(&volume, &dir, filename, embedded_sdmmc::Mode::ReadOnly)?;
         let application_ram: &'static mut [u8] =
             unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
         c.cont.read(&volume, &mut f, application_ram)?;
@@ -568,17 +699,17 @@ fn item_ddump<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCo
 /// Display a text file on disk a page at a time
 /// TODO work out how to release the directory handle and file handle when the
 /// function aborts (e.g. with file not found).
-fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
+fn item_dpage<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
-        let mut parts = input.split_whitespace();
-        parts.next(); // skip command itself
-        let file = parts.next().unwrap();
-        println!("Displaying {:?}...", file);
+        let filename = ::menu::argument_finder(item, args, "FILE")
+            .unwrap()
+            .unwrap();
+        println!("Displaying {:?}...", filename);
         let volume = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
         let dir = c.cont.open_root_dir(&volume)?;
-        let mut f = c
-            .cont
-            .open_file_in_dir(&volume, &dir, file, embedded_sdmmc::Mode::ReadOnly)?;
+        let mut f =
+            c.cont
+                .open_file_in_dir(&volume, &dir, filename, embedded_sdmmc::Mode::ReadOnly)?;
         let application_ram: &'static mut [u8] =
             unsafe { core::slice::from_raw_parts_mut(APPLICATION_START_ADDR, APPLICATION_LEN) };
         c.cont.read(&volume, &mut f, application_ram)?;
@@ -618,11 +749,9 @@ fn item_dpage<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCo
     }
 }
 
-fn rs232_term<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
-    let mut parts = input.split_whitespace();
-    parts.next(); // skip command itself
-    if let Some(bitrate) = parts
-        .next()
+fn rs232_term<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if let Some(bitrate) = ::menu::argument_finder(item, args, "bitrate")
+        .unwrap_or(Some("115200"))
         .map_or(None, |p| u32::from_str_radix(p, 10).ok())
     {
         {
@@ -670,7 +799,7 @@ fn rs232_term<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuCo
     }
 }
 
-fn midi_term<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn midi_term<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     println!("Connected at 31,250 bps. Ctrl-Q to quit.");
     loop {
         match GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.read() {
@@ -704,81 +833,83 @@ fn midi_term<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuCo
     println!("Disconnected!");
 }
 
-fn i2c_tx<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
-    let mut parts = input.split_whitespace();
-    parts.next(); // skip command itself
-    let i2c_addr = if let Some(s) = parts.next() {
-        parse_u32(s).unwrap_or(RTC_I2C_ADDR)
+fn i2c_tx<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if let Some(i2c_addr) = ::menu::argument_finder(item, args, "ADDR")
+        .unwrap()
+        .map_or(None, |x| parse_u32(x))
+    {
+        if let Some(reg_addr) = ::menu::argument_finder(item, args, "REG")
+            .unwrap()
+            .map_or(None, |x| parse_u32(x))
+        {
+            if let Some(byte) = ::menu::argument_finder(item, args, "BYTE")
+                .unwrap()
+                .map_or(None, |x| parse_u32(x))
+            {
+                let mut read_buffer = [0];
+                let command = [reg_addr as u8, byte as u8];
+                println!(
+                    "i2c_addr={}, reg_addr={}, value={}",
+                    i2c_addr, reg_addr, byte
+                );
+                let result = GLOBAL_CONTEXT.lock().as_mut().unwrap().i2c_bus.write_read(
+                    i2c_addr as u8,
+                    &command,
+                    &mut read_buffer,
+                );
+                println!("Result={:?}, Data={:?}", result, read_buffer);
+            } else {
+                println!("Bad data value");
+            }
+        } else {
+            println!("Bad register");
+        }
     } else {
-        println!("Need an I2C address to write to!");
-        return;
-    } as u8;
-    let reg_addr = if let Some(s) = parts.next() {
-        parse_u32(s).unwrap_or(0x00)
-    } else {
-        println!("Need a register to write to!");
-        return;
-    } as u8;
-    let value = if let Some(s) = parts.next() {
-        parse_u32(s).unwrap_or(0x01)
-    } else {
-        println!("Need a value to write!");
-        return;
-    } as u8;
-
-    let mut read_buffer = [0];
-    let command = [reg_addr, value];
-    println!(
-        "i2c_addr={}, reg_addr={}, value={}",
-        i2c_addr, reg_addr, value
-    );
-    let result = GLOBAL_CONTEXT.lock().as_mut().unwrap().i2c_bus.write_read(
-        i2c_addr,
-        &command,
-        &mut read_buffer,
-    );
-    println!("Result={:?}, Data={:?}", result, read_buffer);
+        println!("Bad address");
+    }
 }
 
-fn i2c_rx<'a>(_menu: &Menu, _item: &Item, input: &str, _context: &mut MenuContext) {
-    let mut parts = input.split_whitespace();
-    parts.next(); // skip command itself
-    let i2c_addr = if let Some(s) = parts.next() {
-        parse_u32(s).unwrap_or(RTC_I2C_ADDR)
+fn i2c_rx<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if let Some(i2c_addr) = ::menu::argument_finder(item, args, "ADDR")
+        .unwrap()
+        .map_or(None, |x| parse_u32(x))
+    {
+        if let Some(reg_addr) = ::menu::argument_finder(item, args, "REG")
+            .unwrap()
+            .map_or(None, |x| parse_u32(x))
+        {
+            if let Some(count) = ::menu::argument_finder(item, args, "N")
+                .unwrap()
+                .map_or(None, |x| parse_u32(x))
+                .map_or(None, |x| if x > 16 { None } else { Some(x) })
+            {
+                let mut read_buffer = &mut [0u8; 16][0..count as usize];
+                let command = [reg_addr as u8];
+                println!(
+                    "i2c_addr={}, reg_addr={}, num={}",
+                    i2c_addr as u8,
+                    reg_addr as u8,
+                    read_buffer.len()
+                );
+                let result = GLOBAL_CONTEXT.lock().as_mut().unwrap().i2c_bus.write_read(
+                    i2c_addr as u8,
+                    &command,
+                    &mut read_buffer,
+                );
+                println!("Result={:?}, Data={:?}", result, read_buffer);
+            } else {
+                println!("Bad length");
+            }
+        } else {
+            println!("Bad register");
+        }
     } else {
-        RTC_I2C_ADDR
-    } as u8;
-    let reg_addr = if let Some(s) = parts.next() {
-        parse_u32(s).unwrap_or(0x00)
-    } else {
-        0x00
-    } as u8;
-    let mut read_len = if let Some(s) = parts.next() {
-        parse_u32(s).unwrap_or(0x01)
-    } else {
-        0x01
-    } as usize;
-    if read_len > 16 {
-        read_len = 16;
+        println!("Bad address");
     }
-    let mut read_buffer = &mut [0u8; 16][0..read_len];
-    let command = [reg_addr];
-    println!(
-        "i2c_addr={}, reg_addr={}, num={}",
-        i2c_addr,
-        reg_addr,
-        read_buffer.len()
-    );
-    let result = GLOBAL_CONTEXT.lock().as_mut().unwrap().i2c_bus.write_read(
-        i2c_addr,
-        &command,
-        &mut read_buffer,
-    );
-    println!("Result={:?}, Data={:?}", result, read_buffer);
 }
 
 /// Print the entire character set
-fn charset<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuContext) {
+fn charset<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     println!("Monotron Character set:");
     for row in 0..16 {
         for col in 0..16 {
@@ -793,11 +924,11 @@ fn charset<'a>(_menu: &Menu, _item: &Item, _input: &str, _context: &mut MenuCont
 }
 
 /// Get/set the date
-fn date<'a>(_menu: &Menu, item: &Item, input: &str, _context: &mut MenuContext) {
-    if input.len() > item.command.len() {
+fn date<'a>(_menu: &Menu, _item: &Item, args: &[&str], _context: &mut MenuContext) {
+    if args.len() > 0 {
         let f = || -> Result<(), (&'static str, core::num::ParseIntError)> {
             // Set new date
-            let mut iter = input[item.command.len() + 1..].split(|c| " -T:/".contains(c));
+            let mut iter = args[0].split(|c| " -T:/".contains(c));
             let timestamp = monotron_api::Timestamp {
                 year_from_1970: (iter
                     .next()

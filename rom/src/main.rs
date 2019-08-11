@@ -729,8 +729,7 @@ fn main() -> ! {
     );
 
     let mut buffer = [0u8; 64];
-    let mut dummy_ctx = MenuContext;
-    let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut dummy_ctx);
+    let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, MenuContext);
 
     loop {
         api::wfvbi();
