@@ -749,6 +749,36 @@ fn main() -> ! {
     }
 }
 
+struct I2cBus<'a, T>(&'a mut T)
+where
+    T: embedded_hal::blocking::i2c::Write + embedded_hal::blocking::i2c::WriteRead;
+
+impl<'a, T> embedded_hal::blocking::i2c::Write for I2cBus<'a, T>
+where
+    T: embedded_hal::blocking::i2c::Write + embedded_hal::blocking::i2c::WriteRead,
+{
+    type Error = <T as embedded_hal::blocking::i2c::Write>::Error;
+    fn write(&mut self, register: u8, buffer: &[u8]) -> Result<(), Self::Error> {
+        self.0.write(register, buffer)
+    }
+}
+
+impl<'a, T> embedded_hal::blocking::i2c::WriteRead for I2cBus<'a, T>
+where
+    T: embedded_hal::blocking::i2c::Write + embedded_hal::blocking::i2c::WriteRead,
+{
+    type Error = <T as embedded_hal::blocking::i2c::WriteRead>::Error;
+
+    fn write_read(
+        &mut self,
+        register: u8,
+        out_buffer: &[u8],
+        in_buffer: &mut [u8],
+    ) -> Result<(), Self::Error> {
+        self.0.write_read(register, out_buffer, in_buffer)
+    }
+}
+
 impl fb::Hardware for VideoHardware {
     fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, clock_rate: u32) {
         // Configure SPI

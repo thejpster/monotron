@@ -252,6 +252,30 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             command: "date",
             help: Some("Get/set the date/time"),
         },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: rtc_get,
+                parameters: &[],
+            },
+            command: "rtc_get",
+            help: Some("Get the time from the RTC"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: rtc_set,
+                parameters: &[],
+            },
+            command: "rtc_set",
+            help: Some("Set the time on the RTC"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: flip,
+                parameters: &[],
+            },
+            command: "flip",
+            help: Some("Flip the screen!"),
+        },
     ],
     entry: None,
     exit: None,
@@ -968,6 +992,103 @@ fn date<'a>(_menu: &Menu, _item: &Item, args: &[&str], _context: &mut MenuContex
         println!("Setting the time - {:?}", f());
     }
     println!("Date: {}", crate::TIME_CONTEXT.get_timestamp());
+}
+
+fn rtc_get<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    use mcp794xx::Rtcc;
+    let mut lock = GLOBAL_CONTEXT.lock();
+    let ctx = lock.as_mut().unwrap();
+    let bus = crate::I2cBus(&mut ctx.i2c_bus);
+    let mut rtc = mcp794xx::Mcp794xx::new_mcp7940n(bus);
+    let dt = match rtc.get_datetime() {
+        Ok(dt) => dt,
+        Err(e) => {
+            drop(rtc);
+            drop(ctx);
+            drop(lock);
+            println!("Error reading RTC: {:?}", e);
+            return;
+        }
+    };
+    let timestamp = monotron_api::Timestamp {
+        year_from_1970: (dt.year - 1970) as u8,
+        month: dt.month,
+        days: dt.day,
+        hours: match dt.hour {
+            mcp794xx::Hours::H24(n) => n,
+            mcp794xx::Hours::AM(n) => n,
+            mcp794xx::Hours::PM(n) => n + 12,
+        },
+        minutes: dt.minute,
+        seconds: dt.second,
+    };
+    drop(ctx);
+    drop(lock);
+    crate::TIME_CONTEXT.set_timestamp(timestamp);
+    println!("Date is now: {}", crate::TIME_CONTEXT.get_timestamp());
+}
+
+fn rtc_set<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    let timestamp = crate::TIME_CONTEXT.get_timestamp();
+    use mcp794xx::Rtcc;
+    let mut lock = GLOBAL_CONTEXT.lock();
+    let ctx = lock.as_mut().unwrap();
+    let bus = crate::I2cBus(&mut ctx.i2c_bus);
+    let mut rtc = mcp794xx::Mcp794xx::new_mcp7940n(bus);
+    let dt = mcp794xx::DateTime {
+        year: timestamp.year_from_1970 as u16 + 1970,
+        month: timestamp.month,
+        day: timestamp.days,
+        weekday: (timestamp.day_of_week() as u8) + 1,
+        hour: mcp794xx::Hours::H24(timestamp.hours),
+        minute: timestamp.minutes,
+        second: timestamp.seconds,
+    };
+    let res = rtc.set_datetime(&dt);
+    let _ = rtc.enable();
+    drop(rtc);
+    drop(ctx);
+    drop(lock);
+    println!("RTC set: {:?}", res);
+}
+
+fn flip<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    // We have lines 0..576
+    // Every frame we bring the top and bottom bound in by 1 line
+    let mut top = 0;
+    let mut bottom = 576;
+
+    for _ in 0..382 {
+        api::wfvbi();
+        for line in 0..576 {
+            let new_line = if line < top || line > bottom {
+                0
+            } else {
+                (576 * (line - top)) / (bottom - top)
+            };
+            unsafe {
+                FRAMEBUFFER.map_line(line, new_line);
+            }
+        }
+        top += 1;
+        bottom -= 1
+    }
+
+    for _ in (0..382).rev() {
+        api::wfvbi();
+        for line in 0..576 {
+            let new_line = if line < top || line > bottom {
+                0
+            } else {
+                (576 * (line - top)) / (bottom - top)
+            };
+            unsafe {
+                FRAMEBUFFER.map_line(line, 576 - new_line);
+            }
+        }
+        top -= 1;
+        bottom += 1
+    }
 }
 
 fn parse_u32(s: &str) -> Option<u32> {
