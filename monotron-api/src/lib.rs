@@ -277,12 +277,16 @@ impl Timestamp {
 
 impl core::fmt::Display for Timestamp {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "{:02}-", self.days)?;
-        write!(f, "{:02}-", self.month)?;
-        write!(f, "{:04} ", u32::from(self.year_from_1970) + 1970)?;
-        write!(f, "{:02}:", self.hours)?;
-        write!(f, "{:02}:", self.minutes)?;
-        write!(f, "{:02}", self.seconds)
+        write!(
+            f,
+            "{year:04}-{month:02}-{days:02}T{hours:02}:{minutes:02}:{seconds:02}",
+            year = u16::from(self.year_from_1970) + 1970u16,
+            month = self.month,
+            days = self.days,
+            hours = self.hours,
+            minutes = self.minutes,
+            seconds = self.seconds,
+        )
     }
 }
 
