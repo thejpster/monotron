@@ -52,9 +52,9 @@ version = "0.5"
 # path = "../../pc-keyboard"
 
 [dependencies.mcp794xx]
-# git = "https://github.com/thejpster/mcp794xx-rs"
-# branch = "jgp_changes"
-path = "../../mcp794xx-rs"
+git = "https://github.com/thejpster/mcp794xx-rs"
+branch = "jgp_changes"
+# path = "../../mcp794xx-rs"
 
 [dependencies.monotron-synth]
 # path = "../../monotron-synth"
