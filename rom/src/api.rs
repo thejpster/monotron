@@ -30,6 +30,7 @@ pub(crate) static CALLBACK_TABLE: Api = Api {
     stat,
     gettime,
     puts_utf8,
+    map_line,
 };
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
@@ -164,6 +165,12 @@ pub(crate) extern "C" fn puts_utf8(string: *const u8, length: usize) {
                 string, length,
             )))
             .unwrap();
+    }
+}
+
+pub(crate) extern "C" fn map_line(actual_scanline: u16, drawn_scanline: u16) {
+    unsafe {
+        FRAMEBUFFER.map_line(actual_scanline, drawn_scanline);
     }
 }
 

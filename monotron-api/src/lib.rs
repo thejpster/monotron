@@ -534,6 +534,34 @@ pub struct Api {
 
     /// Old function for writing a UTF-8 string to the screen.
     pub puts_utf8: extern "C" fn(string: *const u8, length: usize),
+
+    /// Maps an actual line on the screen to be drawn as if it was somewhere else on the screen.
+    ///
+    /// So if you ran this, the image would look completely normal:
+    ///
+    /// ```rust
+    /// for x in 0..576 {
+    ///     map_line(x, x);
+    /// }
+    /// ```
+    ///
+    /// But if you did this, the screen would be upside down.
+    ///
+    /// ```rust
+    /// for x in 0..576 {
+    ///     map_line(x, 576 - x);
+    /// }
+    /// ```
+    ///
+    /// And if you did this, the top 32 scanlines on the screen would repeat
+    /// all the way down.
+    ///
+    /// ```rust
+    /// for x in 0..576 {
+    ///     map_line(x, x % 32);
+    /// }
+    /// ```
+    pub map_line: extern "C" fn(actual_scanline: u16, drawn_scanline: u16),
 }
 
 #[cfg(test)]
