@@ -1055,36 +1055,65 @@ fn rtc_set<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuCo
 fn flip<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     // We have lines 0..576
     // Every frame we bring the top and bottom bound in by 1 line
+    const HEIGHT: usize = 576;
     let mut top = 0;
-    let mut bottom = 576;
+    let mut bottom = HEIGHT - 1;
 
-    for _ in 0..382 {
+    // Squeeze
+    while top < bottom {
         api::wfvbi();
-        for line in 0..576 {
+        for line in 0..HEIGHT {
             let new_line = if line < top || line > bottom {
                 0
             } else {
-                (576 * (line - top)) / (bottom - top)
+                ((HEIGHT - 1) * (line - top)) / (bottom - top)
             };
-            unsafe {
-                FRAMEBUFFER.map_line(line, new_line);
-            }
+            unsafe { FRAMEBUFFER.map_line(line as u16, new_line as u16) };
         }
         top += 1;
         bottom -= 1
     }
 
-    for _ in (0..382).rev() {
+    // Stretch flipped
+    while top > 0 {
         api::wfvbi();
-        for line in 0..576 {
+        for line in 0..HEIGHT {
+            let new_line = if line < top || line > bottom {
+                HEIGHT - 1
+            } else {
+                ((HEIGHT - 1) * (line - top)) / (bottom - top)
+            };
+            unsafe { FRAMEBUFFER.map_line(line as u16, ((HEIGHT - 1) - new_line) as u16) };
+        }
+        top -= 1;
+        bottom += 1
+    }
+
+    // Squeeze flipped
+    while top < bottom {
+        api::wfvbi();
+        for line in 0..HEIGHT {
+            let new_line = if line < top || line > bottom {
+                (HEIGHT - 1)
+            } else {
+                ((HEIGHT - 1) * (line - top)) / (bottom - top)
+            };
+            unsafe { FRAMEBUFFER.map_line(line as u16, ((HEIGHT - 1) - new_line) as u16) };
+        }
+        top += 1;
+        bottom -= 1
+    }
+
+    // Stretch
+    while top > 0 {
+        api::wfvbi();
+        for line in 0..HEIGHT {
             let new_line = if line < top || line > bottom {
                 0
             } else {
-                (576 * (line - top)) / (bottom - top)
+                ((HEIGHT - 1) * (line - top)) / (bottom - top)
             };
-            unsafe {
-                FRAMEBUFFER.map_line(line, 576 - new_line);
-            }
+            unsafe { FRAMEBUFFER.map_line(line as u16, new_line as u16) };
         }
         top -= 1;
         bottom += 1
