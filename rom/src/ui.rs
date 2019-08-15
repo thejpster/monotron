@@ -6,6 +6,8 @@ use crate::{api, Context, Input, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEB
 use crate::{print, println};
 use embedded_hal::prelude::*;
 use menu;
+use monotron_synth;
+use nb::block;
 
 pub(crate) type Menu<'a> = menu::Menu<'a, MenuContext>;
 pub(crate) type Item<'a> = menu::Item<'a, MenuContext>;
@@ -190,6 +192,14 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             },
             command: "mterm",
             help: Some("MIDI debug terminal"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: midi_play,
+                parameters: &[],
+            },
+            command: "mplay",
+            help: Some("MIDI live playback"),
         },
         &Item {
             item_type: menu::ItemType::Callback {
@@ -849,6 +859,181 @@ fn midi_term<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut Menu
                 // Drop it on the floor
             }
             None => {
+                // Do nothing
+            }
+        }
+        cortex_m::asm::wfi();
+    }
+    println!("Disconnected!");
+}
+
+fn midi_play<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    println!("Connected at 31,250 bps. Ctrl-Q to quit.");
+    let mut notes = 0;
+    loop {
+        let byte = GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.read();
+        match byte {
+            Ok(0xFE) => {
+                // The 'Active Sensing' keep-alive byte
+            }
+            Ok(0x90) => {
+                // Note On, channel 0
+                let midi_note =
+                    block!(GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.read()).unwrap();
+                let velocity =
+                    block!(GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.read()).unwrap();
+                // note 3C = middle-C (C4)
+                let synth_note = match midi_note {
+                    0x06 => monotron_synth::Note::C0,
+                    0x07 => monotron_synth::Note::CsDb0,
+                    0x08 => monotron_synth::Note::D0,
+                    0x09 => monotron_synth::Note::DsEb0,
+                    0x10 => monotron_synth::Note::E0,
+                    0x11 => monotron_synth::Note::F0,
+                    0x12 => monotron_synth::Note::FsGb0,
+                    0x13 => monotron_synth::Note::G0,
+                    0x14 => monotron_synth::Note::GsAb0,
+                    0x15 => monotron_synth::Note::A0,
+                    0x16 => monotron_synth::Note::AsBb0,
+                    0x17 => monotron_synth::Note::B0,
+                    0x18 => monotron_synth::Note::C1,
+                    0x19 => monotron_synth::Note::CsDb1,
+                    0x1a => monotron_synth::Note::D1,
+                    0x1b => monotron_synth::Note::DsEb1,
+                    0x1c => monotron_synth::Note::E1,
+                    0x1d => monotron_synth::Note::F1,
+                    0x1e => monotron_synth::Note::FsGb1,
+                    0x1f => monotron_synth::Note::G1,
+                    0x20 => monotron_synth::Note::GsAb1,
+                    0x21 => monotron_synth::Note::A1,
+                    0x22 => monotron_synth::Note::AsBb1,
+                    0x23 => monotron_synth::Note::B1,
+                    0x24 => monotron_synth::Note::C2,
+                    0x25 => monotron_synth::Note::CsDb2,
+                    0x26 => monotron_synth::Note::D2,
+                    0x27 => monotron_synth::Note::DsEb2,
+                    0x28 => monotron_synth::Note::E2,
+                    0x29 => monotron_synth::Note::F2,
+                    0x2a => monotron_synth::Note::FsGb2,
+                    0x2b => monotron_synth::Note::G2,
+                    0x2c => monotron_synth::Note::GsAb2,
+                    0x2d => monotron_synth::Note::A2,
+                    0x2e => monotron_synth::Note::AsBb2,
+                    0x2f => monotron_synth::Note::B2,
+                    0x30 => monotron_synth::Note::C3,
+                    0x31 => monotron_synth::Note::CsDb3,
+                    0x32 => monotron_synth::Note::D3,
+                    0x33 => monotron_synth::Note::DsEb3,
+                    0x34 => monotron_synth::Note::E3,
+                    0x35 => monotron_synth::Note::F3,
+                    0x36 => monotron_synth::Note::FsGb3,
+                    0x37 => monotron_synth::Note::G3,
+                    0x38 => monotron_synth::Note::GsAb3,
+                    0x39 => monotron_synth::Note::A3,
+                    0x3a => monotron_synth::Note::AsBb3,
+                    0x3b => monotron_synth::Note::B3,
+                    0x3c => monotron_synth::Note::C4,
+                    0x3d => monotron_synth::Note::CsDb4,
+                    0x3e => monotron_synth::Note::D4,
+                    0x3f => monotron_synth::Note::DsEb4,
+                    0x40 => monotron_synth::Note::E4,
+                    0x41 => monotron_synth::Note::F4,
+                    0x42 => monotron_synth::Note::FsGb4,
+                    0x43 => monotron_synth::Note::G4,
+                    0x44 => monotron_synth::Note::GsAb4,
+                    0x45 => monotron_synth::Note::A4,
+                    0x46 => monotron_synth::Note::AsBb4,
+                    0x47 => monotron_synth::Note::B4,
+                    0x48 => monotron_synth::Note::C5,
+                    0x49 => monotron_synth::Note::CsDb5,
+                    0x4a => monotron_synth::Note::D5,
+                    0x4b => monotron_synth::Note::DsEb5,
+                    0x4c => monotron_synth::Note::E5,
+                    0x4d => monotron_synth::Note::F5,
+                    0x4e => monotron_synth::Note::FsGb5,
+                    0x4f => monotron_synth::Note::G5,
+                    0x50 => monotron_synth::Note::GsAb5,
+                    0x51 => monotron_synth::Note::A5,
+                    0x52 => monotron_synth::Note::AsBb5,
+                    0x53 => monotron_synth::Note::B5,
+                    0x54 => monotron_synth::Note::C6,
+                    0x55 => monotron_synth::Note::CsDb6,
+                    0x56 => monotron_synth::Note::D6,
+                    0x57 => monotron_synth::Note::DsEb6,
+                    0x58 => monotron_synth::Note::E6,
+                    0x59 => monotron_synth::Note::F6,
+                    0x5a => monotron_synth::Note::FsGb6,
+                    0x5b => monotron_synth::Note::G6,
+                    0x5c => monotron_synth::Note::GsAb6,
+                    0x5d => monotron_synth::Note::A6,
+                    0x5e => monotron_synth::Note::AsBb6,
+                    0x5f => monotron_synth::Note::B6,
+                    0x60 => monotron_synth::Note::C7,
+                    0x61 => monotron_synth::Note::CsDb7,
+                    0x62 => monotron_synth::Note::D7,
+                    0x63 => monotron_synth::Note::DsEb7,
+                    0x64 => monotron_synth::Note::E7,
+                    0x65 => monotron_synth::Note::F7,
+                    0x66 => monotron_synth::Note::FsGb7,
+                    0x67 => monotron_synth::Note::G7,
+                    0x68 => monotron_synth::Note::GsAb7,
+                    0x69 => monotron_synth::Note::A7,
+                    0x6a => monotron_synth::Note::AsBb7,
+                    0x6b => monotron_synth::Note::B7,
+                    0x6c => monotron_synth::Note::C8,
+                    0x6d => monotron_synth::Note::CsDb8,
+                    0x6e => monotron_synth::Note::D8,
+                    0x6f => monotron_synth::Note::DsEb8,
+                    0x70 => monotron_synth::Note::E8,
+                    0x71 => monotron_synth::Note::F8,
+                    0x72 => monotron_synth::Note::FsGb8,
+                    0x73 => monotron_synth::Note::G8,
+                    0x74 => monotron_synth::Note::GsAb8,
+                    0x75 => monotron_synth::Note::A8,
+                    0x76 => monotron_synth::Note::AsBb8,
+                    _ => monotron_synth::Note::B8,
+                };
+                unsafe {
+                    crate::G_SYNTH.play::<monotron_synth::Note>(
+                        monotron_synth::CHANNEL_0,
+                        synth_note,
+                        velocity,
+                        monotron_synth::Waveform::Square,
+                    );
+                }
+                notes += 1;
+            }
+            Ok(0x80) => {
+                // Note Off, channel 0
+                let _note =
+                    block!(GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.read()).unwrap();
+                let _velocity =
+                    block!(GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.read()).unwrap();
+                notes -= 1;
+                if notes == 0 {
+                    unsafe {
+                        crate::G_SYNTH.play(
+                            monotron_synth::CHANNEL_0,
+                            monotron_synth::Frequency::from_hertz(440),
+                            0,
+                            monotron_synth::Waveform::Square,
+                        );
+                    }
+                }
+            }
+            Ok(_) => {
+                // Ignore
+            }
+            Err(_) => {
+                // Do nothing
+            }
+        }
+        match GLOBAL_CONTEXT.lock().as_mut().unwrap().read() {
+            Some(Input::Cp850(17)) => {
+                // User pressed Ctrl-Q
+                break;
+            }
+            _ => {
                 // Do nothing
             }
         }
