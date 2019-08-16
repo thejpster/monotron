@@ -289,11 +289,6 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             command: "flip",
             help: Some("Flip the screen!"),
         },
-        &Item {
-            item_type: menu::ItemType::Callback(charset),
-            command: "charset",
-            help: Some("Shows the entire character set"),
-        },
     ],
     entry: None,
     exit: None,
@@ -1354,21 +1349,6 @@ fn flip<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuConte
         }
         top -= 1;
         bottom += 1
-    }
-}
-
-/// Print the entire character set
-fn charset<'a>(_menu: &Menu, _item: &Item, _input: &str, c: &mut Context) {
-    writeln!(c, "Monotron Character set:").unwrap();
-    for row in 0..16 {
-        for col in 0..16 {
-            let b = row * 16 + col;
-            unsafe {
-                FRAMEBUFFER.write_char(b' ', None);
-                FRAMEBUFFER.write_char(if (b == 10) || (b == 13) { b'.' } else { b }, None);
-            }
-        }
-        writeln!(c).unwrap();
     }
 }
 
