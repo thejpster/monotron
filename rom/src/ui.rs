@@ -339,8 +339,8 @@ fn item_dump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuCo
         .map_or(None, |p| parse_u32(p))
     {
         if let Some(length) = ::menu::argument_finder(item, args, "length")
-            .unwrap_or(Some("16"))
-            .map_or(None, |p| parse_u32(p))
+            .unwrap()
+            .map_or(Some(16), |p| parse_u32(p))
         {
             let mut addr = addr;
             println!("Dumping 0x{:08x} bytes from 0x{:08x}...", length, addr);
@@ -612,9 +612,7 @@ fn item_unmount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut M
 /// List the root directory
 fn item_dir<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
-        print!("Volume 0...");
         let v = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
-        println!("{:?}", v);
         let dir = c.cont.open_root_dir(&v)?;
         c.cont.iterate_dir(&v, &dir, |x| {
             if !x.attributes.is_hidden() && !x.attributes.is_volume() {
@@ -855,13 +853,7 @@ fn midi_term<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut Menu
                 // User pressed Ctrl-Q
                 break;
             }
-            Some(Input::Cp850(ch)) => {
-                let _ = GLOBAL_CONTEXT.lock().as_mut().unwrap().midi_uart.write(ch);
-            }
-            Some(Input::Special(_code)) => {
-                // Drop it on the floor
-            }
-            None => {
+            _ => {
                 // Do nothing
             }
         }
@@ -1367,6 +1359,9 @@ fn parse_u32(s: &str) -> Option<u32> {
     } else if s.starts_with("0b") {
         // Assume binary
         u32::from_str_radix(&s[2..], 2).ok()
+    } else if s == "0" {
+        // Literal zero
+        Some(0u32)
     } else if s.starts_with("0") {
         // Assume octal
         u32::from_str_radix(&s[1..], 8).ok()
