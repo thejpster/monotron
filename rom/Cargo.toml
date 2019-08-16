@@ -1,6 +1,6 @@
 [package]
 name = "monotron"
-version = "0.9.1"
+version = "0.9.2"
 authors = ["Jorge Aparicio <jorge@japaric.io>", "Jonathan 'theJPster' Pallant <monotron@thejpster.org.uk>"]
 description = "A simple 1980's home computer style application for the Tiva-C Launchpad."
 keywords = ["arm", "cortex-m", "template", "video", "menu"]
@@ -14,19 +14,22 @@ name = "monotron"
 test = false
 bench = false
 
+[dependencies.monotron-api]
+path = "../monotron-api"
+
 [dependencies.tm4c123x-hal]
-version = "0.9.1"
-# path = "../tm4c-hal/tm4c123x-hal"
+version = "0.9.2"
+# path = "../../tm4c-hal/tm4c123x-hal"
 # git = "https://github.com/thejpster/tm4c-hal"
 features = ["rt"]
 
 [dependencies.menu]
-version = "0.2.1"
+version = "0.3"
 # git = "https://github.com/thejpster/menu"
-# path = "../menu"
+# path = "../../menu"
 
 [dependencies.vga-framebuffer]
-version = "0.8.0"
+version = "0.9.0"
 git = "https://github.com/thejpster/vga-framebuffer-rs"
 branch = "eighty_columns"
 # path = "../../vga-framebuffer-rs"
@@ -47,10 +50,15 @@ version = "0.2"
 
 [dependencies.pc-keyboard]
 version = "0.5"
-# path = "../pc-keyboard"
+# path = "../../pc-keyboard"
+
+[dependencies.mcp794xx]
+git = "https://github.com/thejpster/mcp794xx-rs"
+branch = "jgp_changes"
+# path = "../../mcp794xx-rs"
 
 [dependencies.monotron-synth]
-# path = "../monotron-synth"
+# path = "../../monotron-synth"
 # git = "https://github.com/thejpster/monotron-synth"
 version = "0.2"
 
@@ -59,7 +67,7 @@ path = "../monotron-io-protocol"
 
 [dependencies.embedded-sdmmc]
 version = "0.2"
-# path = "../embedded-sdmmc"
+# path = "../../embedded-sdmmc"
 # git = "https://github.com/thejpster/embedded-sdmmc-rs"
 
 [dependencies.nb]
@@ -69,3 +77,5 @@ version = "0.1"
 version = "1.8.1"
 default-features = false
 
+[dependencies.spin]
+version = "0.5"

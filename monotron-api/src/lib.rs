@@ -12,7 +12,9 @@
 //! extensible.
 //!
 //! A C header file version of this API can be generated with `cbindgen`.
-#![no_std]
+//!
+//! All types in this file must be `#[repr(C)]`.
+#![cfg_attr(not(test), no_std)]
 #![deny(missing_docs)]
 
 /// The set of Error codes the API can report.
@@ -23,6 +25,8 @@ pub enum Error {
     FileNotFound,
     /// The given file handle was not valid
     BadFileHandle,
+    /// Error reading or writing
+    IOError,
     /// You can't do that operation on that sort of file
     NotSupported,
     /// An unknown error occured
@@ -31,7 +35,7 @@ pub enum Error {
 
 /// Describes a handle to some resource.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Handle(pub u16);
 
 /// Describes a string of fixed length, which must not be free'd by the
@@ -39,12 +43,34 @@ pub struct Handle(pub u16);
 /// be present. The string must be valid UTF-8 (or 7-bit ASCII, which is a
 /// valid subset of UTF-8).
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct BorrowedString {
     /// The start of the string
     pub ptr: *const u8,
     /// The length of the string in bytes
     pub length: usize,
+}
+
+impl BorrowedString {
+    /// Create a new API-compatible borrowed string, from a static string slice.
+    pub fn new(value: &'static str) -> BorrowedString {
+        BorrowedString {
+            ptr: value.as_ptr(),
+            length: value.len(),
+        }
+    }
+}
+
+impl core::cmp::PartialEq for BorrowedString {
+    fn eq(&self, rhs: &BorrowedString) -> bool {
+        if self.length == rhs.length {
+            let left = unsafe { core::slice::from_raw_parts(self.ptr, self.length) };
+            let right = unsafe { core::slice::from_raw_parts(rhs.ptr, rhs.length) };
+            left == right
+        } else {
+            false
+        }
+    }
 }
 
 /// Describes the result of a function which may return a `Handle` if
@@ -68,7 +94,7 @@ pub enum HandleResult {
 #[derive(Debug)]
 pub enum EmptyResult {
     /// Success - nothing is returned
-    Ok(u8),
+    Ok,
     /// Failure - an error is returned
     Error(Error),
 }
@@ -113,14 +139,155 @@ pub struct Timestamp {
     pub month: u8,
     /// The day of the month where 1 is the first of the month, through to 28,
     /// 29, 30 or 31 (as appropriate)
-    pub day: u8,
+    pub days: u8,
     /// The hour in the day, from 0 to 23
-    pub hour: u8,
+    pub hours: u8,
     /// The minutes past the hour, from 0 to 59
-    pub minute: u8,
+    pub minutes: u8,
     /// The seconds past the minute, from 0 to 59. Note that some filesystems
     /// only have 2-second precision on their timestamps.
-    pub second: u8,
+    pub seconds: u8,
+}
+
+/// Represents the seven days of the week
+#[repr(C)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub enum DayOfWeek {
+    /// First day of the week
+    Monday,
+    /// Comes after Monday
+    Tuesday,
+    /// Middle of the week
+    Wednesday,
+    /// Between Wednesday and Friday
+    Thursday,
+    /// Almost the weekend
+    Friday,
+    /// First day of the weekend
+    Saturday,
+    /// Last day of the week
+    Sunday,
+}
+
+impl DayOfWeek {
+    /// Returns the UK English word for the day of the week
+    pub fn day_str(&self) -> &'static str {
+        match self {
+            DayOfWeek::Monday => "Monday",
+            DayOfWeek::Tuesday => "Tuesday",
+            DayOfWeek::Wednesday => "Wednesday",
+            DayOfWeek::Thursday => "Thursday",
+            DayOfWeek::Friday => "Friday",
+            DayOfWeek::Saturday => "Saturday",
+            DayOfWeek::Sunday => "Sunday",
+        }
+    }
+}
+
+impl Timestamp {
+    /// Returns the day of the week for the given timestamp.
+    pub fn day_of_week(&self) -> DayOfWeek {
+        let zellers_month = ((i32::from(self.month) + 9) % 12) + 1;
+        let k = i32::from(self.days);
+        let year = if zellers_month >= 11 {
+            i32::from(self.year_from_1970) + 1969
+        } else {
+            i32::from(self.year_from_1970) + 1970
+        };
+        let d = year % 100;
+        let c = year / 100;
+        let f = k + (((13 * zellers_month) - 1) / 5) + d + (d / 4) + (c / 4) - (2 * c);
+        let day_of_week = f % 7;
+        match day_of_week {
+            0 => DayOfWeek::Sunday,
+            1 => DayOfWeek::Monday,
+            2 => DayOfWeek::Tuesday,
+            3 => DayOfWeek::Wednesday,
+            4 => DayOfWeek::Thursday,
+            5 => DayOfWeek::Friday,
+            _ => DayOfWeek::Saturday,
+        }
+    }
+
+    /// Move this timestamp forward by a number of days and seconds.
+    pub fn increment(&mut self, days: u32, seconds: u32) {
+        let new_seconds = seconds + u32::from(self.seconds);
+        self.seconds = (new_seconds % 60) as u8;
+        let new_minutes = (new_seconds / 60) + u32::from(self.minutes);
+        self.minutes = (new_minutes % 60) as u8;
+        let new_hours = (new_minutes / 60) + u32::from(self.hours);
+        self.hours = (new_hours % 24) as u8;
+        let mut new_days = (new_hours / 24) + u32::from(self.days) + days;
+        while new_days > u32::from(self.days_in_month()) {
+            new_days -= u32::from(self.days_in_month());
+            self.month += 1;
+            if self.month > 12 {
+                self.month = 1;
+                self.year_from_1970 += 1;
+            }
+        }
+        self.days = new_days as u8;
+    }
+
+    /// Returns true if this is a leap year, false otherwise.
+    pub fn is_leap_year(&self) -> bool {
+        let year = u32::from(self.year_from_1970) + 1970;
+        (year == 2000) || (((year % 4) == 0) && ((year % 100) != 0))
+    }
+
+    /// Returns the number of days in the current month
+    pub fn days_in_month(&self) -> u8 {
+        match self.month {
+            1 => 31,
+            2 if self.is_leap_year() => 29,
+            2 => 28,
+            3 => 31,
+            4 => 30,
+            5 => 31,
+            6 => 30,
+            7 => 31,
+            8 => 31,
+            9 => 30,
+            10 => 31,
+            11 => 30,
+            12 => 31,
+            _ => panic!("Bad timestamp {:?}", self),
+        }
+    }
+
+    /// Returns the current month as a UK English string (e.g. "August").
+    pub fn month_str(&self) -> &'static str {
+        match self.month {
+            1 => "January",
+            2 => "February",
+            3 => "March",
+            4 => "April",
+            5 => "May",
+            6 => "June",
+            7 => "July",
+            8 => "August",
+            9 => "September",
+            10 => "October",
+            11 => "November",
+            12 => "December",
+            _ => "Unknown",
+        }
+    }
+}
+
+impl core::fmt::Display for Timestamp {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(
+            f,
+            "{year:04}-{month:02}-{days:02}T{hours:02}:{minutes:02}:{seconds:02}",
+            year = u16::from(self.year_from_1970) + 1970u16,
+            month = self.month,
+            days = self.days,
+            hours = self.hours,
+            minutes = self.minutes,
+            seconds = self.seconds,
+        )
+    }
 }
 
 /// Describes a file as it exists on disk.
@@ -176,10 +343,10 @@ pub extern "C" fn monotron_filemode_is_archive(flags: FileMode) -> bool {
 }
 
 impl FileMode {
-    const READ_ONLY: u8 = 1u8 << 0;
-    const VOLUME: u8 = 1u8 << 1;
-    const SYSTEM: u8 = 1u8 << 2;
-    const ARCHIVE: u8 = 1u8 << 3;
+    const READ_ONLY: u8 = 1;
+    const VOLUME: u8 = 2;
+    const SYSTEM: u8 = 4;
+    const ARCHIVE: u8 = 8;
 }
 
 /// Represents how far to move the current read/write pointer through a file.
@@ -277,10 +444,50 @@ pub extern "C" fn monotron_openmode_readwrite(
     }
 }
 
+/// Standard Output
+pub static STDOUT: Handle = Handle(0);
+
+/// Standard Error
+pub static STDERR: Handle = Handle(1);
+
+/// Standard Input
+pub static STDIN: Handle = Handle(2);
+
 /// This structure contains all the function pointers the application can use
 /// to access OS functions.
 #[repr(C)]
 pub struct Api {
+    /// Old function for writing a single 8-bit character to the screen.
+    pub putchar: extern "C" fn(ch: u8) -> i32,
+
+    /// Old function for writing a null-terminated 8-bit string to the screen.
+    pub puts: extern "C" fn(string: *const u8) -> i32,
+
+    /// Old function for reading one byte from stdin, blocking.
+    pub readc: extern "C" fn() -> i32,
+
+    /// Old function for checking if readc() would block.
+    pub kbhit: extern "C" fn() -> i32,
+
+    /// Old function for moving the cursor on screen. To be replaced with ANSI
+    /// escape codes.
+    pub move_cursor: extern "C" fn(row: u8, col: u8),
+
+    /// Old function for playing a note.
+    pub play: extern "C" fn(frequency: u32, channel: u8, volume: u8, waveform: u8) -> i32,
+
+    /// Old function for changing the on-screen font.
+    pub change_font: extern "C" fn(font_id: u32, font_data: *const u8),
+
+    /// Old function for reading the Joystick status.
+    pub get_joystick: extern "C" fn() -> u8,
+
+    /// Old function for turning the cursor on/off.
+    pub set_cursor_visible: extern "C" fn(enabled: u8),
+
+    /// Old function for reading the contents of the screen.
+    pub read_char_at: extern "C" fn(row: u8, col: u8) -> u16,
+
     /// Wait for next vertical blanking interval.
     pub wfvbi: extern "C" fn(),
 
@@ -321,4 +528,85 @@ pub struct Api {
 
     /// Get information about a file by path
     pub stat: extern "C" fn(filename: BorrowedString, stat_entry: &mut DirEntry) -> EmptyResult,
+
+    /// Get the current time
+    pub gettime: extern "C" fn() -> Timestamp,
+
+    /// Old function for writing a UTF-8 string to the screen.
+    pub puts_utf8: extern "C" fn(string: *const u8, length: usize),
+
+    /// Maps an actual line on the screen to be drawn as if it was somewhere else on the screen.
+    ///
+    /// So if you ran this, the image would look completely normal:
+    ///
+    /// ```rust
+    /// for x in 0..576 {
+    ///     map_line(x, x);
+    /// }
+    /// ```
+    ///
+    /// But if you did this, the screen would be upside down.
+    ///
+    /// ```rust
+    /// for x in 0..576 {
+    ///     map_line(x, 576 - x);
+    /// }
+    /// ```
+    ///
+    /// And if you did this, the top 32 scanlines on the screen would repeat
+    /// all the way down.
+    ///
+    /// ```rust
+    /// for x in 0..576 {
+    ///     map_line(x, x % 32);
+    /// }
+    /// ```
+    pub map_line: extern "C" fn(actual_scanline: u16, drawn_scanline: u16),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn day_of_week() {
+        let samples = [
+            (
+                Timestamp {
+                    year_from_1970: 49,
+                    month: 7,
+                    day: 16,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                },
+                DayOfWeek::Tuesday,
+            ),
+            (
+                Timestamp {
+                    year_from_1970: 49,
+                    month: 7,
+                    day: 17,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                },
+                DayOfWeek::Wednesday,
+            ),
+            (
+                Timestamp {
+                    year_from_1970: 49,
+                    month: 7,
+                    day: 18,
+                    hours: 0,
+                    minutes: 0,
+                    seconds: 0,
+                },
+                DayOfWeek::Thursday,
+            ),
+        ];
+        for (timestamp, day) in samples.iter() {
+            assert_eq!(timestamp.day_of_week(), *day);
+        }
+    }
 }
