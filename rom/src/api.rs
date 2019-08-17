@@ -149,8 +149,7 @@ pub(crate) extern "C" fn move_cursor(row: u8, col: u8) {
 /// Get the screen position for the cursor.
 ///
 /// Monotron has 48 visible columns (numbered 0..47) and 36 visible rows
-/// (numbered 0..35). If either `row` or `col` are out of bounds, the call is
-/// ignored.
+/// (numbered 0..35).
 pub(crate) extern "C" fn get_cursor(row: *mut u8, col: *mut u8) {
     let p = unsafe { FRAMEBUFFER.get_pos() };
     if !row.is_null() {
