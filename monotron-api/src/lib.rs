@@ -562,6 +562,8 @@ pub struct Api {
     /// }
     /// ```
     pub map_line: extern "C" fn(actual_scanline: u16, drawn_scanline: u16),
+    /// Get the current cursor position
+    pub get_cursor: extern "C" fn(row: *mut u8, col: *mut u8),
 }
 
 #[cfg(test)]

@@ -31,6 +31,7 @@ pub(crate) static CALLBACK_TABLE: Api = Api {
     gettime,
     puts_utf8,
     map_line,
+    get_cursor,
 };
 
 /// Print a null-terminated 8-bit string, in Code Page 850, to the screen.
@@ -141,6 +142,25 @@ pub(crate) extern "C" fn move_cursor(row: u8, col: u8) {
             unsafe {
                 let _ = FRAMEBUFFER.set_pos(p);
             }
+        }
+    }
+}
+
+/// Get the screen position for the cursor.
+///
+/// Monotron has 48 visible columns (numbered 0..47) and 36 visible rows
+/// (numbered 0..35). If either `row` or `col` are out of bounds, the call is
+/// ignored.
+pub(crate) extern "C" fn get_cursor(row: *mut u8, col: *mut u8) {
+    let p = unsafe { FRAMEBUFFER.get_pos() };
+    if !row.is_null() {
+        unsafe {
+            *row = p.row.0;
+        }
+    }
+    if !col.is_null() {
+        unsafe {
+            *col = p.col.0;
         }
     }
 }
