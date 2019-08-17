@@ -1276,12 +1276,9 @@ fn rtc_set<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuCo
         minute: timestamp.minutes,
         second: timestamp.seconds,
     };
-    let res = rtc.set_datetime(&dt);
-    let _ = rtc.enable();
-    drop(rtc);
-    drop(ctx);
-    drop(lock);
-    println!("RTC set: {:?}", res);
+    println!("set_vbat_en(true): {:?}", rtc.set_vbat_en(true));
+    println!("set_datetime({:?}): {:?}", rtc.set_datetime(&dt), dt);
+    println!("enable(): {:?}", rtc.enable());
 }
 
 fn flip<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
