@@ -66,8 +66,9 @@ path = "../monotron-io-protocol"
 
 [dependencies.embedded-sdmmc]
 version = "0.2"
-# path = "../../embedded-sdmmc"
-# git = "https://github.com/thejpster/embedded-sdmmc-rs"
+path = "../../embedded-sdmmc-rs"
+git = "https://github.com/thejpster/embedded-sdmmc-rs"
+branch = "make_api_immutable"
 
 [dependencies.nb]
 version = "0.1"

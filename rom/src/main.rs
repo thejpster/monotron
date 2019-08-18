@@ -140,8 +140,18 @@ pub struct Context {
     buffered_char: Option<Input>,
     /// Our joystick interface
     joystick: Joystick,
+    /// Information about the clock speeds we have configured
+    clocks: hal::sysctl::Clocks,
+    /// If `false`, input errors are squashed (in case we reboot in the middle
+    /// of a message from the keyboard controller). Set to `true` when a valid
+    /// message has been received.
+    seen_keypress: bool,
+}
+
+/// Holds our filesystem and disk controller state.
+pub struct DiskContext {
     /// Our SD card controller
-    cont: embedded_sdmmc::Controller<
+    pub cont: embedded_sdmmc::Controller<
         embedded_sdmmc::SdMmcSpi<
             hal::spi::Spi<
                 cpu::SSI0,
@@ -161,12 +171,6 @@ pub struct Context {
         >,
         &'static TimeContext,
     >,
-    /// Information about the clock speeds we have configured
-    clocks: hal::sysctl::Clocks,
-    /// If `false`, input errors are squashed (in case we reboot in the middle
-    /// of a message from the keyboard controller). Set to `true` when a valid
-    /// message has been received.
-    seen_keypress: bool,
 }
 
 /// Describes the current position of the joystick.
@@ -273,6 +277,27 @@ const CLOCK_SPEED: u32 = 80_000_000;
 /// let ctx = lock.as_mut().unwrap();
 /// ```
 pub static GLOBAL_CONTEXT: spin::Mutex<Option<Context>> = spin::Mutex::new(None);
+
+/// Stores all the system state for the filesystem and disk controller.
+///
+/// We keep this separate to the rest of the system state because any open
+/// files hold a reference to this object and it's annoying if you can't read
+/// keyboard input while you've got files open.
+///
+/// * We have to use Option<Context> because we can't statically initialise
+///   the Context (it needs some single hardware).
+/// * We use a spin::Mutex because statics need to be read-only to be
+///   shareable, but we do need to mutate the Context.
+///
+/// Access this object with:
+///
+/// ```ignore
+/// // Lock the mutex
+/// let lock = DISK_CONTEXT.lock();
+/// // Convert to mutable reference and unwrap the Option
+/// let ctx = lock.as_mut().unwrap();
+/// ```
+pub static DISK_CONTEXT: spin::Mutex<Option<DiskContext>> = spin::Mutex::new(None);
 
 /// Tracks the current system time in a race-hazard safe way.
 pub static TIME_CONTEXT: TimeContext = TimeContext {
@@ -652,7 +677,8 @@ fn main() -> ! {
     let sdmmc_mosi = porta
         .pa5
         .into_af_push_pull::<hal::gpio::AF2>(&mut porta.control);
-    // Use the HAL driver for SPI
+    // Use the HAL driver for SPI We start off slow, but ramp up the speed
+    // once init is complete.
     let sdmmc_spi = hal::spi::Spi::spi0(
         p.SSI0,
         (sdmmc_clk, sdmmc_miso, sdmmc_mosi),
@@ -783,12 +809,15 @@ fn main() -> ! {
             right: portd.pd7.unlock(&mut portd.control).into_pull_up_input(),
             fire: portf.pf4.into_pull_up_input(),
         },
+        clocks,
+        seen_keypress: false,
+    });
+
+    *DISK_CONTEXT.lock() = Some(DiskContext {
         cont: embedded_sdmmc::Controller::new(
             embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs),
             &TIME_CONTEXT,
         ),
-        clocks,
-        seen_keypress: false,
     });
 
     while GLOBAL_CONTEXT

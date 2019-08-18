@@ -1,8 +1,10 @@
 use crate::fb::{self, AsciiConsole, BaseConsole};
 use crate::hal::prelude::*;
 use crate::MenuContext;
-use crate::GLOBAL_CONTEXT;
-use crate::{api, Context, Input, APPLICATION_LEN, APPLICATION_START_ADDR, FRAMEBUFFER};
+use crate::{
+    api, DiskContext, Input, APPLICATION_LEN, APPLICATION_START_ADDR, DISK_CONTEXT, FRAMEBUFFER,
+    GLOBAL_CONTEXT,
+};
 use crate::{print, println};
 use embedded_hal::prelude::*;
 use menu;
@@ -581,16 +583,17 @@ fn item_beep<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuCo
 
 /// Init the card and dump some details
 fn item_mount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
-    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::SdMmcError> {
+    let f = |c: &mut DiskContext| -> Result<(), embedded_sdmmc::SdMmcError> {
         print!("Init SD card...");
         c.cont.device().init()?;
-        c.cont.device().spi().reclock(10u32.mhz(), &c.clocks);
+        let clocks = GLOBAL_CONTEXT.lock().as_ref().unwrap().clocks;
+        c.cont.device().spi().reclock(10u32.mhz(), &clocks);
         print!("OK!\nCard size...");
         let size = c.cont.device().card_size_bytes()?;
         println!("{}", size);
         Ok(())
     };
-    match f(GLOBAL_CONTEXT.lock().as_mut().unwrap()) {
+    match f(DISK_CONTEXT.lock().as_mut().unwrap()) {
         Err(e) => println!("Error: {:?}", e),
         _ => (),
     }
@@ -599,19 +602,13 @@ fn item_mount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut Men
 /// De-init the card so it can't be used.
 fn item_unmount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     print!("De-init SD card...");
-    GLOBAL_CONTEXT
-        .lock()
-        .as_mut()
-        .unwrap()
-        .cont
-        .device()
-        .deinit();
+    DISK_CONTEXT.lock().as_mut().unwrap().cont.device().deinit();
     println!("OK!");
 }
 
 /// List the root directory
 fn item_dir<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
-    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+    let f = |c: &mut DiskContext| -> Result<(), embedded_sdmmc::Error<_>> {
         let v = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
         let dir = c.cont.open_root_dir(&v)?;
         c.cont.iterate_dir(&v, &dir, |x| {
@@ -623,10 +620,9 @@ fn item_dir<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuC
                 }
             }
         })?;
-        c.cont.close_dir(&v, dir);
         Ok(())
     };
-    match f(GLOBAL_CONTEXT.lock().as_mut().unwrap()) {
+    match f(DISK_CONTEXT.lock().as_mut().unwrap()) {
         Err(e) => println!("Error: {:?}", e),
         _ => (),
     }
@@ -636,7 +632,7 @@ fn item_dir<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuC
 /// TODO work out how to release the directory handle and file handle when the
 /// function aborts (e.g. with file not found).
 fn item_dload<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
-    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+    let f = |c: &mut DiskContext| -> Result<(), embedded_sdmmc::Error<_>> {
         let filename = ::menu::argument_finder(item, args, "FILE")
             .unwrap()
             .unwrap();
@@ -650,7 +646,6 @@ fn item_dload<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
             {
                 Ok(f) => f,
                 Err(e) => {
-                    c.cont.close_dir(&volume, dir);
                     return Err(e);
                 }
             };
@@ -662,11 +657,9 @@ fn item_dload<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
         c.cont.read(&volume, &mut f, application_ram)?;
         let digest = crc::crc32::checksum_ieee(&application_ram[0..f.length() as usize]);
         println!("Loaded {} bytes, CRC32 0x{:08x}", f.length(), digest);
-        c.cont.close_file(&volume, f)?;
-        c.cont.close_dir(&volume, dir);
         Ok(())
     };
-    match f(GLOBAL_CONTEXT.lock().as_mut().unwrap()) {
+    match f(DISK_CONTEXT.lock().as_mut().unwrap()) {
         Err(e) => println!("Error: {:?}", e),
         _ => (),
     }
@@ -676,7 +669,7 @@ fn item_dload<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
 /// TODO work out how to release the directory handle and file handle when the
 /// function aborts (e.g. with file not found).
 fn item_ddump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
-    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+    let f = |c: &mut DiskContext| -> Result<(), embedded_sdmmc::Error<_>> {
         let filename = ::menu::argument_finder(item, args, "FILE")
             .unwrap()
             .unwrap();
@@ -713,7 +706,7 @@ fn item_ddump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                 loop {
                     crate::api::wfvbi();
                     // Wait for new input
-                    match c.input_read() {
+                    match GLOBAL_CONTEXT.lock().as_mut().unwrap().input_read() {
                         None => {}
                         _ => break,
                     }
@@ -721,11 +714,9 @@ fn item_ddump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                 print!("\r                \r");
             }
         }
-        c.cont.close_file(&volume, f)?;
-        c.cont.close_dir(&volume, dir);
         Ok(())
     };
-    match f(GLOBAL_CONTEXT.lock().as_mut().unwrap()) {
+    match f(DISK_CONTEXT.lock().as_mut().unwrap()) {
         Err(e) => println!("Error: {:?}", e),
         _ => (),
     }
@@ -735,7 +726,7 @@ fn item_ddump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
 /// TODO work out how to release the directory handle and file handle when the
 /// function aborts (e.g. with file not found).
 fn item_dpage<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
-    let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
+    let f = |c: &mut DiskContext| -> Result<(), embedded_sdmmc::Error<_>> {
         let filename = ::menu::argument_finder(item, args, "FILE")
             .unwrap()
             .unwrap();
@@ -765,7 +756,7 @@ fn item_dpage<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                     loop {
                         crate::api::wfvbi();
                         // Wait for new input
-                        match c.input_read() {
+                        match GLOBAL_CONTEXT.lock().as_mut().unwrap().input_read() {
                             None => {}
                             _ => break,
                         }
@@ -774,11 +765,9 @@ fn item_dpage<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                 }
             }
         }
-        c.cont.close_file(&volume, f)?;
-        c.cont.close_dir(&volume, dir);
         Ok(())
     };
-    match f(GLOBAL_CONTEXT.lock().as_mut().unwrap()) {
+    match f(DISK_CONTEXT.lock().as_mut().unwrap()) {
         Err(e) => println!("Error: {:?}", e),
         _ => (),
     }
