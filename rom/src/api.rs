@@ -91,7 +91,7 @@ pub(crate) extern "C" fn readc() -> i32 {
     let mut lock = GLOBAL_CONTEXT.lock();
     let ctx = lock.as_mut().unwrap();
     loop {
-        match ctx.read() {
+        match ctx.input_read() {
             None => {
                 asm::wfi();
             }

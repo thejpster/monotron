@@ -713,7 +713,7 @@ fn item_ddump<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                 loop {
                     crate::api::wfvbi();
                     // Wait for new input
-                    match c.read() {
+                    match c.input_read() {
                         None => {}
                         _ => break,
                     }
@@ -765,7 +765,7 @@ fn item_dpage<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                     loop {
                         crate::api::wfvbi();
                         // Wait for new input
-                        match c.read() {
+                        match c.input_read() {
                             None => {}
                             _ => break,
                         }
@@ -790,7 +790,9 @@ fn rs232_term<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
         .map_or(None, |p| u32::from_str_radix(p, 10).ok())
     {
         {
+            // Grab the lock
             let mut lock = GLOBAL_CONTEXT.lock();
+            // Convert to mutable reference and unwrap the Option
             let ctx = lock.as_mut().unwrap();
             ctx.rs232_uart.change_baud_rate(bitrate.bps(), &ctx.clocks);
         }
@@ -806,7 +808,7 @@ fn rs232_term<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuC
                     // Ignore
                 }
             }
-            match ctx.read() {
+            match ctx.input_read() {
                 Some(Input::Cp850(17)) => {
                     // User pressed Ctrl-Q
                     break;
@@ -848,7 +850,7 @@ fn midi_term<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut Menu
                 // Do nothing
             }
         }
-        match GLOBAL_CONTEXT.lock().as_mut().unwrap().read() {
+        match GLOBAL_CONTEXT.lock().as_mut().unwrap().input_read() {
             Some(Input::Cp850(17)) => {
                 // User pressed Ctrl-Q
                 break;
@@ -1075,7 +1077,7 @@ fn midi_play<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuCo
                 // Do nothing
             }
         }
-        match GLOBAL_CONTEXT.lock().as_mut().unwrap().read() {
+        match GLOBAL_CONTEXT.lock().as_mut().unwrap().input_read() {
             Some(Input::Cp850(17)) => {
                 // User pressed Ctrl-Q
                 break;
@@ -1227,43 +1229,16 @@ fn date<'a>(_menu: &Menu, _item: &Item, args: &[&str], _context: &mut MenuContex
 }
 
 fn rtc_get<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
-    use mcp794xx::Rtcc;
-    let mut lock = GLOBAL_CONTEXT.lock();
-    let ctx = lock.as_mut().unwrap();
-    let bus = crate::I2cBus(&mut ctx.i2c_bus);
-    let mut rtc = mcp794xx::Mcp794xx::new_mcp7940n(bus);
-    let dt = match rtc.get_datetime() {
-        Ok(dt) => dt,
-        Err(e) => {
-            drop(rtc);
-            drop(ctx);
-            drop(lock);
-            println!("Error reading RTC: {:?}", e);
-            return;
-        }
-    };
-    let timestamp = monotron_api::Timestamp {
-        year_from_1970: (dt.year - 1970) as u8,
-        month: dt.month,
-        days: dt.day,
-        hours: match dt.hour {
-            mcp794xx::Hours::H24(n) => n,
-            mcp794xx::Hours::AM(n) => n,
-            mcp794xx::Hours::PM(n) => n + 12,
-        },
-        minutes: dt.minute,
-        seconds: dt.second,
-    };
-    drop(ctx);
-    drop(lock);
-    crate::TIME_CONTEXT.set_timestamp(timestamp);
+    crate::load_time_from_rtc();
     println!("Date is now: {}", crate::TIME_CONTEXT.get_timestamp());
 }
 
 fn rtc_set<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let timestamp = crate::TIME_CONTEXT.get_timestamp();
     use mcp794xx::Rtcc;
+    // Grab the lock
     let mut lock = GLOBAL_CONTEXT.lock();
+    // Convert to mutable reference and unwrap the Option<>
     let ctx = lock.as_mut().unwrap();
     let bus = crate::I2cBus(&mut ctx.i2c_bus);
     let mut rtc = mcp794xx::Mcp794xx::new_mcp7940n(bus);
