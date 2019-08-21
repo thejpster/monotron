@@ -7,6 +7,20 @@ pub use monotron_api::*;
 
 const UART0_HANDLE: Handle = Handle(100);
 
+pub struct Handle(u8);
+
+enum OpenFileObject {
+    Uart0,
+    StdIn,
+    StdOut,
+    StdErr,
+    File(embedded_sdmmc::File),
+    Directory(embedded_sdmmc::Directory),
+}
+
+static FILE_HANDLES: spin::Mutex<[Option<OpenFileObject>; 6]> =
+    spin::Mutex::new([None, None, None, None, None, None]);
+
 pub(crate) static CALLBACK_TABLE: Api = Api {
     putchar,
     puts,
