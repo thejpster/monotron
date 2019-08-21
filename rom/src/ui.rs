@@ -478,6 +478,7 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &m
         let code: extern "C" fn(*const api::Api) -> u32 = ::core::mem::transmute(ptr);
         code(&api::CALLBACK_TABLE)
     };
+    // Stop any audio
     unsafe {
         crate::G_SYNTH.play(
             monotron_synth::CHANNEL_0,
@@ -498,6 +499,11 @@ fn item_run_program<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &m
             monotron_synth::Waveform::Square,
         );
     }
+    // Put the font back
+    api::change_font(0, core::ptr::null());
+    // Turn the cursor on
+    api::set_cursor_visible(1);
+    // clear the screen
     println!("\u{001B}W\u{001B}k\n\nResult: {}", result);
 }
 
