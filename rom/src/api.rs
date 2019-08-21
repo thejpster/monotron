@@ -7,8 +7,6 @@ pub use monotron_api::*;
 
 const UART0_HANDLE: Handle = Handle(100);
 
-pub struct Handle(u8);
-
 enum OpenFileObject {
     Uart0,
     StdIn,
