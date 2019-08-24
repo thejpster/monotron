@@ -7,3 +7,4 @@ target/
 *.sublime-workspace
 env/
 avr_kb/build/
+monotron-api/generated/*.h

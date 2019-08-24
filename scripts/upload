@@ -13,11 +13,14 @@ def chunks(l, n):
 
 file = sys.argv[2]
 contents = open(file, "rb").read()
-s = serial.Serial(sys.argv[1], 115200, timeout=1.0)
-s.read()
-s.write("\rload\r".format(len(contents)).encode("ascii"))
-check = s.read(size=10)
-assert check == b"READY", "Check = {}, not READY".format(check)
+s = serial.Serial(sys.argv[1], 115200, timeout=2.0, rtscts=0)
+print("Clearing buffer...")
+s.read(size=1000)
+print("Sending load command...")
+s.write("\rload\r".encode("ascii"))
+print("Waiting for ready...")
+check = s.read(size=7)
+assert check == b"READY\r\n", "Check = {}, not READY".format(check)
 for block in chunks(contents, ACK_EVERY):
 	for b in block:
 		hex = "{:02x}".format(b)

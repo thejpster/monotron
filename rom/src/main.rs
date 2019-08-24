@@ -44,14 +44,22 @@
 
 #![no_main]
 #![no_std]
+#![allow(deprecated)]
 #![feature(asm)]
+
+// ===========================================================================
+// Sub-modules
+// ===========================================================================
 
 mod api;
 mod ui;
 
+// ===========================================================================
+// Imports
+// ===========================================================================
+
 extern crate panic_halt;
 
-use core::fmt::Write;
 use cortex_m_rt::{entry, exception};
 use fb::AsciiConsole;
 use monotron_synth::*;
@@ -65,6 +73,163 @@ use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
 use self::hal::tm4c123x as cpu;
+
+// ===========================================================================
+// Types
+// ===========================================================================
+
+/// Holds a `TimeContextInner` in a mutex.
+pub struct TimeContext {
+    inner: spin::Mutex<TimeContextInner>,
+}
+
+/// Holds all of the system peripheral objects and state.
+pub struct Context {
+    /// The UART connected to the USB-CDC virtual COM port function on the on-board debugger.
+    usb_uart: hal::serial::Serial<
+        hal::serial::UART0,
+        hal::gpio::gpioa::PA1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioa::PA0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        (),
+        (),
+    >,
+    /// The UART connected to the keyboard / mouse controller chip.
+    keyboard_mouse_uart: hal::serial::Serial<
+        hal::serial::UART7,
+        hal::gpio::gpioe::PE1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioe::PE0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        (),
+        (),
+    >,
+    /// The UART connected to the MIDI interface.
+    /// * UART Transmit -> MIDI Out
+    /// * MIDI In -> UART Receive + MIDI Through
+    midi_uart: hal::serial::Serial<
+        hal::serial::UART3,
+        hal::gpio::gpioc::PC7<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioc::PC6<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        (),
+        (),
+    >,
+    /// The UART connected to the RS-232 level shifter
+    rs232_uart: hal::serial::Serial<
+        hal::serial::UART1,
+        hal::gpio::gpiob::PB1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpiob::PB0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
+        hal::gpio::gpioc::PC4<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
+        hal::gpio::gpioc::PC5<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
+    >,
+    /// Processes scan-codes into key events
+    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2>,
+    /// Our I2C bus.
+    i2c_bus: I2c<
+        cpu::I2C1,
+        (
+            hal::gpio::gpioa::PA6<
+                hal::gpio::AlternateFunction<hal::gpio::AF3, hal::gpio::PushPull>,
+            >,
+            hal::gpio::gpioa::PA7<
+                hal::gpio::AlternateFunction<
+                    hal::gpio::AF3,
+                    hal::gpio::OpenDrain<hal::gpio::Floating>,
+                >,
+            >,
+        ),
+    >,
+    /// A single item buffer so that we can 'peek' at the input stream.
+    buffered_char: Option<Input>,
+    /// Our joystick interface
+    joystick: Joystick,
+    /// Our SD card controller
+    cont: embedded_sdmmc::Controller<
+        embedded_sdmmc::SdMmcSpi<
+            hal::spi::Spi<
+                cpu::SSI0,
+                (
+                    hal::gpio::gpioa::PA2<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                    hal::gpio::gpioa::PA4<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                    hal::gpio::gpioa::PA5<
+                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
+                    >,
+                ),
+            >,
+            hal::gpio::gpioa::PA3<hal::gpio::Output<hal::gpio::PushPull>>,
+        >,
+        &'static TimeContext,
+    >,
+    /// Information about the clock speeds we have configured
+    clocks: hal::sysctl::Clocks,
+    /// If `false`, input errors are squashed (in case we reboot in the middle
+    /// of a message from the keyboard controller). Set to `true` when a valid
+    /// message has been received.
+    seen_keypress: bool,
+}
+
+/// Describes the current position of the joystick.
+#[derive(Copy, Clone, Debug)]
+pub struct JoystickState(u8);
+
+/// Used by our menu runner.
+pub struct MenuContext;
+
+/// Tracks the most recent date/time stamp, and the frame count at which we
+/// calculated that date/time stamp. Whenever we ask for the time, we move the
+/// date/time stamp forwards based on how many frames had elapsed since we
+/// last asked.
+struct TimeContextInner {
+    /// The frame count at which `timestamp` was calculated.
+    timestamp_frame_count: u32,
+    /// The calendar date / time at `timestamp_frame_count`.
+    timestamp: monotron_api::Timestamp,
+}
+
+/// Contains the peripherals we need to generate VGA video.
+struct VideoHardware {
+    /// Used to generate the video signal
+    h_timer: cpu::TIMER1,
+    /// Used to put the CPU in an idle state just before we draw the video
+    /// pixels, to reduce interrupt jitter
+    h_timer2: cpu::TIMER2,
+    /// Clocks out red pixels
+    red_ch: cpu::SSI1,
+    /// Clocks out green pixels
+    green_ch: cpu::SSI2,
+    /// Clocks out blue pixels
+    blue_ch: cpu::SSI3,
+}
+
+/// Contains the peripherals we need to read an Atari two-axis / one-button
+/// joystick.
+struct Joystick {
+    /// GPIO pin for the up direction
+    up: hal::gpio::gpioe::PE2<hal::gpio::Input<hal::gpio::PullUp>>,
+    /// GPIO pin for the down direction
+    down: hal::gpio::gpioe::PE3<hal::gpio::Input<hal::gpio::PullUp>>,
+    /// GPIO pin for the left direction
+    left: hal::gpio::gpiod::PD6<hal::gpio::Input<hal::gpio::PullUp>>,
+    /// GPIO pin for the right direction
+    right: hal::gpio::gpiod::PD7<hal::gpio::Input<hal::gpio::PullUp>>,
+    /// GPIO pin for the fire button
+    fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
+}
+
+/// We handle two sorts of input - visible characters which map to CodePage
+/// 850, and keys which are special (like 'Page Up').
+enum Input {
+    /// A special key
+    Special(pc_keyboard::KeyCode),
+    /// A key which corresponds to a visible character. The byte represents
+    /// the CodePage 850 character.
+    Cp850(u8),
+}
+
+// ===========================================================================
+// Constants
+// ===========================================================================
 
 /// This is a magic value to make the video timing work.
 const ISR_LATENCY: u32 = 24;
@@ -86,130 +251,139 @@ const APPLICATION_START_ADDR: *mut u8 = (0x20000000 + OS_RAM_LEN) as *mut u8;
 /// This is how big applications can be
 const APPLICATION_LEN: usize = TOTAL_RAM_LEN - OS_RAM_LEN;
 
+/// Our clock speed in Hz
+const CLOCK_SPEED: u32 = 80_000_000;
+
+// ===========================================================================
+// Global Variables
+// ===========================================================================
+
+/// Stores all the system state (that isn't accessed by interrupts).
+/// * We have to use Option<Context> because we can't statically initialise
+///   the Context (it needs some single hardware).
+/// * We use a spin::Mutex because statics need to be read-only to be
+///   shareable, but we do need to mutate the Context.
+///
+/// Access this object with:
+///
+/// ```ignore
+/// // Lock the mutex
+/// let lock = GLOBAL_CONTEXT.lock();
+/// // Convert to mutable reference and unwrap the Option
+/// let ctx = lock.as_mut().unwrap();
+/// ```
+pub static GLOBAL_CONTEXT: spin::Mutex<Option<Context>> = spin::Mutex::new(None);
+
+/// Tracks the current system time in a race-hazard safe way.
+pub static TIME_CONTEXT: TimeContext = TimeContext {
+    inner: spin::Mutex::new(TimeContextInner {
+        timestamp_frame_count: 0,
+        timestamp: monotron_api::Timestamp {
+            year_from_1970: 0,
+            month: 1,
+            days: 1,
+            hours: 0,
+            minutes: 0,
+            seconds: 0,
+        },
+    }),
+};
+
 /// This is the version number from Cargo.toml
 static VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 /// This is the version number generated by git.
 static GIT_DESCRIBE: &'static str = env!("GIT_DESCRIBE");
 
-/// This is the wavetable synthesiser.
-static mut G_SYNTH: Synth = Synth::new(80_000_000 / 2112);
+/// This is the wavetable synthesiser. We have 2112 clock cycles per video line.
+static mut G_SYNTH: Synth = Synth::new(CLOCK_SPEED / 2112);
 
 /// This is both the video renderer state, and the buffer into which text
 /// characters are drawn. These should probably be two separate things.
 static mut FRAMEBUFFER: fb::FrameBuffer<VideoHardware> = fb::FrameBuffer::new();
 
-struct VideoHardware {
-    h_timer: cpu::TIMER1,
-    h_timer2: cpu::TIMER2,
-    red_ch: cpu::SSI1,
-    green_ch: cpu::SSI2,
-    blue_ch: cpu::SSI3,
-}
+// ===========================================================================
+// Macros
+// ===========================================================================
 
-struct Joystick {
-    up: hal::gpio::gpioe::PE2<hal::gpio::Input<hal::gpio::PullUp>>,
-    down: hal::gpio::gpioe::PE3<hal::gpio::Input<hal::gpio::PullUp>>,
-    left: hal::gpio::gpiod::PD6<hal::gpio::Input<hal::gpio::PullUp>>,
-    right: hal::gpio::gpiod::PD7<hal::gpio::Input<hal::gpio::PullUp>>,
-    fire: hal::gpio::gpiof::PF4<hal::gpio::Input<hal::gpio::PullUp>>,
-}
-
-struct DummyTimeSource;
-
-impl embedded_sdmmc::TimeSource for DummyTimeSource {
-    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
-        embedded_sdmmc::Timestamp {
-            year_since_1970: 0,
-            zero_indexed_month: 0,
-            zero_indexed_day: 0,
-            hours: 0,
-            minutes: 0,
-            seconds: 0,
+/// Prints to the screen
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => {
+        {
+            use core::fmt::Write as _;
+            write!(unsafe { &mut FRAMEBUFFER }, $($arg)*).unwrap();
         }
+    };
+}
+
+/// Prints to the screen and puts a new-line on the end
+#[macro_export]
+macro_rules! println {
+    () => (print!("\n"));
+    ($($arg:tt)*) => {
+        {
+            use core::fmt::Write as _;
+            writeln!(unsafe { &mut FRAMEBUFFER }, $($arg)*).unwrap();
+        }
+    };
+}
+
+// ===========================================================================
+// Functions and Impls
+// ===========================================================================
+
+impl TimeContextInner {
+    /// Get the current calendar date/time.
+    ///
+    /// Grabs the frame count from the video system, and advances the calendar
+    /// date/time stored in this object by the appropriate amount before
+    /// returning a copy of that date/time.
+    pub fn get_timestamp(&mut self) -> monotron_api::Timestamp {
+        let num_frames = unsafe { FRAMEBUFFER.frame() } as u32;
+        if num_frames != self.timestamp_frame_count {
+            let delta = num_frames.wrapping_sub(self.timestamp_frame_count) / 60;
+            let days = delta / (3600 * 24);
+            let seconds = delta % (3600 * 24);
+            self.timestamp.increment(days, seconds);
+            self.timestamp_frame_count += delta * 60;
+        }
+        self.timestamp.clone()
     }
 }
 
-struct Context {
-    pub value: u32,
-    usb_uart: hal::serial::Serial<
-        hal::serial::UART0,
-        hal::gpio::gpioa::PA1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        hal::gpio::gpioa::PA0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        (),
-        (),
-    >,
-    avr_uart: hal::serial::Serial<
-        hal::serial::UART7,
-        hal::gpio::gpioe::PE1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        hal::gpio::gpioe::PE0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        (),
-        (),
-    >,
-    #[allow(dead_code)] // we'll get on to this later
-    midi_uart: hal::serial::Serial<
-        hal::serial::UART3,
-        hal::gpio::gpioc::PC7<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        hal::gpio::gpioc::PC6<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        (),
-        (),
-    >,
-    #[allow(dead_code)] // we'll get on to this later
-    rs232_uart: hal::serial::Serial<
-        hal::serial::UART1,
-        hal::gpio::gpiob::PB1<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        hal::gpio::gpiob::PB0<hal::gpio::AlternateFunction<hal::gpio::AF1, hal::gpio::PushPull>>,
-        hal::gpio::gpioc::PC4<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
-        hal::gpio::gpioc::PC5<hal::gpio::AlternateFunction<hal::gpio::AF8, hal::gpio::PushPull>>,
-    >,
-    keyboard: pc_keyboard::Keyboard<pc_keyboard::layouts::Uk105Key, pc_keyboard::ScancodeSet2>,
-    i2c_bus: I2c<
-        cpu::I2C1,
-        (
-            hal::gpio::gpioa::PA6<
-                hal::gpio::AlternateFunction<hal::gpio::AF3, hal::gpio::PushPull>,
-            >,
-            hal::gpio::gpioa::PA7<
-                hal::gpio::AlternateFunction<
-                    hal::gpio::AF3,
-                    hal::gpio::OpenDrain<hal::gpio::Floating>,
-                >,
-            >,
-        ),
-    >,
-    buffered_char: Option<Input>,
-    joystick: Joystick,
-    cont: embedded_sdmmc::Controller<
-        embedded_sdmmc::SdMmcSpi<
-            hal::spi::Spi<
-                cpu::SSI0,
-                (
-                    hal::gpio::gpioa::PA2<
-                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
-                    >,
-                    hal::gpio::gpioa::PA4<
-                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
-                    >,
-                    hal::gpio::gpioa::PA5<
-                        hal::gpio::AlternateFunction<hal::gpio::AF2, hal::gpio::PushPull>,
-                    >,
-                ),
-            >,
-            hal::gpio::gpioa::PA3<hal::gpio::Output<hal::gpio::PushPull>>,
-        >,
-        DummyTimeSource,
-    >,
-    clocks: hal::sysctl::Clocks,
-    seen_keypress: bool,
+impl TimeContext {
+    /// Get the current date/time. Uses a spin-lock so do not call concurrently.
+    pub fn get_timestamp(&self) -> monotron_api::Timestamp {
+        let mut inner = self.inner.lock();
+        inner.get_timestamp()
+    }
+
+    /// Set the current date/time to the given value and notes the curren
+    /// frame count from the video system. Uses a spin-lock so do not call
+    /// concurrently.
+    pub fn set_timestamp(&self, timestamp: monotron_api::Timestamp) {
+        let mut inner = self.inner.lock();
+        inner.timestamp = timestamp;
+        inner.timestamp_frame_count = unsafe { FRAMEBUFFER.frame() } as u32;
+    }
 }
 
-enum Input {
-    Special(pc_keyboard::KeyCode),
-    Cp850(u8),
+impl embedded_sdmmc::TimeSource for &TimeContext {
+    /// Supplies a timestamp suitable for use with the filesystem. Uses a
+    /// spin-lock so do not call concurrently.
+    fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
+        let time = self.inner.lock().get_timestamp();
+        embedded_sdmmc::Timestamp {
+            year_since_1970: time.year_from_1970,
+            zero_indexed_month: time.month - 1,
+            zero_indexed_day: time.days - 1,
+            hours: time.hours,
+            minutes: time.minutes,
+            seconds: time.seconds,
+        }
+    }
 }
-
-#[derive(Copy, Clone, Debug)]
-pub struct JoystickState(u8);
 
 impl JoystickState {
     const UP: u8 = 0b10000;
@@ -238,32 +412,47 @@ impl JoystickState {
         JoystickState(b)
     }
 
+    /// Converts the joystick state to an integer, for the C API.
+    ///
+    /// The bit fields are:
+    ///
+    /// * UP = 0b10000
+    /// * DOWN = 0b01000
+    /// * LEFT = 0b00100
+    /// * RIGHT = 0b00010
+    /// * FIRE = 0b00001
     pub fn as_u8(&self) -> u8 {
         self.0
     }
 
+    /// Returns true if the joystick was in the up position.
     pub fn is_up(&self) -> bool {
         (self.0 & Self::UP) != 0
     }
 
+    /// Returns true if the joystick was in the down position.
     pub fn is_down(&self) -> bool {
         (self.0 & Self::DOWN) != 0
     }
 
+    /// Returns true if the joystick was in the left position.
     pub fn is_left(&self) -> bool {
         (self.0 & Self::LEFT) != 0
     }
 
+    /// Returns true if the joystick was in the right position.
     pub fn is_right(&self) -> bool {
         (self.0 & Self::RIGHT) != 0
     }
 
+    /// Returns true if the joystick had the fire button pressed.
     pub fn fire_pressed(&self) -> bool {
         (self.0 & Self::FIRE) != 0
     }
 }
 
 impl Joystick {
+    /// Capture the state of the joystick.
     fn get_state(&self) -> JoystickState {
         let is_up = self.up.is_low();
         let is_down = self.down.is_low();
@@ -274,9 +463,18 @@ impl Joystick {
     }
 }
 
+impl core::fmt::Write for MenuContext {
+    /// The `menu` runner will `write!` to the menu context for output. We
+    /// just pass on the output to the screen.
+    fn write_str(&mut self, string: &str) -> core::fmt::Result {
+        unsafe { FRAMEBUFFER.write_str(string) }
+    }
+}
+
 impl Context {
+    /// Is there a character in the input buffer?
     fn has_char(&mut self) -> bool {
-        let attempt = self.read();
+        let attempt = self.input_read();
         if attempt.is_some() {
             self.buffered_char = attempt;
             true
@@ -285,7 +483,12 @@ impl Context {
         }
     }
 
-    fn read(&mut self) -> Option<Input> {
+    /// Read from the input buffer, non-blocking.
+    ///
+    /// Input can come from the USB UART, or from the Keyboard controller.
+    ///
+    /// Returns `None` if there's nothing waiting.
+    fn input_read(&mut self) -> Option<Input> {
         if self.buffered_char.is_some() {
             let mut x = None;
             core::mem::swap(&mut self.buffered_char, &mut x);
@@ -302,8 +505,9 @@ impl Context {
                 Some(Input::Cp850(ch))
             }
         } else {
-            let key = if let Ok(ch) = self.avr_uart.read() {
-                // Got something in the buffer from the AVR
+            let key = if let Ok(ch) = self.keyboard_mouse_uart.read() {
+                // Got something in the buffer from the keyboard/mouse
+                // controller.
                 match self.keyboard.add_byte(ch) {
                     Ok(Some(event)) => {
                         self.seen_keypress = true;
@@ -311,7 +515,7 @@ impl Context {
                     }
                     Ok(None) => None,
                     Err(e) if self.seen_keypress => {
-                        writeln!(self, "Bad key input! {:?} (0x{:02x})", e, ch).unwrap();
+                        println!("Bad key input! {:?} (0x{:02x})", e, ch);
                         None
                     }
                     Err(_e) => {
@@ -344,27 +548,23 @@ impl Context {
         }
     }
 
-    /// Write an 8-bit ASCII character to the screen.
+    /// Write an 8-bit ASCII/CodePgae 850 character to the screen.
     fn write_u8(&mut self, ch: u8) {
         unsafe { FRAMEBUFFER.write_character(ch).unwrap() }
     }
 }
 
-impl core::fmt::Write for Context {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        unsafe { FRAMEBUFFER.write_str(s) }
-    }
-}
-
+/// Power on a peripheral and then reset it.
 fn enable(p: sysctl::Domain, sc: &mut hal::sysctl::PowerControl) {
     sysctl::control_power(sc, p, sysctl::RunMode::Run, sysctl::PowerState::On);
     sysctl::control_power(sc, p, sysctl::RunMode::Sleep, sysctl::PowerState::On);
     sysctl::reset(sc, p);
 }
 
+/// The main routine for our program. Called when the global variable init
+/// routines are complete.
 #[entry]
 fn main() -> ! {
-    // Copy ISR to RAM
     let p = hal::Peripherals::take().unwrap();
     let cp = hal::CorePeripherals::take().unwrap();
 
@@ -380,11 +580,8 @@ fn main() -> ! {
     nvic.enable(Interrupt::TIMER1B);
     nvic.enable(Interrupt::TIMER2A);
     // Make Timer1A (start of line) lower priority than Timer1B (clocking out
-    // data) so that it can be interrupted. Timer2A is between the two. Make
-    // GPIOD (the keyboard) between the two. We might corrupt a bit while
-    // scheduling the line start, but that's probably better than getting a
-    // wonky video signal? Priorities go from 0*16 (most urgent) to 15*16
-    // (least urgent) EEE trying with keyboard higher than video
+    // data) so that it can be interrupted. Timer2A is between the two.
+    // Priorities go from 0*16 (most urgent) to 15*16 (least urgent).
     unsafe {
         nvic.set_priority(Interrupt::TIMER1A, 8 * 16);
         nvic.set_priority(Interrupt::TIMER2A, 6 * 16);
@@ -466,7 +663,7 @@ fn main() -> ! {
     );
 
     // USB Serial UART
-    let mut usb_uart = Serial::uart0(
+    let usb_uart = Serial::uart0(
         p.UART0,
         porta
             .pa1
@@ -481,8 +678,6 @@ fn main() -> ! {
         &clocks,
         &sc.power_control,
     );
-
-    usb_uart.write_all(b"This is a test\r\n");
 
     // MIDI UART
     let midi_uart = Serial::uart3(
@@ -501,8 +696,8 @@ fn main() -> ! {
         &sc.power_control,
     );
 
-    // AVR UART
-    let avr_uart = Serial::uart7(
+    // UART for the keyboard/mouse controller.
+    let keyboard_mouse_uart = Serial::uart7(
         p.UART7,
         porte
             .pe1
@@ -566,30 +761,6 @@ fn main() -> ! {
         FRAMEBUFFER.init(hw);
     }
 
-    // struct LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
-    //     spi: T,
-    // }
-
-    // use nb;
-    // impl<T> embedded_hal::spi::FullDuplex<u8> for LoggingSpi<T> where T: embedded_hal::spi::FullDuplex<u8> {
-    //     type Error = T::Error;
-
-    //     fn read(&mut self) -> nb::Result<u8, T::Error> {
-    //         let b = self.spi.read();
-    //         if let Ok(data) = b {
-    //             unsafe { writeln!(FRAMEBUFFER, "RX 0x{:02x}", data).unwrap() };
-    //         }
-    //         b
-    //     }
-
-    //     fn send(&mut self, byte: u8) -> nb::Result<(), T::Error> {
-    //         unsafe { write!(FRAMEBUFFER, "TX 0x{:02x} ", byte).unwrap() };
-    //         self.spi.send(byte)
-    //     }
-    // }
-
-    // let sdmmc_spi = LoggingSpi { spi: sdmmc_spi };
-
     // TODO let users pick a keyboard layout, and store their choice in EEPROM somewhere
     let keyboard = pc_keyboard::Keyboard::new(
         pc_keyboard::layouts::Uk105Key,
@@ -597,10 +768,9 @@ fn main() -> ! {
         pc_keyboard::HandleControl::MapLettersToUnicode,
     );
 
-    let mut c = Context {
-        value: 0,
+    *GLOBAL_CONTEXT.lock() = Some(Context {
         usb_uart,
-        avr_uart,
+        keyboard_mouse_uart,
         midi_uart,
         rs232_uart,
         keyboard,
@@ -615,30 +785,38 @@ fn main() -> ! {
         },
         cont: embedded_sdmmc::Controller::new(
             embedded_sdmmc::SdMmcSpi::new(sdmmc_spi, sdmmc_cs),
-            DummyTimeSource,
+            &TIME_CONTEXT,
         ),
         clocks,
         seen_keypress: false,
-    };
+    });
 
-    while c.usb_uart.read().is_ok() {
-        // Try again and empty the buffer
+    while GLOBAL_CONTEXT
+        .lock()
+        .as_mut()
+        .unwrap()
+        .usb_uart
+        .read()
+        .is_ok()
+    {
+        // Try again to empty the buffer
     }
 
-    unsafe {
-        FRAMEBUFFER.set_attr(fb::Attr::new(fb::Colour::White, fb::Colour::Black));
-        FRAMEBUFFER.clear();
-    }
+    load_time_from_rtc();
 
-    write!(c, "\u{001b}Z\u{001b}W\u{001b}k╔══════════════════════════════════════════════╗").unwrap();
-    write!(c, "║\u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W║").unwrap();
-    write!(c, "║\u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W║").unwrap();
-    write!(c, "║\u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W║").unwrap();
-    write!(c, "║\u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W║").unwrap();
-    write!(c, "╚══════════════════════════════════════════════╝").unwrap();
-    writeln!(c, "Monotron v{} ({})", VERSION, GIT_DESCRIBE).unwrap();
-    writeln!(c, "Copyright © theJPster 2018").unwrap();
+    // Print the sign-on banner
+    println!("\u{001b}W\u{001b}k\u{001b}Z");
+    println!(" \u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W");
+    println!(" \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W");
+    println!(" \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W");
+    println!(" \u{001b}R░ ░\u{001b}K \u{001b}R░\u{001b}K \u{001b}R\u{001b}y░░░░░\u{001b}K\u{001b}k \u{001b}Y░   ░\u{001b}K \u{001b}G░░░░░\u{001b}K \u{001b}G  \u{001b}y░\u{001b}k  \u{001b}K \u{001b}B\u{001b}g░\u{001b}k  \u{001b}g░\u{001b}K\u{001b}k \u{001b}B░░░░░\u{001b}K \u{001b}M░   ░\u{001b}W");
+    println!("* Monotron v{}", VERSION);
+    println!("* {}", GIT_DESCRIBE);
+    println!("* Copyright © theJPster 2019");
+    println!("* https://github.com/thejpster/monotron");
 
+    // Calculates the size of the stack by looking at the size of the data and
+    // bss segments. Assumes bss comes after data.
     let stack_space = unsafe {
         extern "C" {
             static __ebss: u32;
@@ -649,26 +827,31 @@ fn main() -> ! {
         let total = ebss - sdata;
         8192 - total
     };
-    writeln!(
-        c,
+    println!(
         "{} bytes stack, {} bytes free.",
         stack_space, APPLICATION_LEN
-    )
-    .unwrap();
+    );
 
+    // Set up our menu system.
     let mut buffer = [0u8; 64];
-    let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, &mut c);
+    let mut r = menu::Runner::new(&ui::ROOT_MENU, &mut buffer, MenuContext);
 
     loop {
-        api::wfvbi(r.context);
-        // Wait for new UTF-8 input
-        match r.context.read() {
+        // Wait For Vertical Blanking Interval
+        api::wfvbi();
+        // Grab the lock, convert to mutable reference and unwrap the
+        // Option<>, then grab any new input
+        let input = GLOBAL_CONTEXT.lock().as_mut().unwrap().input_read();
+        // Now we do the match having released the lock
+        match input {
             Some(Input::Cp850(octet)) => {
+                // Feed the menu system. It expects UTF-8 but it's happy with
+                // CP850 as long as all our commands are ASCII.
                 r.input_byte(octet);
             }
             Some(Input::Special(code)) => {
-                // Can't handle special chars yet
-                writeln!(r.context, "\rSpecial char {:?}", code).unwrap();
+                // Can't handle special chars yet.
+                println!("\rSpecial char {:?}", code);
                 r.prompt(false);
             }
             None => {}
@@ -676,10 +859,51 @@ fn main() -> ! {
     }
 }
 
+/// Makes it possible to share an I2C bus with a driver that wants to own the
+/// bus.
+struct I2cBus<'a, T>(&'a mut T)
+where
+    T: embedded_hal::blocking::i2c::Write + embedded_hal::blocking::i2c::WriteRead;
+
+impl<'a, T> embedded_hal::blocking::i2c::Write for I2cBus<'a, T>
+where
+    T: embedded_hal::blocking::i2c::Write + embedded_hal::blocking::i2c::WriteRead,
+{
+    type Error = <T as embedded_hal::blocking::i2c::Write>::Error;
+    fn write(&mut self, register: u8, buffer: &[u8]) -> Result<(), Self::Error> {
+        self.0.write(register, buffer)
+    }
+}
+
+impl<'a, T> embedded_hal::blocking::i2c::WriteRead for I2cBus<'a, T>
+where
+    T: embedded_hal::blocking::i2c::Write + embedded_hal::blocking::i2c::WriteRead,
+{
+    type Error = <T as embedded_hal::blocking::i2c::WriteRead>::Error;
+
+    fn write_read(
+        &mut self,
+        register: u8,
+        out_buffer: &[u8],
+        in_buffer: &mut [u8],
+    ) -> Result<(), Self::Error> {
+        self.0.write_read(register, out_buffer, in_buffer)
+    }
+}
+
 impl fb::Hardware for VideoHardware {
-    fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, clock_rate: u32) {
-        // Configure SPI
-        // Need to configure SSI1, SSI2 and SSI3 at 20 MHz
+    /// Set up the SPI peripherals to clock out RGB video with the given timings.
+    ///
+    /// * `width` - length of a line (in pixels)
+    /// * `sync_end` - elapsed time (in pixels) before H-Sync needs to fall
+    ///   (it starts at the beginning of the line).
+    /// * `line_start` - elapsed time (in pixels) before line_start ISR needs
+    ///   to fire
+    /// * `pixel_clock` - the pixel clock rate in Hz (e.g. 40_000_000 for 40
+    ///   MHz)
+    fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, pixel_clock: u32) {
+        // Need to configure SSI1, SSI2 and SSI3 at `pixel_clock` Hz.
+        // First up, we disable all three.
         self.red_ch.cr1.modify(|_, w| w.sse().clear_bit());
         self.blue_ch.cr1.modify(|_, w| w.sse().clear_bit());
         self.green_ch.cr1.modify(|_, w| w.sse().clear_bit());
@@ -687,7 +911,7 @@ impl fb::Hardware for VideoHardware {
         // e.g. 20 MHz = 80 MHz / (4 * (1 + 0))
         // CPSDVSR = 4 ------------^
         // SCR = 0 -------------------------^
-        let ratio = 80_000_000 / clock_rate;
+        let ratio = CLOCK_SPEED / pixel_clock;
         // For all sensible divisors of 80 MHz, we want SCR = 0.
         self.red_ch
             .cpsr
@@ -698,6 +922,8 @@ impl fb::Hardware for VideoHardware {
         self.green_ch
             .cpsr
             .write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
+        // Each channel needs to clock out 8 bit words, with the correct
+        // phase/polarity.
         self.red_ch.cr0.write(|w| {
             w.dss()._8();
             w.frf().moto();
@@ -730,6 +956,8 @@ impl fb::Hardware for VideoHardware {
             w.tben().clear_bit();
             w
         });
+        // Timer runs in dual-16-bit mode.
+        // Timer A is periodic with PWM enabled.
         self.h_timer.cfg.modify(|_, w| w.cfg()._16_bit());
         self.h_timer.tamr.modify(|_, w| {
             w.taams().set_bit();
@@ -738,6 +966,7 @@ impl fb::Hardware for VideoHardware {
             w.tamr().period();
             w
         });
+        // Timer B is periodic with PWM enabled.
         self.h_timer.tbmr.modify(|_, w| {
             w.tbams().set_bit();
             w.tbcmr().clear_bit();
@@ -754,9 +983,7 @@ impl fb::Hardware for VideoHardware {
         });
         // We're counting down in PWM mode, so start at the end
         // We start 16 pixels early
-        let convert_to_clockset = |i: u32| -> u32 {
-            (ratio * i) - 1
-        };
+        let convert_to_clockset = |i: u32| -> u32 { (ratio * i) - 1 };
         self.h_timer
             .tailr
             .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
@@ -802,7 +1029,9 @@ impl fb::Hardware for VideoHardware {
             .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
         // Counting down, so adding here makes it earlier
         self.h_timer2.tamatchr.modify(|_, w| unsafe {
-            w.bits(convert_to_clockset(ISR_LATENCY + ISR_LATENCY_WARMUP + width - line_start))
+            w.bits(convert_to_clockset(
+                ISR_LATENCY + ISR_LATENCY_WARMUP + width - line_start,
+            ))
         });
         self.h_timer2.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires just before at start of data
@@ -848,20 +1077,57 @@ impl fb::Hardware for VideoHardware {
     }
 
     /// Write pixels straight to FIFOs
-    fn write_pixels(&mut self, red: u32, green: u32, blue: u32) {
+    fn write_pixels(&mut self, xrgb: vga_framebuffer::XRGBColour) {
         let ssi_r = unsafe { &*cpu::SSI1::ptr() };
         let ssi_g = unsafe { &*cpu::SSI2::ptr() };
         let ssi_b = unsafe { &*cpu::SSI3::ptr() };
         while (ssi_r.sr.read().bits() & 0x02) == 0 {}
-        ssi_r.dr.write(|w| unsafe { w.bits(red) });
-        ssi_g.dr.write(|w| unsafe { w.bits(green) });
-        ssi_b.dr.write(|w| unsafe { w.bits(blue) });
+        ssi_r.dr.write(|w| unsafe { w.bits(xrgb.red()) });
+        ssi_g.dr.write(|w| unsafe { w.bits(xrgb.green()) });
+        ssi_b.dr.write(|w| unsafe { w.bits(xrgb.blue()) });
     }
 }
 
+fn load_time_from_rtc() {
+    use mcp794xx::Rtcc;
+    // Grab the lock
+    let mut lock = GLOBAL_CONTEXT.lock();
+    // Convert to mutable reference and unwrap the Option<>
+    let ctx = lock.as_mut().unwrap();
+    let bus = I2cBus(&mut ctx.i2c_bus);
+    let mut rtc = mcp794xx::Mcp794xx::new_mcp7940n(bus);
+    let dt = match rtc.get_datetime() {
+        Ok(dt) => dt,
+        Err(e) => {
+            drop(rtc);
+            drop(ctx);
+            drop(lock);
+            println!("Error reading RTC: {:?}", e);
+            return;
+        }
+    };
+    let timestamp = monotron_api::Timestamp {
+        year_from_1970: (dt.year - 1970) as u8,
+        month: dt.month,
+        days: dt.day,
+        hours: match dt.hour {
+            mcp794xx::Hours::H24(n) => n,
+            mcp794xx::Hours::AM(n) => n,
+            mcp794xx::Hours::PM(n) => n + 12,
+        },
+        minutes: dt.minute,
+        seconds: dt.second,
+    };
+    TIME_CONTEXT.set_timestamp(timestamp);
+}
+
+// ===========================================================================
+// Interrupts
+// ===========================================================================
+
 interrupt!(TIMER2A, timer2a);
 
-/// Called just before Timer1B. Gives Timer1B lower interrupt jitter.
+/// Called just before Timer1B, which gives Timer1B lower interrupt jitter.
 fn timer2a() {
     unsafe {
         asm!("wfi");
@@ -873,16 +1139,19 @@ fn timer2a() {
 interrupt!(TIMER1A, timer1a);
 
 /// Called on start of sync pulse (end of front porch). This is unsafe because
-/// we mutate statics (technically this is undefined behaviour).
+/// we mutate statics while the main thread might be using them at the same
+/// time (technically this is undefined behaviour).
 fn timer1a() {
     unsafe {
         let pwm = &*cpu::PWM0::ptr();
-        static mut NEXT_SAMPLE: u8 = 128;
-        pwm._2_cmpa
-            .write(|w| w.compa().bits(NEXT_SAMPLE as u16));
         let ssi_r = &*cpu::SSI1::ptr();
         let ssi_g = &*cpu::SSI2::ptr();
         let ssi_b = &*cpu::SSI3::ptr();
+        static mut NEXT_SAMPLE: u8 = 128;
+        // Play the previously calculated and buffered audio sample. We play
+        // it here as the video generation is variable-length, and we don't
+        // want audio jitter.
+        pwm._2_cmpa.write(|w| w.compa().bits(NEXT_SAMPLE as u16));
         // Disable the SPIs as we don't want pixels yet
         ssi_r.cr1.modify(|_, w| w.sse().clear_bit());
         ssi_g.cr1.modify(|_, w| w.sse().clear_bit());
@@ -1001,4 +1270,6 @@ fn DefaultHandler(irqn: i16) {
     panic!("Unhandled exception (IRQn = {})", irqn);
 }
 
+// ===========================================================================
 // End of file
+// ===========================================================================

@@ -465,9 +465,11 @@ using the callbacks as simple as using a normal C library.
 ## Unreleased changes (will be 0.10.0)
 
 * Fixed video interrupt jitter by entering WFI before drawing pixels.
+* Updated VGA framebuffer callback API
 
 ## Changelog
 
+* Version 0.9.2 - Updated menu interface crate
 * Version 0.9.0 - Added I2C commands and support for the AtMega keyboard
   controller (WIP) on the Monotron PCB.
 * Version 0.8.0 - Added cursor support to ABI. Added basic SD Card support
