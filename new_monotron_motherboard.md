@@ -15,54 +15,35 @@ All signals are at 3.3V levels, but VCC_3.3V is limited to 300mA total across
 the bus. If you need more current, add a 3.3V LDO to your expansion board.
 
 1. VCC_5V
-2. VCC_3.3V
-3. UART_RX
-4. UART_TX
-5. UART_RTS (optional - not on all slots)
-6. UART_CTS (optional - not on all slots)
-7. SPI_BUS_CLK
-8. Ground
-9. SPI_BUS_MOSI
-10. Ground
-11. SPI_BUS_MISO
-12. Ground
-13. SPI_CS (unique per slot)
-14. Ground
-15. I2C_BUS_SDA
-16. Ground
-17. I2C_BUS_SCL
-18. Ground
-19. IRQ (unique per slot)
-20. Ground
-
-For the Tiva-C Launchpad motherboard, that works out as:
-
+1. VCC_3.3V
 1. VCC_5V
-2. VCC_3.3V
-3. UART_RX (PB0, PC6, Pxx)
-4. UART_TX (PB1, PC7, Pxx)
-5. UART_RTS (PC4)
-6. UART_CTS (PC5)
-7. SPI_BUS_CLK (PA2)
-8. Ground
-9. SPI_BUS_MOSI (PA5)
-10. Ground
-11. SPI_BUS_MISO (PA4)
-12. Ground
-13. SPI_CS (PA3 PD2 PD6 PD7)
-14. Ground
-15. I2C_BUS_SDA (PA7)
-16. Ground
-17. I2C_BUS_SCL (PA6)
-18. Ground
-19. IRQ (PB3 PE2 PE3 PF4)
-20. Ground
+1. VCC_3.3V
+1. UART_RX
+1. SPI_MOSI
+1. UART_TX
+1. SPI_MISO
+1. UART_CTS (optional - not on all slots)
+1. SPI_CLK
+1. UART_RTS (optional - not on all slots)
+1. Not Connected (reserved for future use)
+1. SPI_CS (unique per slot)
+1. I2C_BUS_SDA
+1. IRQ (unique per slot)
+1. I2C_BUS_SCL
+1. Ground
+1. Ground
+1. Ground
+1. Ground
 
+The expansion board can have up to four external slots. The CPU Board only has
+VGA, Audio and maybe USB (because they're too fast to run over the expansion
+bus).
 
-Four external slots, as above. Motherboard only has VGA and audio (because
-they're too fast to run over the expansion bus).
+Alternative format expansion boards might be available that, for example, give
+you a couple of mikroelectronik Clik(tm) slots, or an Arduino shield interface
+(albeit with 3.3V signalling).
 
-## Proposed Expansion Cards
+## Possible Expansion Cards
 
 * 2x Atari Joystick (MCP23017 + SPI)
 * 2x Sega Megadrive pad (Atmega?)
@@ -76,6 +57,8 @@ they're too fast to run over the expansion bus).
 * USB Serial Device (FT232 + UART, with USB micro-B socket)
 * Full-size SD Card slot (SPI)
 * Micro SD slot (SPI)
+* PC/Sound Blaster Game Port (2x Analog PC Joysticks + MIDI In/Out on a DB15
+  connector)
 * Real Time Clock (I2C)
 * IDE interface (Atmega, see http://sbc.rictor.org/io/IDE.html)
 * USB Host interface (MAX3421E, see https://www.sparkfun.com/products/9947)
@@ -84,7 +67,7 @@ they're too fast to run over the expansion bus).
 * Raspberry Pi HAT adaptor (e.g. for the SenseHAT)
 * SPI to ISA bridge (turns microATX board into full-size ATX)
 
-## Back Panel layout
+## Typical Back Panel layout
 
 ```
                                         +---+  +---+  +---+  +---+
@@ -97,7 +80,7 @@ they're too fast to run over the expansion bus).
 |/--\|  | ..... |   +---+               |   |  |   |  |   |  |   |
 ||__||  | ::::: |   | O |               |   |  |   |  |   |  |   |
 +----+--+-------+---+---+---------------+---+--+---+--+---+--+---+
- Power   Monitor   Line-Out             Slot0  Slot1  Slot2  Slot3
+ Power   Monitor   Line-Out             SlotA  SlotB  SlotC  SlotD
  USB B    VGA     3.5mm TRS
 ```
 
@@ -111,23 +94,10 @@ they're too fast to run over the expansion bus).
 * AUDIO_LEFT (PE4)
 * AUDIO_RIGHT (PE5)
 
-## Labels for the slots
+## Physical Layout
 
-### Slot 0
-UART1 (4-wire)
-SPI CS0 / IRQ 0
-
-### Slot 1
-UART3 (2-wire)
-SPI CS1 / IRQ 1
-
-### Slot 2
-UART7 (2-wire)
-SPI CS2 / IRQ 2
-
-### Slot 3
-SPI CS3 / IRQ 3
-
-You can have up to one UART 4-wire boards fitted (in slot 0) and up to three
-UART 2-wire boards fitted (in slot 0, 1 and 2). You can have up to four SPI
-boards and up to four I2C boards fitted at once.
+When the expansion board is connected to the MCU board, they form a standard ATX
+sized motherboard. The mounting holes are in the ATX standard position, and
+the four expansion slots are in the same position as the equivalent ISA card
+slot would be - you need to solder a 0.1" socket to the edge of a 1.6mm PCB
+(putting the pins on either side of the PCB).
