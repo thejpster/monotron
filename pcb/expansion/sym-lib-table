@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name monotron_bridge)(type Legacy)(uri ${KIPRJMOD}/../monotron_bridge.lib)(options "")(descr ""))
+)
