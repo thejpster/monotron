@@ -1,4 +1,4 @@
-use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row, TEXT_MAX_COL, TEXT_MAX_ROW};
+use crate::fb::{AsciiConsole, BaseConsole, Col, Position, Row};
 use crate::hal::time::U32Ext;
 use crate::GLOBAL_CONTEXT;
 use crate::{Input, FRAMEBUFFER};
@@ -148,13 +148,9 @@ pub(crate) extern "C" fn kbhit() -> i32 {
 /// (numbered 0..35). If either `row` or `col` are out of bounds, the call is
 /// ignored.
 pub(crate) extern "C" fn move_cursor(row: u8, col: u8) {
-    if col as usize <= TEXT_MAX_COL {
-        if row as usize <= TEXT_MAX_ROW {
-            let p = Position::new(Row(row), Col(col));
-            unsafe {
-                let _ = FRAMEBUFFER.set_pos(p);
-            }
-        }
+    let p = Position::new(Row(row), Col(col));
+    unsafe {
+        let _ = FRAMEBUFFER.set_pos(p);
     }
 }
 

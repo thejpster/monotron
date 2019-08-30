@@ -893,16 +893,8 @@ where
 
 impl fb::Hardware for VideoHardware {
     /// Set up the SPI peripherals to clock out RGB video with the given timings.
-    ///
-    /// * `width` - length of a line (in pixels)
-    /// * `sync_end` - elapsed time (in pixels) before H-Sync needs to fall
-    ///   (it starts at the beginning of the line).
-    /// * `line_start` - elapsed time (in pixels) before line_start ISR needs
-    ///   to fire
-    /// * `pixel_clock` - the pixel clock rate in Hz (e.g. 40_000_000 for 40
-    ///   MHz)
-    fn configure(&mut self, width: u32, sync_end: u32, line_start: u32, pixel_clock: u32) {
-        // Need to configure SSI1, SSI2 and SSI3 at `pixel_clock` Hz.
+    fn configure(&mut self, mode_info: &fb::ModeInfo) {
+        // Need to configure SSI1, SSI2 and SSI3 at `clock_rate` Hz.
         // First up, we disable all three.
         self.red_ch.cr1.modify(|_, w| w.sse().clear_bit());
         self.blue_ch.cr1.modify(|_, w| w.sse().clear_bit());
@@ -911,7 +903,7 @@ impl fb::Hardware for VideoHardware {
         // e.g. 20 MHz = 80 MHz / (4 * (1 + 0))
         // CPSDVSR = 4 ------------^
         // SCR = 0 -------------------------^
-        let ratio = CLOCK_SPEED / pixel_clock;
+        let ratio = CLOCK_SPEED / mode_info.clock_rate;
         // For all sensible divisors of 80 MHz, we want SCR = 0.
         self.red_ch
             .cpsr
@@ -986,16 +978,18 @@ impl fb::Hardware for VideoHardware {
         let convert_to_clockset = |i: u32| -> u32 { (ratio * i) - 1 };
         self.h_timer
             .tailr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(mode_info.width)) });
         self.h_timer
             .tbilr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
-        self.h_timer
-            .tamatchr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width - sync_end)) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(mode_info.width)) });
+        self.h_timer.tamatchr.modify(|_, w| unsafe {
+            w.bits(convert_to_clockset(mode_info.width - mode_info.sync_end))
+        });
         // Counting down, so adding here makes it earlier
         self.h_timer.tbmatchr.modify(|_, w| unsafe {
-            w.bits(convert_to_clockset(ISR_LATENCY + width - line_start))
+            w.bits(convert_to_clockset(
+                ISR_LATENCY + mode_info.width - mode_info.line_start,
+            ))
         });
         self.h_timer.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires at start of line
@@ -1026,11 +1020,11 @@ impl fb::Hardware for VideoHardware {
         // We start a few pixels before Timer1B
         self.h_timer2
             .tailr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(width)) });
+            .modify(|_, w| unsafe { w.bits(convert_to_clockset(mode_info.width)) });
         // Counting down, so adding here makes it earlier
         self.h_timer2.tamatchr.modify(|_, w| unsafe {
             w.bits(convert_to_clockset(
-                ISR_LATENCY + ISR_LATENCY_WARMUP + width - line_start,
+                ISR_LATENCY + ISR_LATENCY_WARMUP + mode_info.width - mode_info.line_start,
             ))
         });
         self.h_timer2.imr.modify(|_, w| {
