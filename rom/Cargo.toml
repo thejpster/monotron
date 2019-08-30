@@ -31,7 +31,7 @@ version = "0.3"
 [dependencies.vga-framebuffer]
 version = "0.9"
 features = ["const_fn"]
-git = "https://github.com/thejpster/vga-framebuffer-rs.git"
+# git = "https://github.com/thejpster/vga-framebuffer-rs.git"
 # path = "../../vga-framebuffer-rs"
 
 [dependencies.embedded-hal]
