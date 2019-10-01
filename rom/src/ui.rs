@@ -25,6 +25,22 @@ pub(crate) static ROOT_MENU: Menu = Menu {
         },
         &Item {
             item_type: menu::ItemType::Callback {
+                function: item_mode80,
+                parameters: &[],
+            },
+            command: "mode80",
+            help: Some("Enter 80 col mode."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: item_mode48,
+                parameters: &[],
+            },
+            command: "mode48",
+            help: Some("Enter 48 col mode."),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
                 function: item_peek,
                 parameters: &[menu::Parameter::Mandatory {
                     parameter_name: "ADDRESS",
@@ -289,6 +305,48 @@ pub(crate) static ROOT_MENU: Menu = Menu {
             command: "flip",
             help: Some("Flip the screen!"),
         },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: list_ap,
+                parameters: &[],
+            },
+            command: "list_ap",
+            help: Some("List WiFi APs"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: connect_ap,
+                parameters: &[
+                    menu::Parameter::Mandatory {
+                        parameter_name: "SSID",
+                        help: Some("WiFi SSID to join"),
+                    },
+                    menu::Parameter::Optional {
+                        parameter_name: "PSK",
+                        help: Some("WiFi Pre-Shared Key"),
+                    },
+                ],
+            },
+            command: "connect_ap",
+            help: Some("Connect to WiFi AP"),
+        },
+        &Item {
+            item_type: menu::ItemType::Callback {
+                function: telnet,
+                parameters: &[
+                    menu::Parameter::Mandatory {
+                        parameter_name: "HOST",
+                        help: Some("Host to telnet into"),
+                    },
+                    menu::Parameter::Mandatory {
+                        parameter_name: "PORT",
+                        help: Some("Telnet port"),
+                    },
+                ],
+            },
+            command: "telnet",
+            help: Some("Telnet into remote host"),
+        },
     ],
     entry: None,
     exit: None,
@@ -298,6 +356,20 @@ pub(crate) static ROOT_MENU: Menu = Menu {
 fn item_clear<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     unsafe { FRAMEBUFFER.clear() };
     unsafe { FRAMEBUFFER.set_pos(fb::Position::origin()).unwrap() };
+}
+
+/// Enter 48 col mode
+fn item_mode48<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    cortex_m::interrupt::free(|_cs| {
+        unsafe { FRAMEBUFFER.set_mode(fb::VideoModeId::Mode0) };
+    });
+}
+
+/// Enter 80 col mode
+fn item_mode80<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    cortex_m::interrupt::free(|_cs| {
+        unsafe { FRAMEBUFFER.set_mode(fb::VideoModeId::Mode1) };
+    });
 }
 
 fn item_peek<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
@@ -619,6 +691,7 @@ fn item_unmount<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut M
 fn item_dir<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
     let f = |c: &mut Context| -> Result<(), embedded_sdmmc::Error<_>> {
         let v = c.cont.get_volume(embedded_sdmmc::VolumeIdx(0))?;
+        println!("Volume: {:#?}", v);
         let dir = c.cont.open_root_dir(&v)?;
         c.cont.iterate_dir(&v, &dir, |x| {
             if !x.attributes.is_hidden() && !x.attributes.is_volume() {
@@ -1327,6 +1400,119 @@ fn flip<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuConte
         }
         top -= 1;
         bottom += 1
+    }
+}
+
+fn list_ap<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuContext) {
+    use core::fmt::Write;
+    {
+        // Grab the lock
+        let mut lock = GLOBAL_CONTEXT.lock();
+        // Convert to mutable reference and unwrap the Option
+        let ctx = lock.as_mut().unwrap();
+        // ESP8266 runs at 9,600 bps
+        ctx.rs232_uart.change_baud_rate(9600.bps(), &ctx.clocks);
+    }
+    println!("Listing access points...");
+    {
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        write!(ctx.rs232_uart, "AT+CWLAP\r\n").unwrap();
+        wait_for_ok(ctx);
+    }
+}
+
+fn connect_ap<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    let ssid = ::menu::argument_finder(item, args, "SSID")
+        .unwrap()
+        .unwrap();
+    let psk = ::menu::argument_finder(item, args, "PSK")
+        .unwrap_or(Some(""))
+        .unwrap();
+    use core::fmt::Write;
+    {
+        // Grab the lock
+        let mut lock = GLOBAL_CONTEXT.lock();
+        // Convert to mutable reference and unwrap the Option
+        let ctx = lock.as_mut().unwrap();
+        // ESP8266 runs at 9,600 bps
+        ctx.rs232_uart.change_baud_rate(9600.bps(), &ctx.clocks);
+    }
+    println!("Connecting to {:?}...", ssid);
+    {
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        write!(ctx.rs232_uart, "AT+CWJAP=\"{}\",\"{}\"\r\n", ssid, psk).unwrap();
+        wait_for_ok(ctx);
+    }
+}
+
+fn telnet<'a>(_menu: &Menu, item: &Item, args: &[&str], _context: &mut MenuContext) {
+    let host = ::menu::argument_finder(item, args, "HOST")
+        .unwrap()
+        .unwrap();
+    let port = ::menu::argument_finder(item, args, "PORT")
+        .unwrap()
+        .unwrap();
+    use core::fmt::Write;
+    {
+        // Grab the lock
+        let mut lock = GLOBAL_CONTEXT.lock();
+        // Convert to mutable reference and unwrap the Option
+        let ctx = lock.as_mut().unwrap();
+        // ESP8266 runs at 9,600 bps
+        ctx.rs232_uart.change_baud_rate(9600.bps(), &ctx.clocks);
+    }
+    println!("Connecting to {}:{}...", host, port);
+    {
+        let mut lock = GLOBAL_CONTEXT.lock();
+        let ctx = lock.as_mut().unwrap();
+        write!(ctx.rs232_uart, "AT+CIPMODE=1\r\n").unwrap();
+        wait_for_ok(ctx);
+        write!(
+            ctx.rs232_uart,
+            "AT+CIPSTART=\"TCP\",\"{}\",{}\r\n",
+            host, port
+        )
+        .unwrap();
+        wait_for_ok(ctx);
+        write!(ctx.rs232_uart, "AT+CIPSEND\r\n").unwrap();
+    }
+}
+
+fn wait_for_ok(ctx: &mut Context) {
+    let mut count = 0;
+    loop {
+        match ctx.rs232_uart.read() {
+            Ok(b'\r') => {
+                if count == 2 {
+                    break;
+                }
+            }
+            Ok(b'\n') => {
+                // Ignore
+                ctx.write_u8(b'\n');
+            }
+            Ok(b'O') => {
+                if count == 0 {
+                    count = 1;
+                }
+                ctx.write_u8(b'O');
+            }
+            Ok(b'K') => {
+                if count == 1 {
+                    count = 2;
+                }
+                ctx.write_u8(b'K');
+            }
+            Ok(ch) => {
+                count = 0;
+                ctx.write_u8(ch);
+            }
+            Err(_e) => {
+                // Ignore
+            }
+        }
     }
 }
 

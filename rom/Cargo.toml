@@ -29,10 +29,10 @@ version = "0.3"
 # path = "../../menu"
 
 [dependencies.vga-framebuffer]
-version = "0.9"
+# version = "0.9"
 features = ["const_fn"]
 # git = "https://github.com/thejpster/vga-framebuffer-rs.git"
-# path = "../../vga-framebuffer-rs"
+path = "../../vga-framebuffer-rs"
 
 [dependencies.embedded-hal]
 version = "0.2.1"

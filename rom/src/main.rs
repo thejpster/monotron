@@ -232,11 +232,14 @@ enum Input {
 // ===========================================================================
 
 /// This is a magic value to make the video timing work.
-const ISR_LATENCY: u32 = 24;
+const ISR_LATENCY_20: u32 = 109;
+
+/// This is a magic value to make the video timing work.
+const ISR_LATENCY_40: u32 = 80;
 
 /// This is a magic value for a pre-ISR which puts the CPU into a known state
 /// before our pixel start ISR.
-const ISR_LATENCY_WARMUP: u32 = 3;
+const ISR_LATENCY_WARMUP: u32 = 6;
 
 /// This is how much RAM we have.
 const TOTAL_RAM_LEN: usize = 32768;
@@ -758,7 +761,7 @@ fn main() -> ! {
             green_ch: p.SSI2,
             blue_ch: p.SSI3,
         };
-        FRAMEBUFFER.init(hw);
+        FRAMEBUFFER.init(hw, fb::VideoModeId::Mode0);
     }
 
     // TODO let users pick a keyboard layout, and store their choice in EEPROM somewhere
@@ -805,7 +808,7 @@ fn main() -> ! {
     load_time_from_rtc();
 
     // Print the sign-on banner
-    println!("\u{001b}W\u{001b}k\u{001b}Z");
+    println!("\u{001b}W\u{001b}b\u{001b}Z");
     println!(" \u{001b}R█████\u{001b}K \u{001b}R\u{001b}y█████\u{001b}K\u{001b}k \u{001b}Y██  █\u{001b}K \u{001b}G█████\u{001b}K \u{001b}G\u{001b}y█\u{001b}k█\u{001b}y█\u{001b}k██\u{001b}K \u{001b}B████\u{001b}K \u{001b}B█████\u{001b}K \u{001b}M██  █\u{001b}W");
     println!(" \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R▓\u{001b}K \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▓\u{001b}K\u{001b}k \u{001b}Y▓\u{001b}K \u{001b}Y▓ ▓\u{001b}K \u{001b}G▓\u{001b}K   \u{001b}G▓\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▓\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k  \u{001b}B\u{001b}g▓\u{001b}K\u{001b}k \u{001b}B▓\u{001b}K   \u{001b}B▓\u{001b}K \u{001b}M▓\u{001b}K \u{001b}M▓ ▓\u{001b}W");
     println!(" \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R▒\u{001b}K \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k   \u{001b}R\u{001b}y▒\u{001b}K\u{001b}k \u{001b}Y▒\u{001b}K  \u{001b}Y▒▒\u{001b}K \u{001b}G▒\u{001b}K   \u{001b}G▒\u{001b}K \u{001b}G \u{001b}K \u{001b}G\u{001b}y▒\u{001b}K\u{001b}k \u{001b}G \u{001b}K \u{001b}B\u{001b}g▒\u{001b}K\u{001b}k \u{001b}B\u{001b}g▒\u{001b}k \u{001b}K \u{001b}B▒\u{001b}K   \u{001b}B▒\u{001b}K \u{001b}M▒\u{001b}K \u{001b}M ▒▒\u{001b}W");
@@ -904,6 +907,11 @@ impl fb::Hardware for VideoHardware {
         // CPSDVSR = 4 ------------^
         // SCR = 0 -------------------------^
         let ratio = CLOCK_SPEED / mode_info.clock_rate;
+        let isr_latency = match mode_info.clock_rate {
+            20_000_000 => ISR_LATENCY_20,
+            40_000_000 => ISR_LATENCY_40,
+            _ => panic!("Bad video clock"),
+        };
         // For all sensible divisors of 80 MHz, we want SCR = 0.
         self.red_ch
             .cpsr
@@ -914,24 +922,36 @@ impl fb::Hardware for VideoHardware {
         self.green_ch
             .cpsr
             .write(|w| unsafe { w.cpsdvsr().bits(ratio as u8) });
-        // Each channel needs to clock out 8 bit words, with the correct
+        // Each channel needs to clock out 8 or 10 bit words, with the correct
         // phase/polarity.
         self.red_ch.cr0.write(|w| {
-            w.dss()._8();
+            if mode_info.word_len == 10 {
+                w.dss()._10();
+            } else {
+                w.dss()._8();
+            };
             w.frf().moto();
             w.spo().clear_bit();
             w.sph().set_bit();
             w
         });
         self.blue_ch.cr0.write(|w| {
-            w.dss()._8();
+            if mode_info.word_len == 10 {
+                w.dss()._10();
+            } else {
+                w.dss()._8();
+            };
             w.frf().moto();
             w.spo().clear_bit();
             w.sph().set_bit();
             w
         });
         self.green_ch.cr0.write(|w| {
-            w.dss()._8();
+            if mode_info.word_len == 10 {
+                w.dss()._10();
+            } else {
+                w.dss()._8();
+            };
             w.frf().moto();
             w.spo().clear_bit();
             w.sph().set_bit();
@@ -975,21 +995,32 @@ impl fb::Hardware for VideoHardware {
         });
         // We're counting down in PWM mode, so start at the end
         // We start 16 pixels early
-        let convert_to_clockset = |i: u32| -> u32 { (ratio * i) - 1 };
+        let pixels_to_cpu = |i: u32| -> u32 { (ratio * i) - 1 };
+
+        // `h_timer.tailr` = Timer 1, A Interval Load Register.
+        // This is set to the screen width, and it counts down to zero.
         self.h_timer
             .tailr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(mode_info.width)) });
+            .modify(|_, w| unsafe { w.bits(pixels_to_cpu(mode_info.width)) });
+        // `h_timer.tbilr` = Timer 1, B Interval Load Register.
+        // This is set to the screen width, and it counts down to zero.
         self.h_timer
             .tbilr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(mode_info.width)) });
-        self.h_timer.tamatchr.modify(|_, w| unsafe {
-            w.bits(convert_to_clockset(mode_info.width - mode_info.sync_end))
-        });
+            .modify(|_, w| unsafe { w.bits(pixels_to_cpu(mode_info.width)) });
+        // `h_timer.tamatchr` = Timer 1, A Match Register.
+        //
+        // This is set to the screen width, minus when the sync pulse should
+        // end. As is it counting down to zero, if fires `sync_end` ticks
+        // after the line start.
+        //
+        // This effectively makes Timer A match when the sync pulse needs to
+        // go low.
+        self.h_timer
+            .tamatchr
+            .modify(|_, w| unsafe { w.bits(pixels_to_cpu(mode_info.width - mode_info.sync_end)) });
         // Counting down, so adding here makes it earlier
         self.h_timer.tbmatchr.modify(|_, w| unsafe {
-            w.bits(convert_to_clockset(
-                ISR_LATENCY + mode_info.width - mode_info.line_start,
-            ))
+            w.bits(isr_latency + pixels_to_cpu(mode_info.width - mode_info.line_start))
         });
         self.h_timer.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires at start of line
@@ -997,7 +1028,7 @@ impl fb::Hardware for VideoHardware {
             w
         });
 
-        // Configure Timer2A to run just before Timer 1B
+        // Configure Timer2A. We set it to run just before Timer 1B.
         self.h_timer2.ctl.modify(|_, w| {
             w.taen().clear_bit();
             w.tben().clear_bit();
@@ -1016,17 +1047,27 @@ impl fb::Hardware for VideoHardware {
             w.tapwml().set_bit();
             w
         });
-        // We're counting down in PWM mode, so start at the end
-        // We start a few pixels before Timer1B
+        // `h_timer2.tailr` = Timer 2, A Interval Load Register.
+        //
+        // This is what the timer starts at - it then counts down. Naturally,
+        // we load it with the width of the video line. We use `pixels_to_cpu`
+        // to convert the time from pixel clocks to CPU clocks.
         self.h_timer2
             .tailr
-            .modify(|_, w| unsafe { w.bits(convert_to_clockset(mode_info.width)) });
-        // Counting down, so adding here makes it earlier
+            .modify(|_, w| unsafe { w.bits(pixels_to_cpu(mode_info.width)) });
+        // `h_timer2.tamatchr` = Timer 2, A Match Register.
+        //
+        // An interrupt fires when the timer matches this value.
+        // We want to fire when the video line starts, minus a bit.
+        // As we're counting down, that means plus a bit.
         self.h_timer2.tamatchr.modify(|_, w| unsafe {
-            w.bits(convert_to_clockset(
-                ISR_LATENCY + ISR_LATENCY_WARMUP + mode_info.width - mode_info.line_start,
-            ))
+            w.bits(
+                pixels_to_cpu(mode_info.width - mode_info.line_start)
+                    + isr_latency
+                    + ISR_LATENCY_WARMUP,
+            )
         });
+        // imr = Interrupt Mask Register.
         self.h_timer2.imr.modify(|_, w| {
             w.caeim().set_bit(); // Timer1A fires just before at start of data
             w
@@ -1046,11 +1087,13 @@ impl fb::Hardware for VideoHardware {
             w
         });
 
+        // Enable timer2 before timer 1, so it fires first
         self.h_timer2.ctl.modify(|_, w| {
             w.taen().set_bit();
             w
         });
 
+        // Now enable timer1
         self.h_timer.ctl.modify(|_, w| {
             w.taen().set_bit();
             w.tben().set_bit();
@@ -1079,6 +1122,18 @@ impl fb::Hardware for VideoHardware {
         ssi_r.dr.write(|w| unsafe { w.bits(xrgb.red()) });
         ssi_g.dr.write(|w| unsafe { w.bits(xrgb.green()) });
         ssi_b.dr.write(|w| unsafe { w.bits(xrgb.blue()) });
+    }
+
+    /// Called word by word as mono pixels are calculated. Word size may not
+    /// be 8 bits.
+    fn write_mono_pixels(&mut self, mono: u32) {
+        let ssi_r = unsafe { &*cpu::SSI1::ptr() };
+        let ssi_g = unsafe { &*cpu::SSI2::ptr() };
+        let ssi_b = unsafe { &*cpu::SSI3::ptr() };
+        while (ssi_r.sr.read().bits() & 0x02) == 0 {}
+        ssi_r.dr.write(|w| unsafe { w.bits(mono) });
+        ssi_g.dr.write(|w| unsafe { w.bits(mono) });
+        ssi_b.dr.write(|w| unsafe { w.bits(mono) });
     }
 }
 
