@@ -34,7 +34,7 @@ LibDir=
 [schematic_editor]
 version=1
 PageLayoutDescrFile=
-PlotDirectoryName=./schematic.pdf
+PlotDirectoryName=./plots
 SubpartIdSeparator=0
 SubpartFirstId=65
 NetFmtName=

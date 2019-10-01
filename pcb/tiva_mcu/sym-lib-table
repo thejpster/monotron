@@ -1,4 +1,5 @@
 (sym_lib_table
   (lib (name tm4c123g_launchpad)(type Legacy)(uri ${KIPRJMOD}/tm4c123g_launchpad.lib)(options "")(descr ""))
   (lib (name monotron_bridge)(type Legacy)(uri ${KIPRJMOD}/../monotron_bridge.lib)(options "")(descr ""))
+  (lib (name tivac_mcu-rescue)(type Legacy)(uri ${KIPRJMOD}/tivac_mcu-rescue.lib)(options "")(descr ""))
 )

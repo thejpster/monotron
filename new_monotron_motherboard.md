@@ -45,27 +45,50 @@ you a couple of mikroelectronik Clik(tm) slots, or an Arduino shield interface
 
 ## Possible Expansion Cards
 
-* 2x Atari Joystick (MCP23017 + SPI)
-* 2x Sega Megadrive pad (Atmega?)
-* Parallel Printer Port (Atmega? MCP23017?)
-* Dual PS/2 (Atmega + 2-wire UART?)
-* Full 9-wire RS232 (Atmega?)
-* WiFi (ESP8266 on-chip stack + UART)
-* WiFi + Bluetooth (ESP32 on-chip stack + UART)
-* 10base-T Ethernet (Microchip 28J60 + SPI, MAC/PHY only)
-* PmodNIC100 based 100base-T Ethernet (Microchip ENC424J600 + SPI, MAC/PHY only)
-* USB Serial Device (FT232 + UART, with USB micro-B socket)
-* Full-size SD Card slot (SPI)
-* Micro SD slot (SPI)
-* PC/Sound Blaster Game Port (2x Analog PC Joysticks + MIDI In/Out on a DB15
-  connector)
-* Real Time Clock (I2C)
-* IDE interface (Atmega, see http://sbc.rictor.org/io/IDE.html)
-* USB Host interface (MAX3421E, see https://www.sparkfun.com/products/9947)
-* Keyboard/Mouse/Serial/Parallel controller - with some
-  connectors on separate expansion plate via ribbon (NCT6686D based, http://www.nuvoton.com/resource-files/NCT6686D_HW_Datasheet_V0_5.pdf)
-* Raspberry Pi HAT adaptor (e.g. for the SenseHAT)
-* SPI to ISA bridge (turns microATX board into full-size ATX)
+* Joysticks
+	* 2x Atari Joystick (MCP23017 + SPI)
+	* 2x Sega Megadrive pad (Atmega?)
+	* 4-channel ADC to support 2x Analog PC Joysticks on a DB15
+* Parallel Printer Port
+	* Atmega 328 + UART/I2C/SPI, or
+	* MCP23017 + SPI (one pin short - could use IRQ line as extra input?)
+	* MCP23S17 + I2C (one pin short - could use IRQ line as extra input?)
+* Dual PS/2
+	* Atmega 328 + UART/I2C/SPI, or
+	* SMBus PS/2 keyboard controller
+	* Keyboard/Mouse/Serial/Parallel controller - with some
+	  connectors on separate expansion plate via ribbon (NCT6686D based, http://www.nuvoton.com/resource-files/NCT6686D_HW_Datasheet_V0_5.pdf)
+* UART
+	* I2C or SPI to full 9-wire RS-232
+	* RS-232 level shifter on 5-wire UART (no DCD, DTR, DSR or RI)
+	* MIDI In/Out (might need DB15 to 2xDIN cable), using 2-wire UART
+		* Could combine with DB15 Game Port
+* USB
+	* Communications Class Device
+		* FT232 with USB micro-B or USB B socket + 4-wire UART
+	* Host
+		* Off-chip interface (MAX3421E + SPI, see https://www.sparkfun.com/products/9947)
+		* Use Tiva-C OTG support, with separate USB Hub (e.g. MaxLinear XR22404CG28TR-F)
+* Networking
+	* WiFi
+		* ESP8266 on-chip stack + UART
+		* ESP32 on-chip stack + UART (also has Bluetooth)
+	* Ethernet
+		* Microchip 28J60 + SPI, MAC/PHY only
+		* Microchip ENC424J600 + SPI, MAC/PHY only (PmodNIC100 board)
+	* Bluetooth
+		* UART HCI device
+		* UART on-chip stack device
+* Mass Storage
+	* Full-size SD Card slot (SPI)
+	* Micro SD slot (SPI)
+* Sensors
+	* Real Time Clock (I2C)
+	* Temperature/Humidity/Pressure (I2C)
+* Misc
+	* IDE interface (Atmega, see http://sbc.rictor.org/io/IDE.html)
+	* Raspberry Pi HAT adaptor (e.g. for the SenseHAT)
+	* SPI to ISA bridge (turns microATX board into full-size ATX)
 
 ## Typical Back Panel layout
 
@@ -74,17 +97,17 @@ you a couple of mikroelectronik Clik(tm) slots, or an Arduino shield interface
                                         |   |  |   |  |   |  |   |
                                         |   |  |   |  |   |  |   |
                                         |   |  |   |  |   |  |   |
-                                        |   |  |   |  |   |  |   |
-                                        |   |  |   |  |   |  |   |
-+----+  +-------+                       |   |  |   |  |   |  |   |
-|/--\|  | ..... |   +---+               |   |  |   |  |   |  |   |
-||__||  | ::::: |   | O |               |   |  |   |  |   |  |   |
-+----+--+-------+---+---+---------------+---+--+---+--+---+--+---+
- Power   Monitor   Line-Out             SlotA  SlotB  SlotC  SlotD
+                             +-----+    |   |  |   |  |   |  |   |
+                             |_____|    |   |  |   |  |   |  |   |
++----+  +-------+            |-----|    |   |  |   |  |   |  |   |
+|/--\|  | ..... |   +---+    |_____|    |   |  |   |  |   |  |   |
+||__||  | ::::: |   | O |    |-----|    |   |  |   |  |   |  |   |
++----+--+-------+---+---+----+-----+----+---+--+---+--+---+--+---+
+ Power   Monitor   Line-Out  2x USB A   SlotA  SlotB  SlotC  SlotD
  USB B    VGA     3.5mm TRS
 ```
 
-## Pins which stay on the motherboard.
+## Pins which don't need an expansion card
 
 * VGA_HSYNC (PB4)
 * VGA_VSYNC (PB5)
@@ -94,6 +117,9 @@ you a couple of mikroelectronik Clik(tm) slots, or an Arduino shield interface
 * AUDIO_LEFT (PE4)
 * AUDIO_RIGHT (PE5)
 
+They are routed to the expansion connector anyway, in case you want to fit a
+VGA/Audio to HDMI adaptor or something, or a VGA buffer amplifier.
+
 ## Physical Layout
 
 When the expansion board is connected to the MCU board, they form a standard ATX
@@ -101,3 +127,13 @@ sized motherboard. The mounting holes are in the ATX standard position, and
 the four expansion slots are in the same position as the equivalent ISA card
 slot would be - you need to solder a 0.1" socket to the edge of a 1.6mm PCB
 (putting the pins on either side of the PCB).
+
+## CPU Boards
+
+STM32 boards have the widest range.
+
+### Nucleo
+
+* F4DISCO
+* H745I-DISCO
+
