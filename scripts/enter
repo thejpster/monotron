@@ -4,13 +4,19 @@ import serial
 import sys
 import time
 file = sys.argv[2]
-contents = open(file, "rb").read()
+contents = open(file, "r").read()
 s = serial.Serial(sys.argv[1], 115200)
-for b in contents:
-	byte = bytes([b])
+for c in contents:
+	byte = bytes([ord(c)])
 	print("Byte: {!r}".format(byte))
-	s.write(byte)
-	time.sleep(0.1)
+	if byte == b'\n':
+		s.write(b'\r')
+		time.sleep(0.1)
+		s.write(b'\n')
+		time.sleep(1)
+	else:
+		s.write(byte)
+		time.sleep(0.1)
 if "--run" in sys.argv:
-    s.write(b"RUN\r")
+	s.write(b"RUN\r")
 print("Done!\n")
