@@ -11,25 +11,93 @@
  */
 
 // The Keyboard Clock pin (PC0)
-const int KB_CLK = A0;
+const int KB_CLK_PIN = A0;
 // The Mouse Clock pin (PC1)
-const int MS_CLK = A1;
+const int MS_CLK_PIN = A1;
 // The Keyboard Data pin (PC2)
-const int KB_DATA = A2;
+const int KB_DATA_PIN = A2;
 // The Mouse Data pin (PC2)
-const int MS_DATA = A3;
+const int MS_DATA_PIN = A3;
+
+const uint8_t PS2_NUM_BITS_IN_WORD = 11;
+
+// The commands we handle
+const uint8_t READ_KB_REQ = 0x30;
+const uint8_t READ_KB_CFM_OK = 0x31;
+const uint8_t READ_KB_CFM_ERR = 0x32;
+const uint8_t DATA_KB_IND = 0x33;
+const uint8_t READ_MS_REQ = 0x34;
+const uint8_t READ_MS_CFM_OK = 0x35;
+const uint8_t READ_MS_CFM_ERR = 0x36;
+const uint8_t DATA_MS_IND = 0x37;
+const uint8_t BAD_COMMAND_CFM = 0x38;
+
+class Ps2Buffer {
+public:
+	bool want_sample() {
+		return (this->num_bits < PS2_NUM_BITS_IN_WORD);
+	}
+
+	bool have_data() {
+		return (this->num_bits == PS2_NUM_BITS_IN_WORD);
+	}
+
+	bool add_sample(bool sample) {
+		if (sample) {
+			this->word |= (1 << this->num_bits);
+		}
+		this->num_bits++;
+		return (this->num_bits == PS2_NUM_BITS_IN_WORD);
+	}
+
+	uint8_t get_word() {
+		uint8_t result = (this->word >> 1) & 0xFF;
+		this->reset();
+		return result;
+	}
+
+	void reset() {
+		this->word = 0;
+		this->num_bits = 0;
+	}
+
+private:
+	uint16_t word;
+	uint8_t num_bits;
+
+};
+
+static void ms_off(void) {
+	pinMode(MS_CLK_PIN, OUTPUT);
+	digitalWrite(MS_CLK_PIN, LOW);
+}
+
+static void ms_on(void) {
+	pinMode(MS_CLK_PIN, INPUT_PULLUP);
+
+}
+
+static void kb_off(void) {
+	pinMode(KB_CLK_PIN, OUTPUT);
+	digitalWrite(KB_CLK_PIN, LOW);
+}
+
+static void kb_on(void) {
+	pinMode(KB_CLK_PIN, INPUT_PULLUP);
+}
 
 /**
  * Executed once on startup.
  */
 void setup(void) {
-  // Configure the pins
-  pinMode(KB_CLK, INPUT_PULLUP);
-  pinMode(KB_DATA, INPUT_PULLUP);
-  pinMode(MS_CLK, INPUT_PULLUP);
-  pinMode(MS_DATA, INPUT_PULLUP);
-  // Communication with the MCU
-  Serial.begin(19200);
+	// Configure the pins
+	pinMode(KB_CLK_PIN, INPUT_PULLUP);
+	pinMode(KB_DATA_PIN, INPUT_PULLUP);
+	pinMode(MS_CLK_PIN, INPUT_PULLUP);
+	pinMode(MS_DATA_PIN, INPUT_PULLUP);
+	// Communication with the MCU. This gives 19,184 bps (0.08% error) at 8 MHz
+	// or 19,231 bps (0.16% error) at 1 MHz
+	Serial.begin(19200);
 }
 
 /**
@@ -40,30 +108,75 @@ void setup(void) {
  * is prevented (by holding CLK low) while we send the received data over the UART.
  */
 void loop(void) {
-  static bool old_kb_clk_pin = true;
-  static uint16_t kb_word = 0;
-  static uint8_t kb_num_bits = 0;
+	static Ps2Buffer kb;
+	static Ps2Buffer ms;
+	static bool old_kb_clk_pin = true;
+	static bool old_ms_clk_pin = true;
 
-  bool kb_clk_pin = digitalRead(KB_CLK);
-  // capture data on falling edge
-  if (old_kb_clk_pin && !kb_clk_pin) {
-    if (digitalRead(KB_DATA)) {
-      kb_word |= (1 << kb_num_bits);
-    }
-    kb_num_bits++;
-    if (kb_num_bits == 11) {
-      // Shut the keyboard and mouse down for a moment
-      pinMode(KB_CLK, OUTPUT);
-      digitalWrite(KB_CLK, LOW);
-      // Print the word we just read. We shift by one to trim the start bit (0)
-      // and mask with 0xFF to trim the stop and parity bits.
-      Serial.print((char) ((kb_word >> 1) & 0xFF));
-      // Clear the word we just read
-      kb_word = 0;
-      kb_num_bits = 0;
-      // Release the keyboard
-      pinMode(KB_CLK, INPUT_PULLUP);
-    }
-  }
-  old_kb_clk_pin = kb_clk_pin;
+	bool kb_clk_pin = digitalRead(KB_CLK_PIN);
+	// capture data on falling edge
+	if (old_kb_clk_pin && !kb_clk_pin) {
+		if (kb.add_sample(digitalRead(KB_DATA_PIN))) {
+			// Shut the keyboard down
+			kb_off();
+			// Send indication
+			Serial.write(DATA_KB_IND);
+		}
+	}
+	old_kb_clk_pin = kb_clk_pin;
+
+	bool ms_clk_pin = digitalRead(MS_CLK_PIN);
+	// capture data on falling edge
+	if (old_ms_clk_pin && !ms_clk_pin) {
+		if (ms.add_sample(digitalRead(MS_DATA_PIN))) {
+			// Shut the mouse down
+			ms_off();
+			// Send indication
+			Serial.write(DATA_MS_IND);
+		}
+	}
+	old_ms_clk_pin = ms_clk_pin;
+
+	if (Serial.available()) {
+		// Shut down devices while we deal with this
+		kb_off();
+		ms_off();
+		uint8_t command = Serial.read();
+		switch (command) {
+		case READ_KB_REQ:
+			if (kb.have_data()) {
+				Serial.write(READ_KB_CFM_OK);
+				Serial.write(kb.get_word());
+				kb.reset();
+			} else {
+				Serial.write(READ_KB_CFM_ERR);
+			}
+			break;
+		case READ_MS_REQ:
+			if (ms.have_data()) {
+				Serial.write(READ_MS_CFM_OK);
+				Serial.write(ms.get_word());
+				ms.reset();
+			} else {
+				Serial.write(READ_MS_CFM_ERR);
+			}
+			break;
+		default:
+			Serial.write(BAD_COMMAND_CFM);
+			break;
+		}
+		// Re-enable devices
+		if (!kb.have_data()) {
+			// Only re-enable if it is ready for more data
+			kb.reset();
+			kb_on();
+			old_kb_clk_pin = false;
+		}
+		if (!ms.have_data()) {
+			// Only re-enable if it is ready for more data
+			ms.reset();
+			ms_on();
+			old_ms_clk_pin = false;
+		}
+	}
 }
