@@ -1248,16 +1248,19 @@ fn rtc_set<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuCo
     let ctx = lock.as_mut().unwrap();
     let bus = crate::I2cBus(&mut ctx.i2c_bus);
     let mut rtc = mcp794xx::Mcp794xx::new_mcp7940n(bus);
-    let dt = mcp794xx::DateTime {
-        year: timestamp.year_from_1970 as u16 + 1970,
-        month: timestamp.month,
-        day: timestamp.days,
-        weekday: (timestamp.day_of_week() as u8) + 1,
-        hour: mcp794xx::Hours::H24(timestamp.hours),
-        minute: timestamp.minutes,
-        second: timestamp.seconds,
-    };
-    println!("set_vbat_en(true): {:?}", rtc.set_vbat_en(true));
+    let dt = mcp794xx::NaiveDateTime::new(
+        mcp794xx::NaiveDate::from_ymd(
+            (timestamp.year_from_1970) as i32 + 1970,
+            timestamp.month as u32,
+            timestamp.days as u32,
+        ),
+        mcp794xx::NaiveTime::from_hms(
+            timestamp.hours as u32,
+            timestamp.minutes as u32,
+            timestamp.seconds as u32,
+        ),
+    );
+    println!("set_vbat_en(true): {:?}", rtc.enable_backup_battery_power());
     println!("set_datetime({:?}): {:?}", rtc.set_datetime(&dt), dt);
     println!("enable(): {:?}", rtc.enable());
 }
@@ -1304,7 +1307,7 @@ fn flip<'a>(_menu: &Menu, _item: &Item, _args: &[&str], _context: &mut MenuConte
         api::wfvbi();
         for line in 0..HEIGHT {
             let new_line = if line < top || line > bottom {
-                (HEIGHT - 1)
+                HEIGHT - 1
             } else {
                 ((HEIGHT - 1) * (line - top)) / (bottom - top)
             };

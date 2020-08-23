@@ -45,7 +45,7 @@
 #![no_main]
 #![no_std]
 #![allow(deprecated)]
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 // ===========================================================================
 // Sub-modules
@@ -73,6 +73,7 @@ use self::hal::prelude::*;
 use self::hal::serial::{NewlineMode, Serial};
 use self::hal::sysctl;
 use self::hal::tm4c123x as cpu;
+use mcp794xx::{Datelike, Timelike};
 
 // ===========================================================================
 // Types
@@ -1101,16 +1102,12 @@ fn load_time_from_rtc() {
         }
     };
     let timestamp = monotron_api::Timestamp {
-        year_from_1970: (dt.year - 1970) as u8,
-        month: dt.month,
-        days: dt.day,
-        hours: match dt.hour {
-            mcp794xx::Hours::H24(n) => n,
-            mcp794xx::Hours::AM(n) => n,
-            mcp794xx::Hours::PM(n) => n + 12,
-        },
-        minutes: dt.minute,
-        seconds: dt.second,
+        year_from_1970: (dt.date().year() - 1970) as u8,
+        month: dt.month() as u8,
+        days: dt.day() as u8,
+        hours: dt.hour() as u8,
+        minutes: dt.time().minute() as u8,
+        seconds: dt.time().second() as u8,
     };
     TIME_CONTEXT.set_timestamp(timestamp);
 }
@@ -1124,7 +1121,7 @@ interrupt!(TIMER2A, timer2a);
 /// Called just before Timer1B, which gives Timer1B lower interrupt jitter.
 fn timer2a() {
     unsafe {
-        asm!("wfi");
+        llvm_asm!("wfi");
         let timer = &*cpu::TIMER2::ptr();
         timer.icr.write(|w| w.caecint().set_bit());
     }
@@ -1172,7 +1169,7 @@ fn timer1b() {
     // gets the colour video lined up, as we preload the red channel with 0x00
     // 0x00 and the green channel with 0x00.
     unsafe {
-        asm!(
+        llvm_asm!(
             "movs    r0, #132;
             movs    r1, #1;
             movt    r0, #16914;
