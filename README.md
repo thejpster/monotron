@@ -13,6 +13,10 @@ can you squeeze out of this tiny CPU? And can you do it all in pure-Rust?
 ![YouTube screenshot of a video of Monotron](screenshot.jpg "Monotron on Youtube")
 [See Monotron in Action!](https://www.youtube.com/watch?v=7x_92PXKSN4)
 
+## The Future
+
+Monotron has been replaced by the [Neotron 32](https://github.com/neotron-compute/Neotron-32-Hardware), part of the [Neotron family](https://neotron-compute.github.io). All future work will happen under the Neotron banner, and this repo is in archive mode.
+
 ## Features
 
 * 800x600 8-colour VGA output
