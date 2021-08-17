@@ -2,6 +2,10 @@
 
 > A simple 1980's home computer style application for the Tiva-C Launchpad
 
+## The Monotron is no more
+
+Monotron was fun, but it was only ever a tech demo rather than something we could build on. Check out <https://github.com/neotron-compute/> for our new family of ARM-based, Rust-powered home computers. 
+
 ## Introduction
 
 Monotron is powered by a Texas Instruments TM4C123 microcontroller, containing
